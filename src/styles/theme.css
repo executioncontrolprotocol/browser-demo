@@ -1,0 +1,40 @@
+/**
+ * Solaris Slate design tokens — single source for configurable colors.
+ * Values from docs/ui-example/DESIGN.md
+ */
+:root {
+  --color-background: #0b1326;
+  --color-on-background: #dae2fd;
+  --color-surface: #0b1326;
+  --color-on-surface: #dae2fd;
+  --color-surface-dim: #0b1326;
+  --color-surface-bright: #31394d;
+  --color-surface-container-lowest: #060e20;
+  --color-surface-container-low: #131b2e;
+  --color-surface-container: #171f33;
+  --color-surface-container-high: #222a3d;
+  --color-surface-container-highest: #2d3449;
+  --color-surface-variant: #2d3449;
+  --color-on-surface-variant: #d1c6ab;
+  --color-outline: #9a9078;
+  --color-outline-variant: #4d4632;
+  --color-primary: #facc15;
+  --color-on-primary: #3c2f00;
+  --color-primary-container: #facc15;
+  --color-on-primary-container: #6c5700;
+  --color-primary-fixed: #ffe083;
+  --color-primary-fixed-dim: #eec200;
+  --color-secondary: #b9c8de;
+  --color-on-secondary: #233143;
+  --color-secondary-container: #39485a;
+  --color-on-secondary-container: #a7b6cc;
+  --color-tertiary: #c7f5ff;
+  --color-on-tertiary: #00363e;
+  --color-tertiary-fixed-dim: #15daf4;
+  --color-error: #ffb4ab;
+  --color-on-error: #690005;
+  --color-error-container: #93000a;
+  --color-on-error-container: #ffdad6;
+  --color-inverse-surface: #dae2fd;
+  --color-inverse-on-surface: #283044;
+}

@@ -1,0 +1,8 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.env
+
+# Supabase CLI local state
+supabase/.temp/
+supabase/.branches/
