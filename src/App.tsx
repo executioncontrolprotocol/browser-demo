@@ -21,6 +21,8 @@ import { ChromeInstallDialog } from "./components/ChromeInstallDialog.js"
 import { ChromeInstallToast } from "./components/ChromeInstallToast.js"
 import { CodeSidebar } from "./components/CodeSidebar.js"
 import { FirstRunModal } from "./components/FirstRunModal.js"
+import { VaultSetupModal } from "./components/VaultSetupModal.js"
+import { VaultUnlockModal } from "./components/VaultUnlockModal.js"
 import { MermaidCanvas } from "./components/MermaidCanvas.js"
 import { SplitPane } from "./components/SplitPane.js"
 import { TopAppBar } from "./components/TopAppBar.js"
@@ -31,6 +33,7 @@ import { useWorkspaceLayout } from "./hooks/useWorkspaceLayout.js"
 import { intentRoutesToAuthoring } from "./lib/chat-routing.js"
 import { formatRegisteredCapabilitiesSummary } from "./lib/capability-summary.js"
 import { createDemoAppEnvironment } from "./lib/demo-environment.js"
+import { shouldBlockForVault } from "./lib/vault-gate.js"
 import {
   harnessInvokeChatError,
   logHarnessInvoke,
@@ -58,6 +61,8 @@ export function App() {
   const [ecp, setEcp] = useState<Ecp | null>(null)
   const [providerMode, setProviderMode] = useState<ProviderMode>("demo")
   const [showProviderModal, setShowProviderModal] = useState(false)
+  const [showVaultSetup, setShowVaultSetup] = useState(false)
+  const [vaultGate, setVaultGate] = useState<"locked" | "ready">("ready")
   const [chromeSupported, setChromeSupported] = useState(false)
   const [chromeReady, setChromeReady] = useState(false)
   const [chromeInstallUi, setChromeInstallUi] = useState<ChromeInstallUi>("idle")
@@ -125,39 +130,45 @@ export function App() {
     [ecp, chromeInstall]
   )
 
+  const bootstrapAfterVault = useCallback(async () => {
+    const { ecp: operational, descriptor: desc } = await createDemoAppEnvironment()
+    ecpRef.current = operational
+    setEcp(operational)
+    setDescriptor(desc)
+
+    const avail = await operational.invoke("@executioncontextprotocol/chrome-ai.checkAvailability").with({}).process()
+    const result =
+      avail.success && typeof avail.result === "object" && avail.result !== null
+        ? (avail.result as { available: boolean; supported?: boolean; status?: string })
+        : { available: false, supported: false }
+
+    const supported = result.supported ?? result.status !== "unsupported"
+    const ready = Boolean(result.available)
+    setChromeSupported(supported)
+    setChromeReady(ready)
+
+    const stored = readStoredProviderMode()
+    if (stored) {
+      setProviderMode(stored)
+      setAssistantMode("authoring")
+      chat.setStatus(`Ready (${stored}).`)
+      if (stored === "chrome-ai" && supported && !ready) {
+        setChromeInstallUi("toast")
+        await chromeInstall.startInstall(operational)
+      }
+    } else {
+      setShowProviderModal(true)
+    }
+  }, [chat, chromeInstall])
+
   useEffect(() => {
     installBrowserWorkflowShim()
-    void (async () => {
-      const { ecp: operational, descriptor: desc } = await createDemoAppEnvironment()
-      ecpRef.current = operational
-      setEcp(operational)
-      setDescriptor(desc)
-
-      const avail = await operational.invoke("@executioncontextprotocol/chrome-ai.checkAvailability").with({}).process()
-      const result =
-        avail.success && typeof avail.result === "object" && avail.result !== null
-          ? (avail.result as { available: boolean; supported?: boolean; status?: string })
-          : { available: false, supported: false }
-
-      const supported = result.supported ?? result.status !== "unsupported"
-      const ready = Boolean(result.available)
-      setChromeSupported(supported)
-      setChromeReady(ready)
-
-      const stored = readStoredProviderMode()
-      if (stored) {
-        setProviderMode(stored)
-        setAssistantMode("authoring")
-        chat.setStatus(`Ready (${stored}).`)
-        if (stored === "chrome-ai" && supported && !ready) {
-          setChromeInstallUi("toast")
-          await chromeInstall.startInstall(operational)
-        }
-      } else {
-        setShowProviderModal(true)
-      }
-    })()
-  }, [])
+    if (shouldBlockForVault()) {
+      setVaultGate("locked")
+      return
+    }
+    void bootstrapAfterVault()
+  }, [bootstrapAfterVault])
 
   const applyPanels = useCallback(
     async (nextManifest: WorkflowManifest, patchToon = "") => {
@@ -368,7 +379,7 @@ export function App() {
     }
   }
 
-  const chatBlocked = showProviderModal && chromeInstallUi === "dialog"
+  const chatBlocked = (showProviderModal && chromeInstallUi === "dialog") || vaultGate === "locked"
   const chatHero = !layout.workspaceOpen
   const hasWorkflow = manifest !== null
   const showInstallToast =
@@ -449,6 +460,36 @@ export function App() {
           onExplore={onExplore}
           onComplete={onProviderComplete}
           onChromeInstall={onChromeInstallFromModal}
+          onRequestVaultSetup={() => {
+            setShowProviderModal(false)
+            setShowVaultSetup(true)
+          }}
+        />
+      ) : null}
+
+      {vaultGate === "locked" ? (
+        <VaultUnlockModal
+          onUnlocked={() => {
+            setVaultGate("ready")
+            void bootstrapAfterVault()
+          }}
+          onSkip={() => {
+            setVaultGate("ready")
+            void bootstrapAfterVault()
+          }}
+        />
+      ) : null}
+
+      {showVaultSetup ? (
+        <VaultSetupModal
+          onComplete={() => {
+            setShowVaultSetup(false)
+            setShowProviderModal(true)
+          }}
+          onCancel={() => {
+            setShowVaultSetup(false)
+            setShowProviderModal(true)
+          }}
         />
       ) : null}
 

@@ -24,7 +24,7 @@ export function providerCapabilityId(mode: ProviderMode): string {
   return PROVIDER_CAPABILITY[mode]
 }
 
-/** localStorage key for persisted provider mode (not API keys). */
+/** localStorage key for persisted provider mode (API keys live in encrypted vault). */
 export const PROVIDER_MODE_STORAGE_KEY = "ecp:browser-demo:provider-mode"
 
 function parseProviderMode(raw: string | null): ProviderMode | null {
@@ -40,7 +40,7 @@ export function readStoredProviderMode(): ProviderMode | null {
   return mode
 }
 
-/** Persist provider mode for this demo app (session keys are never stored). */
+/** Persist provider mode for this demo app. */
 export function storeProviderMode(mode: ProviderMode): void {
   if (typeof localStorage === "undefined") return
   localStorage.setItem(PROVIDER_MODE_STORAGE_KEY, mode)

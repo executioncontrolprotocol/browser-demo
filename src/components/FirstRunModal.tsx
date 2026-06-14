@@ -1,6 +1,7 @@
 import { useState } from "react"
 import type { ProviderMode } from "../lib/provider-mode.js"
 import { isProviderModeSelectable } from "../lib/provider-mode.js"
+import { ProviderApiKeyFields } from "./ProviderApiKeyFields.js"
 
 /** Props for {@link FirstRunModal}. */
 export interface FirstRunModalProps {
@@ -12,6 +13,8 @@ export interface FirstRunModalProps {
   onComplete: (mode: ProviderMode) => void
   /** User chose Chrome but model must download first. */
   onChromeInstall: () => void
+  /** Open vault setup when user wants encrypted API key storage. */
+  onRequestVaultSetup: () => void
 }
 
 /** First-run provider selection modal. */
@@ -21,6 +24,7 @@ export function FirstRunModal({
   onExplore,
   onComplete,
   onChromeInstall,
+  onRequestVaultSetup,
 }: FirstRunModalProps) {
   const [mode, setMode] = useState<ProviderMode>(chromeSupported ? "chrome-ai" : "demo")
 
@@ -84,6 +88,7 @@ export function FirstRunModal({
             Demo mode (offline)
           </label>
         </div>
+        <ProviderApiKeyFields onRequestVaultSetup={onRequestVaultSetup} />
         <button
           type="button"
           onClick={submit}

@@ -1068,3 +1068,17 @@ demo extension
 ```
 
 This gives us a clean path: validate the substrate, add direct capability invocation, build the app, then harden the browser package integrations.
+
+## Encrypted secrets vault (browser-secrets)
+
+Cloud provider API keys (OpenAI, Claude) use the `@executioncontextprotocol/browser-secrets` extension and the fluent helper `browser("KEY")`, which resolves from a passphrase-protected AES-GCM vault in `localStorage`.
+
+### Demo UX
+
+| Screen | When | Action |
+| ------ | ---- | ------ |
+| **Vault unlock** | Returning visit, vault exists, locked | Enter passphrase or choose "Explore without cloud keys" |
+| **Vault setup** | Settings → encrypted API keys, no vault yet | Set + confirm passphrase |
+| **Provider settings** | Settings modal, vault unlocked | Paste API keys → stored as `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` |
+
+Provider mode (`ecp:browser-demo:provider-mode`) is still plain `localStorage`; only API keys are encrypted. Unlock the vault before cloud providers can resolve `browser(...)` bindings in the environment.
