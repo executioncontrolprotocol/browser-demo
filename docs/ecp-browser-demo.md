@@ -26,7 +26,7 @@ Implement or verify:
 ```ts
 const env = environment("test-env")
   .withExtensions([
-    extension("@executioncontextprotocol/format-toon").with({}),
+    extension("@executioncontrolprotocol/format-toon").with({}),
   ]);
 
 const ecp = await env.init();
@@ -80,7 +80,7 @@ patched.result
 
 ```ts
 interface EncodeResult<T = unknown> {
-  schema: "@ecp.encode.result";
+  schema: "@executioncontrolprotocol.encode.result";
   version: EcpVersion;
   success: boolean;
   format: string;
@@ -94,7 +94,7 @@ interface EncodeResult<T = unknown> {
 
 ```ts
 interface DecodeResult<T = unknown> {
-  schema: "@ecp.decode.result";
+  schema: "@executioncontrolprotocol.decode.result";
   version: EcpVersion;
   success: boolean;
   targetSchema?: EcpSchema;
@@ -115,19 +115,19 @@ interface DecodeResult<T = unknown> {
 
 ---
 
-## Phase 1.3: Validate `@executioncontextprotocol/format-toon`
+## Phase 1.3: Validate `@executioncontrolprotocol/format-toon`
 
 ### Tasks
 
-Extend or validate existing `@executioncontextprotocol/format-toon`.
+Extend or validate existing `@executioncontrolprotocol/format-toon`.
 
 It must support:
 
 ```txt
-@ecp.workflow encode
-@ecp.workflow decode
-@ecp.patch encode
-@ecp.patch decode
+@executioncontrolprotocol.workflow encode
+@executioncontrolprotocol.workflow decode
+@executioncontrolprotocol.patch encode
+@executioncontrolprotocol.patch decode
 header config
 compact config
 ```
@@ -147,8 +147,8 @@ export interface EcpFormatOptions extends Record<string, unknown> {
 ```ts
 const toon = await ecp
   .encode(manifest)
-  .uses("@executioncontextprotocol/format-toon")
-  .to("@ecp.workflow")
+  .uses("@executioncontrolprotocol/format-toon")
+  .to("@executioncontrolprotocol.workflow")
   .with({ headers: false, compact: true })
   .process();
 ```
@@ -157,8 +157,8 @@ const toon = await ecp
 
 * Headered workflow TOON works.
 * Headerless workflow TOON works.
-* Headerless decode works when `.to("@ecp.workflow")` is provided.
-* Headerless patch decode works when `.to("@ecp.patch")` is provided.
+* Headerless decode works when `.to("@executioncontrolprotocol.workflow")` is provided.
+* Headerless patch decode works when `.to("@executioncontrolprotocol.patch")` is provided.
 * Compact mode removes unnecessary schema/version headers when requested.
 * Decode failures include diagnostics.
 * Decode output validates against the requested schema.
@@ -169,13 +169,13 @@ const toon = await ecp
 
 ### Tasks
 
-Implement or validate built-in Fluent rendering in `@executioncontextprotocol/core` (not an extension).
+Implement or validate built-in Fluent rendering in `@executioncontrolprotocol/core` (not an extension).
 
 Purpose:
 
 ```txt
-@ecp.workflow JSON manifest → Fluent API source  (renderWorkflowToFluent / ecp.encode().as("fluent"))
-@ecp.workflow Fluent/TS source → JSON manifest   (compileWorkflowSource / ecp compile)
+@executioncontrolprotocol.workflow JSON manifest → Fluent API source  (renderWorkflowToFluent / ecp.encode().as("fluent"))
+@executioncontrolprotocol.workflow Fluent/TS source → JSON manifest   (compileWorkflowSource / ecp compile)
 ```
 
 Important decision:
@@ -187,13 +187,13 @@ Important decision:
 ```ts
 export default workflow("Weekly Brief")
   .run([
-    step("@executioncontextprotocol/memory.search", "Collect Signals")
+    step("@executioncontrolprotocol/memory.search", "Collect Signals")
       .with({
         query: "weekly risks and decisions",
       })
       .as("signals"),
 
-    step("@executioncontextprotocol/openai.generate", "Write Brief")
+    step("@executioncontrolprotocol/openai.generate", "Write Brief")
       .with({
         prompt: "Create a concise brief",
         context: ref("signals.results"),
@@ -222,13 +222,13 @@ No:
 
 ### Tasks
 
-Implement or validate `@ecp.patch`.
+Implement or validate `@executioncontrolprotocol.patch`.
 
 Canonical patch:
 
 ```ts
 interface EcpPatchDocument {
-  schema: "@ecp.patch";
+  schema: "@executioncontrolprotocol.patch";
   version: EcpVersion;
   targetSchema: EcpSchema;
   patches: EcpPatchEntry[];
@@ -325,9 +325,9 @@ const patched = await ecp
 Fluent API source
 → compileWorkflowSource
 → JSON manifest A
-→ ecp.encode(...).uses("@executioncontextprotocol/format-toon")
+→ ecp.encode(...).uses("@executioncontrolprotocol/format-toon")
 → TOON
-→ ecp.decode(...).uses("@executioncontextprotocol/format-toon")
+→ ecp.decode(...).uses("@executioncontrolprotocol/format-toon")
 → JSON manifest B
 → ecp.encode(...).as("fluent")
 → Fluent API source
@@ -346,7 +346,7 @@ expect(normalizeWorkflowManifest(manifestC))
 
 ```txt
 TOON patch
-→ decode to @ecp.patch
+→ decode to @executioncontrolprotocol.patch
 → ecp.patch(manifest)
 → patched manifest
 → validate
@@ -374,8 +374,8 @@ This solves the model-call split:
 
 | Use case                | Access pattern                                                  |
 | ----------------------- | --------------------------------------------------------------- |
-| Workflow step execution | `step("@executioncontextprotocol/chrome-ai.generateText").with(...)`                 |
-| Browser app authoring   | `ecp.invoke("@executioncontextprotocol/chrome-ai.generateText").with(...).process()` |
+| Workflow step execution | `step("@executioncontrolprotocol/chrome-ai.generateText").with(...)`                 |
+| Browser app authoring   | `ecp.invoke("@executioncontrolprotocol/chrome-ai.generateText").with(...).process()` |
 
 The browser app owns the orchestration. ECP owns capability registration and execution.
 
@@ -387,7 +387,7 @@ The browser app owns the orchestration. ECP owns capability registration and exe
 
 ```ts
 const response = await ecp
-  .invoke("@executioncontextprotocol/chrome-ai.generateText")
+  .invoke("@executioncontrolprotocol/chrome-ai.generateText")
   .with({
     prompt,
     system: "Return only ECP TOON patch.",
@@ -406,7 +406,7 @@ interface InvokeOperationBuilder {
 
 ```ts
 interface InvokeResult<T = unknown> {
-  schema: "@ecp.invoke.result";
+  schema: "@executioncontrolprotocol.invoke.result";
   version: EcpVersion;
   success: boolean;
   capabilityId: string;
@@ -462,9 +462,9 @@ Use existing policy hooks with a context scope:
 Implement minimal model providers:
 
 ```txt
-@executioncontextprotocol/chrome-ai
-@executioncontextprotocol/openai
-@executioncontextprotocol/claude
+@executioncontrolprotocol/chrome-ai
+@executioncontrolprotocol/openai
+@executioncontrolprotocol/claude
 ```
 
 Each should expose at least:
@@ -478,20 +478,20 @@ Each should expose at least:
 Capabilities:
 
 ```txt
-@executioncontextprotocol/chrome-ai.checkAvailability
-@executioncontextprotocol/chrome-ai.generateText
+@executioncontrolprotocol/chrome-ai.checkAvailability
+@executioncontrolprotocol/chrome-ai.generateText
 ```
 
 ### OpenAI extension
 
 ```txt
-@executioncontextprotocol/openai.generateText
+@executioncontrolprotocol/openai.generateText
 ```
 
 ### Claude extension
 
 ```txt
-@executioncontextprotocol/claude.generateText
+@executioncontrolprotocol/claude.generateText
 ```
 
 ### Acceptance criteria
@@ -764,7 +764,7 @@ return UI-ready state
 ### Acceptance criteria
 
 * Browser app owns authoring orchestration.
-* No `@executioncontextprotocol/workflow-author.patch` is required.
+* No `@executioncontrolprotocol/workflow-author.patch` is required.
 * No duplicate model provider implementation.
 * Model is invoked through `ecp.invoke(...)`.
 
@@ -779,13 +779,13 @@ User asks for change
 ↓
 ecp.describe()
 ↓
-ecp.encode(descriptor).uses("@executioncontextprotocol/format-toon")
+ecp.encode(descriptor).uses("@executioncontrolprotocol/format-toon")
 ↓
-ecp.encode(manifest).uses("@executioncontextprotocol/format-toon")
+ecp.encode(manifest).uses("@executioncontrolprotocol/format-toon")
 ↓
 ecp.invoke(selectedModel.generateText)
 ↓
-ecp.decode(model.result.text).uses("@executioncontextprotocol/format-toon").to("@ecp.patch")
+ecp.decode(model.result.text).uses("@executioncontrolprotocol/format-toon").to("@executioncontrolprotocol.patch")
 ↓
 ecp.patch(manifest).with(patch.result)
 ↓
@@ -793,15 +793,15 @@ ecp.validate(patched.result)
 ↓
 ecp.encode(patched.result).as("fluent")
 ↓
-ecp.encode(patched.result).uses("@executioncontextprotocol/format-toon")
+ecp.encode(patched.result).uses("@executioncontrolprotocol/format-toon")
 ↓
-ecp.encode(patched.result).uses("@executioncontextprotocol/format-mermaid")
+ecp.encode(patched.result).uses("@executioncontrolprotocol/format-mermaid")
 ```
 
 ### Acceptance criteria
 
 * User prompt produces TOON patch.
-* TOON patch decodes to `@ecp.patch`.
+* TOON patch decodes to `@executioncontrolprotocol.patch`.
 * Patch applies to manifest.
 * Validation result is displayed.
 * Code and workflow update live.
@@ -819,7 +819,7 @@ Descriptor compacted
 ↓
 Model returns TOON workflow
 ↓
-TOON decodes to @ecp.workflow
+TOON decodes to @executioncontrolprotocol.workflow
 ↓
 Workflow validates
 ↓
@@ -857,7 +857,7 @@ packages/runtimes/browser
 
 ```txt
 browser-safe ECP exports
-@executioncontextprotocol/browser runtime
+@executioncontrolprotocol/browser runtime
 browser-safe env.init()
 Ecp instance in browser
 no Node dependencies
@@ -865,7 +865,7 @@ no Node dependencies
 
 ### Acceptance criteria
 
-* `@executioncontextprotocol/browser` imports in Vite without Node polyfills.
+* `@executioncontrolprotocol/browser` imports in Vite without Node polyfills.
 * Browser runtime can initialize through `env.init()`.
 * ECP instance can encode/decode/patch/validate in browser.
 * No server/web-app-specific logic is in the runtime.
@@ -877,7 +877,7 @@ no Node dependencies
 ### Config
 
 ```ts
-extension("@executioncontextprotocol/browser-registry").with({
+extension("@executioncontrolprotocol/browser-registry").with({
   exposeGlobal: true,
   globalName: "ecp",
   allowRuntimeRegistration: true,
@@ -963,8 +963,8 @@ no localStorage
 ### Capabilities
 
 ```txt
-@executioncontextprotocol/chrome-ai.checkAvailability
-@executioncontextprotocol/chrome-ai.generateText
+@executioncontrolprotocol/chrome-ai.checkAvailability
+@executioncontrolprotocol/chrome-ai.generateText
 ```
 
 ### Acceptance criteria
@@ -982,8 +982,8 @@ no localStorage
 ### Capabilities
 
 ```txt
-@executioncontextprotocol/openai.generateText
-@executioncontextprotocol/claude.generateText
+@executioncontrolprotocol/openai.generateText
+@executioncontrolprotocol/claude.generateText
 ```
 
 ### Acceptance criteria
@@ -1003,10 +1003,10 @@ no localStorage
 Keep demo extension simple and reusable:
 
 ```txt
-@executioncontextprotocol/demo.echo
-@executioncontextprotocol/demo.generateText
-@executioncontextprotocol/demo.evaluateText
-@executioncontextprotocol/demo.selectBest
+@executioncontrolprotocol/demo.echo
+@executioncontrolprotocol/demo.generateText
+@executioncontrolprotocol/demo.evaluateText
+@executioncontrolprotocol/demo.selectBest
 ```
 
 Do not make browser authoring orchestration a demo extension unless explicitly needed.
@@ -1057,7 +1057,7 @@ prompted create/edit flows
 ## Milestone 4: Browser package integration
 
 ```txt
-@executioncontextprotocol/browser runtime
+@executioncontrolprotocol/browser runtime
 browser-registry
 registry-control
 browser-session-config
@@ -1071,7 +1071,7 @@ This gives us a clean path: validate the substrate, add direct capability invoca
 
 ## Encrypted secrets vault (browser-secrets)
 
-Cloud provider API keys (OpenAI, Claude) use the `@executioncontextprotocol/browser-secrets` extension and the fluent helper `browser("KEY")`, which resolves from a passphrase-protected AES-GCM vault in `localStorage`.
+Cloud provider API keys (OpenAI, Claude) use the `@executioncontrolprotocol/browser-secrets` extension and the fluent helper `browser("KEY")`, which resolves from a passphrase-protected AES-GCM vault in `localStorage`.
 
 ### Demo UX
 

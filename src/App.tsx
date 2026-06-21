@@ -5,7 +5,7 @@ import {
   BROWSER_NANO_HARNESS_CAPABILITY,
   installBrowserWorkflowShim,
   type BrowserOperationalEcp,
-} from "@executioncontextprotocol/browser"
+} from "@executioncontrolprotocol/browser"
 import type {
   EcpIntent,
   EnvironmentDescriptor,
@@ -13,9 +13,9 @@ import type {
   HarnessReply,
   ValidationResult,
   WorkflowManifest,
-} from "@executioncontextprotocol/types"
-import type { Ecp } from "@executioncontextprotocol/core"
-import { compileWorkflowSource } from "@executioncontextprotocol/core/browser"
+} from "@executioncontrolprotocol/types"
+import type { Ecp } from "@executioncontrolprotocol/core"
+import { compileWorkflowSource } from "@executioncontrolprotocol/core/browser"
 import { ChatPanel } from "./components/ChatPanel.js"
 import { ChromeInstallDialog } from "./components/ChromeInstallDialog.js"
 import { ChromeInstallToast } from "./components/ChromeInstallToast.js"
@@ -145,7 +145,7 @@ export function App() {
     setEcp(operational)
     setDescriptor(desc)
 
-    const avail = await operational.invoke("@executioncontextprotocol/chrome-ai.checkAvailability").with({}).process()
+    const avail = await operational.invoke("@executioncontrolprotocol/chrome-ai.checkAvailability").with({}).process()
     const result =
       avail.success && typeof avail.result === "object" && avail.result !== null
         ? (avail.result as { available: boolean; supported?: boolean; status?: string })

@@ -1,6 +1,6 @@
-import { createBrowserDemoEnvironment, createEcp, registerBrowserDefaults } from "@executioncontextprotocol/browser"
-import type { Ecp } from "@executioncontextprotocol/core"
-import type { EnvironmentDescriptor } from "@executioncontextprotocol/types"
+import { createBrowserDemoEnvironment, createEcp, registerBrowserDefaults } from "@executioncontrolprotocol/browser"
+import type { Ecp } from "@executioncontrolprotocol/core"
+import type { EnvironmentDescriptor } from "@executioncontrolprotocol/types"
 
 /** Build the browser demo app environment with workflow capabilities bound. */
 export async function createDemoAppEnvironment(): Promise<{

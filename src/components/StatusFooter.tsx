@@ -1,5 +1,5 @@
 import { useState } from "react"
-import type { ValidationResult } from "@executioncontextprotocol/types"
+import type { ValidationResult } from "@executioncontrolprotocol/types"
 import { GITHUB_REPO_URL } from "../lib/external-links.js"
 import { ValidationView } from "./ValidationView.js"
 

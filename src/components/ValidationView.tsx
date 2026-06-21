@@ -1,4 +1,4 @@
-import type { ValidationResult } from "@executioncontextprotocol/types"
+import type { ValidationResult } from "@executioncontrolprotocol/types"
 
 /** Validation result display. */
 export function ValidationView({ validation }: { validation: ValidationResult | null }) {

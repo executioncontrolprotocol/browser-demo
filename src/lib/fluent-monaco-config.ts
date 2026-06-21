@@ -3,8 +3,8 @@ import type { Monaco } from "@monaco-editor/react"
 /** Monaco theme id for Solaris Slate. */
 export const SOLARIS_SLATE_THEME = "solaris-slate"
 
-/** Ambient types for browser Fluent source (`import from "@executioncontextprotocol/browser"`). Compile strips these imports. */
-export const FLUENT_BROWSER_MODULE_LIB = `declare module "@executioncontextprotocol/browser" {
+/** Ambient types for browser Fluent source (`import from "@executioncontrolprotocol/browser"`). Compile strips these imports. */
+export const FLUENT_BROWSER_MODULE_LIB = `declare module "@executioncontrolprotocol/browser" {
   export function workflow(label: string): WorkflowBuilder
   export function step(ref: string | undefined, label?: string): StepBuilder
   export function ref(key: string): unknown
@@ -70,7 +70,7 @@ export function defineSolarisSlateTheme(monaco: Monaco): void {
   })
 }
 
-/** Register virtual @executioncontextprotocol/browser types so Monaco does not report TS2792 on generated Fluent source. */
+/** Register virtual @executioncontrolprotocol/browser types so Monaco does not report TS2792 on generated Fluent source. */
 export function configureFluentMonaco(monaco: Monaco): void {
   defineSolarisSlateTheme(monaco)
 
