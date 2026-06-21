@@ -5,7 +5,7 @@ export type ProviderMode = "chrome-ai" | "openai" | "claude" | "demo"
 export type AssistantMode = "guided" | "authoring"
 
 /** Provider modes selectable in the first-run modal (cloud providers are coming soon). */
-export const SELECTABLE_PROVIDER_MODES: readonly ProviderMode[] = ["chrome-ai", "demo"] as const
+export const SELECTABLE_PROVIDER_MODES: readonly ProviderMode[] = ["chrome-ai"] as const
 
 const PROVIDER_CAPABILITY: Record<ProviderMode, string> = {
   "chrome-ai": "@executioncontextprotocol/chrome-ai.generate",

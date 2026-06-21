@@ -1,4 +1,5 @@
 import { MermaidDiagramViewer } from "./MermaidDiagramViewer.js"
+import { PanelHeader } from "./PanelHeader.js"
 import { RunOutputPanel } from "./RunOutputPanel.js"
 
 /** Props for {@link MermaidCanvas}. */
@@ -24,16 +25,12 @@ export function MermaidCanvas({
 }: MermaidCanvasProps) {
   return (
     <section
-      className="node-canvas relative min-h-0 flex-1 overflow-hidden bg-background"
+      className="node-canvas relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background"
       id="graph-drawer"
     >
-      <div className="absolute left-0 right-0 top-0 z-10 flex items-center justify-between border-b border-outline-variant/20 bg-surface-container-high/40 p-4">
-        <span className="px-2 font-mono text-label uppercase tracking-widest text-on-surface-variant">
-          Workflow Canvas
-        </span>
-      </div>
+      <PanelHeader icon="account_tree" label="Workflow Canvas" />
 
-      <div className={`flex min-h-0 flex-1 flex-col p-canvas-padding pt-16 ${runOverlayOpen ? "opacity-40" : ""}`}>
+      <div className={`flex min-h-0 flex-1 flex-col p-canvas-padding ${runOverlayOpen ? "opacity-40" : ""}`}>
         {hasWorkflow ? (
           <MermaidDiagramViewer source={mermaid} />
         ) : (

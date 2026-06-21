@@ -17,7 +17,6 @@ export function MermaidDiagramViewer({
   const baseId = useId().replace(/:/g, "")
   const [svg, setSvg] = useState<string>("")
   const [error, setError] = useState<string | null>(null)
-  const [showSource, setShowSource] = useState(false)
 
   useEffect(() => {
     if (!source.trim() || source.includes("empty[No workflow]")) {
@@ -50,23 +49,7 @@ export function MermaidDiagramViewer({
   }
 
   if (error) {
-    return (
-      <div>
-        <p className="text-body text-error">{error}</p>
-        <button
-          type="button"
-          className="mt-2 font-mono text-label text-primary underline"
-          onClick={() => setShowSource((v) => !v)}
-        >
-          {showSource ? "Hide source" : "View source"}
-        </button>
-        {showSource ? (
-          <pre className="mt-2 overflow-auto font-mono text-label text-on-surface-variant whitespace-pre-wrap">
-            {source}
-          </pre>
-        ) : null}
-      </div>
-    )
+    return <p className="text-body text-error">{error}</p>
   }
 
   if (!svg) {
@@ -76,18 +59,6 @@ export function MermaidDiagramViewer({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="min-h-0 flex-1 overflow-auto p-2" dangerouslySetInnerHTML={{ __html: svg }} />
-      <button
-        type="button"
-        className="mt-2 self-start font-mono text-label text-primary underline"
-        onClick={() => setShowSource((v) => !v)}
-      >
-        {showSource ? "Hide source" : "View source"}
-      </button>
-      {showSource ? (
-        <pre className="mt-2 max-h-40 overflow-auto font-mono text-label text-on-surface-variant whitespace-pre-wrap">
-          {source}
-        </pre>
-      ) : null}
     </div>
   )
 }

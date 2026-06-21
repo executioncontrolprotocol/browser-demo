@@ -220,10 +220,116 @@
     flex-shrink: 0;
     display: flex;
     align-items: center;
+    width: 100%;
     height: 28px;
     padding: 0 1rem;
     border-top: 1px solid var(--color-outline-variant);
     background-color: var(--color-surface-container-low);
+  }
+
+  .footer-github-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.125rem;
+    border: none;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    transition: color 0.15s ease;
+  }
+
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background-color: rgb(0 0 0 / 0.65);
+    backdrop-filter: blur(4px);
+  }
+
+  .modal-overlay--elevated {
+    z-index: 60;
+  }
+
+  .modal-panel {
+    display: flex;
+    flex-direction: column;
+    width: min(420px, 92vw);
+    max-height: 90vh;
+    max-height: 90dvh;
+    overflow: hidden;
+    border-radius: 0.75rem;
+    border: 1px solid var(--color-outline-variant);
+    background-color: var(--color-surface-container);
+    box-shadow:
+      0 0 15px rgba(250, 204, 21, 0.2),
+      0 16px 48px rgb(0 0 0 / 0.35);
+  }
+
+  .modal-panel-header {
+    position: relative;
+    flex-shrink: 0;
+    padding: 1.5rem 1.5rem 0;
+  }
+
+  .modal-panel-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 1rem 1.5rem;
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-outline-variant) transparent;
+  }
+
+  .modal-panel-scroll::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .modal-panel-scroll::-webkit-scrollbar-track {
+    background: transparent;
+    margin: 0.25rem 0;
+  }
+
+  .modal-panel-scroll::-webkit-scrollbar-thumb {
+    border-radius: 9999px;
+    background-color: var(--color-outline-variant);
+  }
+
+  .modal-panel-scroll::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-outline);
+  }
+
+  .modal-panel-footer {
+    flex-shrink: 0;
+    padding: 1rem 1.5rem 1.5rem;
+    border-top: 1px solid color-mix(in srgb, var(--color-outline-variant) 60%, transparent);
+    background-color: var(--color-surface-container-low);
+  }
+
+  .modal-close-btn {
+    position: absolute;
+    top: 1rem;
+    right: 0.75rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.25rem;
+    border: none;
+    border-radius: 0.25rem;
+    background: transparent;
+    color: var(--color-on-surface-variant);
+    cursor: pointer;
+    transition: color 0.15s ease, background-color 0.15s ease;
+  }
+
+  .modal-close-btn:hover {
+    background-color: var(--color-surface-container-high);
+    color: var(--color-on-surface);
   }
 
   .status-pill {
@@ -270,5 +376,19 @@
   .status-pill-dot--invalid {
     background-color: var(--color-error);
     box-shadow: 0 0 8px rgba(255, 180, 171, 0.4);
+  }
+
+  .typing-indicator {
+    animation: typing-pulse 1.2s ease-in-out infinite;
+  }
+
+  @keyframes typing-pulse {
+    0%,
+    100% {
+      opacity: 0.45;
+    }
+    50% {
+      opacity: 1;
+    }
   }
 }

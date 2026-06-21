@@ -1,4 +1,6 @@
+import { useEffect, useRef } from "react"
 import type { ChatMessage } from "../types/workspace.js"
+import { PanelHeader } from "./PanelHeader.js"
 
 /** Props for {@link ChatPanel}. */
 export interface ChatPanelProps {
@@ -6,14 +8,12 @@ export interface ChatPanelProps {
   widthClass: "is-half" | "is-full"
   paired: boolean
   messages: ChatMessage[]
-  status: string
   prompt: string
   onPromptChange: (value: string) => void
   onSubmit: () => void
   disabled?: boolean
-  hero?: boolean
-  /** Compact list of registered capability ids. */
-  capabilitySummary?: string
+  /** When true, show typing indicator in the message area. */
+  busy?: boolean
 }
 
 /** Full-height chat column (Logic Assistant). */
@@ -22,14 +22,19 @@ export function ChatPanel({
   widthClass,
   paired,
   messages,
-  status,
   prompt,
   onPromptChange,
   onSubmit,
   disabled,
-  hero = false,
-  capabilitySummary,
+  busy = false,
 }: ChatPanelProps) {
+  const messageEndRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!busy) return
+    messageEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" })
+  }, [busy, messages])
+
   if (!visible) return null
 
   return (
@@ -38,32 +43,10 @@ export function ChatPanel({
       id="chat-drawer"
       aria-label="Logic Assistant"
     >
-      <header className="flex shrink-0 items-center border-b border-outline-variant bg-surface-container-high p-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded bg-primary-container">
-            <span
-              className="material-symbols-outlined text-sm text-on-primary-container"
-              style={{ fontVariationSettings: "'FILL' 1" }}
-            >
-              smart_toy
-            </span>
-          </div>
-          <div>
-            <h3 className="font-display text-[14px] font-semibold leading-tight text-on-surface">
-              {hero ? "ECP Logic Assistant" : "Logic Assistant"}
-            </h3>
-            <p className="text-[11px] text-on-surface-variant">{status || "Solaris Architect"}</p>
-            {capabilitySummary ? (
-              <p className="mt-0.5 text-[10px] leading-snug text-on-surface-variant/80" title={capabilitySummary}>
-                Registered: {capabilitySummary}
-              </p>
-            ) : null}
-          </div>
-        </div>
-      </header>
+      <PanelHeader icon="forum" label="Logic Assistant" />
 
       <div className="min-h-0 flex-1 space-y-6 overflow-y-auto bg-surface-container/50 p-6">
-        {messages.length === 0 ? (
+        {messages.length === 0 && !busy ? (
           <p className="text-body text-on-surface-variant">Describe a workflow or change to get started.</p>
         ) : (
           messages.map((m) =>
@@ -100,6 +83,17 @@ export function ChatPanel({
             )
           )
         )}
+        {busy ? (
+          <div className="flex max-w-[90%] items-start gap-3">
+            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-outline-variant bg-surface-container-highest">
+              <span className="material-symbols-outlined text-[14px] text-primary">auto_awesome</span>
+            </div>
+            <div className="rounded-lg rounded-tl-none border border-outline-variant/30 bg-surface-container-high p-3">
+              <span className="typing-indicator font-mono text-label text-on-surface-variant">Thinking...</span>
+            </div>
+          </div>
+        ) : null}
+        <div ref={messageEndRef} aria-hidden="true" />
       </div>
 
       <div className="composer-bar">

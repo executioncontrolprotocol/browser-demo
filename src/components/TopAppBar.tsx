@@ -25,7 +25,7 @@ export function TopAppBar({
       id="app-header"
     >
       <div className="flex shrink-0 items-center">
-        <span className="font-display text-headline font-bold text-on-surface">Graph Editor</span>
+        <span className="font-display text-headline font-bold text-on-surface">ECP Editor</span>
       </div>
 
       <nav className="absolute left-1/2 flex -translate-x-1/2 items-center" id="view-nav">
@@ -83,15 +83,19 @@ export function TopAppBar({
         <div className="mx-1 h-6 w-px bg-outline-variant" />
         <button
           type="button"
-          className="h-8 w-8 cursor-pointer overflow-hidden rounded-full border border-outline-variant"
+          className="header-action-btn"
           title="Settings"
           aria-label="Settings"
           onClick={onSettings}
         >
-          <span className="material-symbols-outlined flex h-full w-full items-center justify-center text-[18px] text-on-surface-variant hover:text-on-surface">
-            account_circle
-          </span>
+          <span className="material-symbols-outlined">settings</span>
         </button>
+        <div
+          className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border border-outline-variant"
+          aria-hidden
+        >
+          <span className="material-symbols-outlined text-[18px] text-on-surface-variant">account_circle</span>
+        </div>
       </div>
     </header>
   )

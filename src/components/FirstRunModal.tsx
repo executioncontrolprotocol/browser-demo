@@ -26,10 +26,12 @@ export function FirstRunModal({
   onChromeInstall,
   onRequestVaultSetup,
 }: FirstRunModalProps) {
-  const [mode, setMode] = useState<ProviderMode>(chromeSupported ? "chrome-ai" : "demo")
+  const [mode, setMode] = useState<ProviderMode>("chrome-ai")
+
+  const canContinue = isProviderModeSelectable(mode) && (mode !== "chrome-ai" || chromeSupported)
 
   const submit = () => {
-    if (!isProviderModeSelectable(mode)) return
+    if (!canContinue) return
     if (mode === "chrome-ai" && chromeSupported && !chromeReady) {
       onChromeInstall()
       return
@@ -39,63 +41,68 @@ export function FirstRunModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/65"
+      className="modal-overlay"
       role="dialog"
       aria-modal="true"
       aria-labelledby="first-run-title"
     >
-      <div className="relative flex w-[min(420px,92vw)] flex-col gap-4 rounded-xl border border-outline-variant bg-surface-container p-6">
-        <button
-          type="button"
-          onClick={onExplore}
-          className="absolute right-3 top-3 rounded p-1 text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface"
-          aria-label="Explore without choosing a provider"
-        >
-          <span className="material-symbols-outlined text-xl">close</span>
-        </button>
-        <h2 id="first-run-title" className="pr-8 font-display text-headline text-on-surface">
-          Choose a model provider
-        </h2>
-        <p className="text-body text-on-surface-variant">
-          You can close this dialog and explore with the guided assistant while Chrome AI downloads.
-        </p>
-        <div className="space-y-2">
-          <label className="flex cursor-pointer items-center gap-2 text-body">
-            <input
-              type="radio"
-              name="provider"
-              checked={mode === "chrome-ai"}
-              disabled={!chromeSupported}
-              onChange={() => setMode("chrome-ai")}
-            />
-            Chrome built-in AI
-            {!chromeSupported
-              ? " (unavailable)"
-              : !chromeReady
-                ? " (download required)"
-                : ""}
-          </label>
-          <label className="flex items-center gap-2 text-body text-on-surface-variant">
-            <input type="radio" name="provider" checked={mode === "openai"} disabled />
-            OpenAI (coming soon)
-          </label>
-          <label className="flex items-center gap-2 text-body text-on-surface-variant">
-            <input type="radio" name="provider" checked={mode === "claude"} disabled />
-            Claude (coming soon)
-          </label>
-          <label className="flex cursor-pointer items-center gap-2 text-body">
-            <input type="radio" name="provider" checked={mode === "demo"} onChange={() => setMode("demo")} />
-            Demo mode (offline)
-          </label>
+      <div className="modal-panel">
+        <header className="modal-panel-header">
+          <button
+            type="button"
+            onClick={onExplore}
+            className="modal-close-btn"
+            aria-label="Explore without choosing a provider"
+          >
+            <span className="material-symbols-outlined text-xl">close</span>
+          </button>
+          <h2 id="first-run-title" className="pr-8 font-display text-headline text-on-surface">
+            Choose a model provider
+          </h2>
+        </header>
+
+        <div className="modal-panel-scroll flex flex-col gap-4">
+          <p className="text-body text-on-surface-variant">
+            You can close this dialog and explore with the guided assistant while Chrome AI downloads.
+          </p>
+          <div className="space-y-2">
+            <label className="flex cursor-pointer items-center gap-2 text-body">
+              <input
+                type="radio"
+                name="provider"
+                checked={mode === "chrome-ai"}
+                disabled={!chromeSupported}
+                onChange={() => setMode("chrome-ai")}
+              />
+              Chrome built-in AI
+              {!chromeSupported
+                ? " (unavailable)"
+                : !chromeReady
+                  ? " (download required)"
+                  : ""}
+            </label>
+            <label className="flex items-center gap-2 text-body text-on-surface-variant">
+              <input type="radio" name="provider" checked={mode === "openai"} disabled />
+              OpenAI (coming soon)
+            </label>
+            <label className="flex items-center gap-2 text-body text-on-surface-variant">
+              <input type="radio" name="provider" checked={mode === "claude"} disabled />
+              Claude (coming soon)
+            </label>
+          </div>
+          <ProviderApiKeyFields onRequestVaultSetup={onRequestVaultSetup} />
         </div>
-        <ProviderApiKeyFields onRequestVaultSetup={onRequestVaultSetup} />
-        <button
-          type="button"
-          onClick={submit}
-          className="rounded bg-primary py-2.5 font-mono text-label font-bold text-on-primary hover:brightness-110"
-        >
-          Continue
-        </button>
+
+        <footer className="modal-panel-footer">
+          <button
+            type="button"
+            onClick={submit}
+            disabled={!canContinue}
+            className="w-full rounded bg-primary py-2.5 font-mono text-label font-bold text-on-primary transition-[filter] hover:brightness-110 disabled:opacity-50"
+          >
+            Continue
+          </button>
+        </footer>
       </div>
     </div>
   )

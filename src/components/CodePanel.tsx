@@ -1,5 +1,6 @@
 import { FluentWorkflowEditor } from "./FluentWorkflowEditor.js"
 import { MonacoCodeEditor } from "./MonacoCodeEditor.js"
+import { PanelHeader } from "./PanelHeader.js"
 import { ENVIRONMENT_EDITOR_PATH } from "../lib/environment-source.js"
 import type { CodeEditorTab, FormatTab } from "../types/workspace.js"
 
@@ -12,7 +13,7 @@ export interface CodePanelProps {
   fluent: string
   json: string
   toon: string
-  patch: string
+  mermaid: string
   environmentSource: string
   compileError?: string | null
   onFluentChange?: (value: string | undefined) => void
@@ -27,7 +28,7 @@ const FORMAT_TABS: { id: FormatTab; label: string }[] = [
   { id: "fluent", label: "Fluent" },
   { id: "json", label: "JSON" },
   { id: "toon", label: "TOON" },
-  { id: "patch", label: "Patch" },
+  { id: "mermaid", label: "Mermaid" },
 ]
 
 /** Full-height code workspace view with Workflow / Environment Monaco tabs. */
@@ -39,27 +40,26 @@ export function CodePanel({
   fluent,
   json,
   toon,
-  patch,
+  mermaid,
   environmentSource,
   compileError,
   onFluentChange,
 }: CodePanelProps) {
   const readOnlyValue =
-    formatTab === "json" ? json : formatTab === "toon" ? toon : formatTab === "patch" ? patch : ""
+    formatTab === "json"
+      ? json
+      : formatTab === "toon"
+        ? toon
+        : formatTab === "mermaid"
+          ? mermaid
+          : ""
 
   return (
     <div
       className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-surface-container-lowest"
       id="code-drawer"
     >
-      <div className="flex items-center justify-between border-b border-outline-variant bg-surface-container-low p-3">
-        <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined text-primary">code</span>
-          <span className="font-mono text-label uppercase tracking-widest text-on-surface-variant">
-            Logic Source
-          </span>
-        </div>
-      </div>
+      <PanelHeader icon="code" label="Logic Source" />
 
       <nav className="flex border-b border-outline-variant px-2">
         {EDITOR_TABS.map(({ id, label }) => (

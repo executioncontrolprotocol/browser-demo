@@ -31,7 +31,6 @@ import { useChatHistory } from "./hooks/useChatHistory.js"
 import { useChromeModelInstall } from "./hooks/useChromeModelInstall.js"
 import { useViewLayout } from "./hooks/useViewLayout.js"
 import { intentRoutesToAuthoring } from "./lib/chat-routing.js"
-import { formatRegisteredCapabilitiesSummary } from "./lib/capability-summary.js"
 import { createDemoAppEnvironment } from "./lib/demo-environment.js"
 import { shouldBlockForVault } from "./lib/vault-gate.js"
 import {
@@ -59,7 +58,6 @@ export function App() {
   const [assistantMode, setAssistantMode] = useState<AssistantMode>("authoring")
   const {
     messages: chatMessages,
-    status: chatStatus,
     setStatus: setChatStatus,
     appendAgent,
     appendAgentError,
@@ -82,24 +80,20 @@ export function App() {
   const [fluent, setFluent] = useState("// Fluent API will appear here")
   const [json, setJson] = useState("{}")
   const [toon, setToon] = useState("")
-  const [patch, setPatch] = useState("")
+  const [, setPatch] = useState("")
   const [mermaid, setMermaid] = useState(EMPTY_MERMAID)
   const [prompt, setPrompt] = useState("")
   const [compileError, setCompileError] = useState<string | null>(null)
   const [runOutput, setRunOutput] = useState("")
   const [runBusy, setRunBusy] = useState(false)
   const [runOverlayOpen, setRunOverlayOpen] = useState(false)
+  const [chatBusy, setChatBusy] = useState(false)
   const compileTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const ecpRef = useRef<Ecp | null>(null)
   const ecpBootstrapped = useRef(false)
 
   const environmentSource = useMemo(
     () => environmentSourceFromDescriptor(descriptor),
-    [descriptor]
-  )
-
-  const capabilitySummary = useMemo(
-    () => formatRegisteredCapabilitiesSummary(descriptor),
     [descriptor]
   )
 
@@ -327,23 +321,20 @@ export function App() {
       assistantMode,
       providerMode,
     })
-    setChatStatus("Thinking...")
     setPrompt("")
+    setChatBusy(true)
 
     try {
       const cap = providerCapabilityId(providerMode)
 
-      setChatStatus("Classifying intent...")
       const classified = await classifyIntent(userRequest, cap)
       const routeToAuthoring = classified ? intentRoutesToAuthoring(classified.intent) : false
 
       if (!routeToAuthoring) {
-        setChatStatus("Answering...")
         await runAssistant(userRequest, cap)
         return
       }
 
-      setChatStatus("Generating...")
       await runAuthoring(userRequest, cap)
       if (assistantMode === "guided") {
         setAssistantMode("authoring")
@@ -353,6 +344,8 @@ export function App() {
       console.error("[ecp] chat request failed:", err)
       setChatStatus("Error")
       appendAgentError(msg)
+    } finally {
+      setChatBusy(false)
     }
   }
 
@@ -395,7 +388,6 @@ export function App() {
   }
 
   const chatBlocked = (showProviderModal && chromeInstallUi === "dialog") || vaultGate === "locked"
-  const chatHero = !layout.workspaceVisible
   const hasWorkflow = manifest !== null
   const showInstallToast =
     chromeInstallUi === "toast" &&
@@ -420,13 +412,11 @@ export function App() {
             widthClass={widthClass}
             paired={layout.paired}
             messages={chatMessages}
-            status={chatStatus}
             prompt={prompt}
             onPromptChange={setPrompt}
             onSubmit={() => void onSubmit()}
             disabled={!ecp || chatBlocked}
-            hero={chatHero}
-            capabilitySummary={capabilitySummary}
+            busy={chatBusy}
           />
         ) : null}
 
@@ -452,7 +442,7 @@ export function App() {
                 fluent={fluent}
                 json={json}
                 toon={toon}
-                patch={patch}
+                mermaid={mermaid}
                 environmentSource={environmentSource}
                 compileError={compileError}
                 onFluentChange={onFluentChange}

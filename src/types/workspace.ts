@@ -15,7 +15,7 @@ export interface ViewLayoutState {
 export type CodeEditorTab = "workflow" | "environment"
 
 /** Workflow format tab (secondary, workflow editor only). */
-export type FormatTab = "fluent" | "json" | "toon" | "patch"
+export type FormatTab = "fluent" | "json" | "toon" | "mermaid"
 
 /** @deprecated Use {@link CodeEditorTab} or {@link FormatTab}. */
 export type CodeTab = FormatTab
