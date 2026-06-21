@@ -1,14 +1,21 @@
-/** Bottom-docked chat panel height mode. */
-export type ChatPanelState = "expanded" | "compact" | "collapsed"
+/** Toggleable main view panel (chat, workflow graph, or code editor). */
+export type ViewPanel = "chat" | "workflow" | "code"
+
+/** Boolean flags for which view panels are active. */
+export interface ViewLayoutState {
+  /** Chat assistant column. */
+  chat: boolean
+  /** Workflow graph column. */
+  workflow: boolean
+  /** Code editor column (mutually exclusive with workflow). */
+  code: boolean
+}
 
 /** Left sidebar code editor tab. */
 export type CodeEditorTab = "workflow" | "environment"
 
 /** Workflow format tab (secondary, workflow editor only). */
 export type FormatTab = "fluent" | "json" | "toon" | "patch"
-
-/** Top app bar navigation. */
-export type AppNavTab = "editor" | "validation" | "run"
 
 /** @deprecated Use {@link CodeEditorTab} or {@link FormatTab}. */
 export type CodeTab = FormatTab

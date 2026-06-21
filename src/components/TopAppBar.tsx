@@ -1,86 +1,96 @@
-import type { ValidationResult } from "@executioncontextprotocol/types"
-import type { AppNavTab } from "../types/workspace.js"
+import type { ViewLayoutState, ViewPanel } from "../types/workspace.js"
 
 /** Props for {@link TopAppBar}. */
 export interface TopAppBarProps {
-  activeNav: AppNavTab
-  onNavChange: (tab: AppNavTab) => void
+  views: ViewLayoutState
+  onToggleView: (panel: ViewPanel) => void
   onExecute: () => void
   executeDisabled?: boolean
   executeBusy?: boolean
   onSettings: () => void
-  validation: ValidationResult | null
 }
 
-const NAV_ITEMS: { id: AppNavTab; label: string }[] = [
-  { id: "editor", label: "Editor" },
-  { id: "validation", label: "Validation" },
-  { id: "run", label: "Run output" },
-]
-
-/** Top application bar with nav and actions. */
+/** Top application bar with centered view navigation and action buttons. */
 export function TopAppBar({
-  activeNav,
-  onNavChange,
+  views,
+  onToggleView,
   onExecute,
   executeDisabled,
   executeBusy,
   onSettings,
-  validation,
 }: TopAppBarProps) {
-  const hasIssues = validation !== null && !validation.valid
-
   return (
-    <header className="relative z-50 flex h-16 w-full shrink-0 items-center justify-between border-b border-outline-variant bg-surface px-gutter">
-      <div className="flex items-center gap-8">
-        <span className="font-display text-headline font-bold text-on-surface">ECP Graph Editor</span>
-        <nav className="hidden items-center gap-6 md:flex">
-          {NAV_ITEMS.map(({ id, label }) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => onNavChange(id)}
-              className={`cursor-pointer font-mono text-label uppercase tracking-widest transition-colors ${
-                activeNav === id
-                  ? "border-b-2 border-primary pb-1 text-primary"
-                  : "text-on-surface-variant hover:text-primary"
-              }`}
-            >
-              {label}
-              {id === "validation" && hasIssues ? (
-                <span className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-error" aria-hidden />
-              ) : null}
-            </button>
-          ))}
-        </nav>
+    <header
+      className="relative z-50 flex h-16 w-full shrink-0 items-center border-b border-outline-variant bg-surface px-gutter"
+      id="app-header"
+    >
+      <div className="flex shrink-0 items-center">
+        <span className="font-display text-headline font-bold text-on-surface">Graph Editor</span>
       </div>
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2">
+
+      <nav className="absolute left-1/2 flex -translate-x-1/2 items-center" id="view-nav">
+        <div className="view-nav-group" id="view-nav-group">
           <button
             type="button"
-            disabled
-            className="rounded border border-outline-variant px-4 py-1.5 font-mono text-label text-on-surface opacity-60"
-            title="Save is not yet implemented"
+            className={`view-nav-btn${views.chat ? " active-btn" : ""}`}
+            id="btn-view-chat"
+            title="Chat"
+            onClick={() => onToggleView("chat")}
           >
-            Save
+            <span className="material-symbols-outlined">forum</span>
           </button>
-          <button
-            type="button"
-            disabled={executeDisabled || executeBusy}
-            onClick={onExecute}
-            className="rounded bg-primary px-4 py-1.5 font-mono text-label font-bold text-on-primary transition-transform hover:brightness-110 active:scale-95 disabled:opacity-50"
-          >
-            {executeBusy ? "Running..." : "Execute"}
-          </button>
+          <div className="view-nav-workspace-group" id="view-nav-workspace-group">
+            <button
+              type="button"
+              className={`view-nav-btn${views.workflow ? " active-btn" : ""}`}
+              id="btn-view-workflow"
+              title="Workflow"
+              onClick={() => onToggleView("workflow")}
+            >
+              <span className="material-symbols-outlined">account_tree</span>
+            </button>
+            <button
+              type="button"
+              className={`view-nav-btn${views.code ? " active-btn" : ""}`}
+              id="btn-view-code"
+              title="Code"
+              onClick={() => onToggleView("code")}
+            >
+              <span className="material-symbols-outlined">code</span>
+            </button>
+          </div>
         </div>
-        <div className="mx-2 h-6 w-px bg-outline-variant" />
+      </nav>
+
+      <div className="ml-auto flex shrink-0 items-center gap-2">
         <button
           type="button"
-          onClick={onSettings}
-          className="material-symbols-outlined cursor-pointer text-on-surface-variant transition-colors hover:text-on-surface"
-          aria-label="Settings"
+          disabled
+          className="header-action-btn"
+          title="Save is not yet implemented"
         >
-          settings
+          <span className="material-symbols-outlined">save</span>
+        </button>
+        <button
+          type="button"
+          disabled={executeDisabled || executeBusy}
+          className="header-action-btn header-action-btn--primary"
+          title={executeBusy ? "Running..." : "Execute"}
+          onClick={onExecute}
+        >
+          <span className="material-symbols-outlined">play_arrow</span>
+        </button>
+        <div className="mx-1 h-6 w-px bg-outline-variant" />
+        <button
+          type="button"
+          className="h-8 w-8 cursor-pointer overflow-hidden rounded-full border border-outline-variant"
+          title="Settings"
+          aria-label="Settings"
+          onClick={onSettings}
+        >
+          <span className="material-symbols-outlined flex h-full w-full items-center justify-center text-[18px] text-on-surface-variant hover:text-on-surface">
+            account_circle
+          </span>
         </button>
       </div>
     </header>

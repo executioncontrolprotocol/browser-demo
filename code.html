@@ -1,0 +1,559 @@
+<!DOCTYPE html><html class="dark" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;800&amp;family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .node-canvas {
+            background-image: radial-gradient(circle, #2d3449 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+        .glass-panel {
+            backdrop-filter: blur(12px);
+            background: rgba(11, 19, 38, 0.85);
+        }
+        .code-line::before {
+            content: attr(data-line);
+            display: inline-block;
+            width: 2rem;
+            color: #4d4632;
+            text-align: right;
+            margin-right: 1rem;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .glow-primary { box-shadow: 0 0 15px rgba(250, 204, 21, 0.2); }
+        
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #2d3449; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #4d4632; }
+
+        .drawer-transition {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .active-btn {
+            background-color: #facc15;
+            color: #3c2f00;
+        }
+        #view-nav {
+            display: flex;
+            align-items: center;
+        }
+        .view-nav-group {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.25rem;
+            border-radius: 0.5rem;
+            background-color: #060e20;
+            border: 1px solid #39485a;
+        }
+        .view-nav-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 2rem;
+            height: 2rem;
+            padding: 0;
+            border-radius: 0.25rem;
+            border: 1px solid transparent;
+            color: #dae2fd;
+            cursor: pointer;
+            transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+        }
+        .view-nav-btn:hover {
+            color: #ffe083;
+            background-color: #39485a;
+            border-color: #39485a;
+        }
+        .view-nav-btn.active-btn {
+            background-color: #facc15;
+            color: #3c2f00;
+            border-color: #facc15;
+        }
+        .view-nav-btn.active-btn:hover {
+            color: #3c2f00;
+            background-color: #eec200;
+            border-color: #eec200;
+        }
+        .view-nav-btn .material-symbols-outlined {
+            font-size: 18px;
+        }
+        .view-nav-workspace-group {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.125rem;
+            padding: 0.25rem;
+            border-radius: 0.375rem;
+            background-color: #131b2e;
+            border: 1px solid #222a3d;
+        }
+        .header-action-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 2rem;
+            height: 2rem;
+            padding: 0;
+            border-radius: 0.25rem;
+            border: 1px solid #4d4632;
+            background-color: transparent;
+            color: #dae2fd;
+            cursor: pointer;
+            transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, filter 0.15s ease;
+        }
+        .header-action-btn:hover {
+            color: #ffe083;
+            background-color: #39485a;
+            border-color: #9a9078;
+        }
+        .header-action-btn .material-symbols-outlined {
+            font-size: 18px;
+        }
+        .header-action-btn--primary {
+            background-color: #facc15;
+            color: #3c2f00;
+            border-color: #facc15;
+        }
+        .header-action-btn--primary:hover {
+            color: #3c2f00;
+            background-color: #facc15;
+            border-color: #facc15;
+            filter: brightness(1.08);
+        }
+        .composer-bar {
+            flex-shrink: 0;
+            padding: 1rem 1rem 1.5rem;
+            border-top: 1px solid #4d4632;
+            background-color: #131b2e;
+        }
+        .composer-bar-row {
+            min-height: 50px;
+        }
+        #workspace-column {
+            display: flex;
+            min-width: 0;
+            min-height: 0;
+            flex-shrink: 0;
+        }
+        #workspace-column.is-half {
+            flex: 0 0 50%;
+            width: 50%;
+        }
+        #workspace-column.is-full {
+            flex: 1 1 0%;
+            width: 100%;
+        }
+        #chat-drawer.is-half {
+            flex: 0 0 50%;
+            width: 50%;
+        }
+        #chat-drawer.is-full {
+            flex: 1 1 0%;
+            width: 100%;
+        }
+        #workflow-panel {
+            flex: 1 1 0%;
+            min-width: 0;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        #chat-drawer {
+            order: 1;
+        }
+        #workspace-column {
+            order: 2;
+        }
+        #chat-drawer.is-half {
+            border-right: 1px solid #4d4632;
+        }
+        .status-footer {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            height: 28px;
+            padding: 0 1rem;
+            border-top: 1px solid #4d4632;
+            background-color: #131b2e;
+        }
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+            padding: 0.125rem 0.5rem;
+            border-radius: 9999px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            font-weight: 500;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            line-height: 1;
+        }
+        .status-pill--valid {
+            color: #86efac;
+            background-color: rgba(74, 222, 128, 0.12);
+            border: 1px solid rgba(74, 222, 128, 0.35);
+        }
+        .status-pill-dot {
+            width: 0.5rem;
+            height: 0.5rem;
+            border-radius: 9999px;
+            background-color: #4ade80;
+            box-shadow: 0 0 8px rgba(74, 222, 128, 0.4);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-fixed": "#231b00",
+                        "on-secondary": "#233143",
+                        "on-tertiary-container": "#006270",
+                        "on-primary": "#3c2f00",
+                        "background": "#0b1326",
+                        "surface": "#0b1326",
+                        "surface-container-high": "#222a3d",
+                        "surface-container-highest": "#2d3449",
+                        "secondary-fixed": "#d4e4fa",
+                        "primary-fixed": "#ffe083",
+                        "on-tertiary-fixed-variant": "#004e59",
+                        "on-secondary-fixed-variant": "#39485a",
+                        "surface-container-low": "#131b2e",
+                        "on-tertiary-fixed": "#001f25",
+                        "tertiary": "#c7f5ff",
+                        "inverse-on-surface": "#283044",
+                        "on-secondary-container": "#a7b6cc",
+                        "on-surface-variant": "#d1c6ab",
+                        "on-primary-container": "#6c5700",
+                        "error-container": "#93000a",
+                        "primary": "#facc15",
+                        "surface-dim": "#0b1326",
+                        "surface-tint": "#eec200",
+                        "inverse-primary": "#735c00",
+                        "secondary-fixed-dim": "#b9c8de",
+                        "surface-container-lowest": "#060e20",
+                        "on-error": "#690005",
+                        "surface-container": "#171f33",
+                        "inverse-surface": "#dae2fd",
+                        "surface-variant": "#2d3449",
+                        "error": "#ffb4ab",
+                        "tertiary-fixed": "#a0efff",
+                        "outline": "#9a9078",
+                        "on-error-container": "#ffdad6",
+                        "outline-variant": "#4d4632",
+                        "tertiary-fixed-dim": "#15daf4",
+                        "on-tertiary": "#00363e",
+                        "on-background": "#dae2fd",
+                        "on-surface": "#dae2fd",
+                        "surface-bright": "#31394d",
+                        "tertiary-container": "#33e4ff",
+                        "on-primary-fixed-variant": "#574500",
+                        "primary-container": "#facc15",
+                        "primary-fixed-dim": "#eec200",
+                        "secondary-container": "#39485a",
+                        "on-secondary-fixed": "#0d1c2d",
+                        "secondary": "#b9c8de"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "container-max": "1280px",
+                        "margin-mobile": "20px",
+                        "base": "8px",
+                        "margin-desktop": "64px",
+                        "gutter": "24px",
+                        "sidebar-width": "64px"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["Hanken Grotesk"],
+                        "body-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "label-sm": ["JetBrains Mono"],
+                        "display-lg-mobile": ["Hanken Grotesk"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                        "display-lg-mobile": ["36px", {"lineHeight": "42px", "letterSpacing": "-0.02em", "fontWeight": "800"}]
+                    }
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background text-on-background h-screen overflow-hidden font-body-md selection:bg-primary/30 flex flex-col">
+<!-- Top Navigation Bar -->
+<header class="relative flex shrink-0 items-center w-full px-gutter bg-surface h-16 border-b border-outline-variant z-50" id="app-header">
+<div class="flex items-center shrink-0">
+<span class="font-headline-md text-headline-md font-bold text-on-surface">Graph Editor</span>
+</div>
+<nav class="absolute left-1/2 -translate-x-1/2 flex items-center" id="view-nav">
+<div class="view-nav-group" id="view-nav-group">
+<button class="view-nav-btn active-btn" id="btn-view-chat" onclick="toggleView('chat')" title="Chat" type="button">
+<span class="material-symbols-outlined">forum</span>
+</button>
+<div class="view-nav-workspace-group" id="view-nav-workspace-group">
+<button class="view-nav-btn" id="btn-view-workflow" onclick="toggleView('workflow')" title="Workflow" type="button">
+<span class="material-symbols-outlined">account_tree</span>
+</button>
+<button class="view-nav-btn" id="btn-view-code" onclick="toggleView('code')" title="Code" type="button">
+<span class="material-symbols-outlined">code</span>
+</button>
+</div>
+</div>
+</nav>
+<div class="ml-auto flex items-center gap-2 shrink-0">
+<button class="header-action-btn" title="Save" type="button">
+<span class="material-symbols-outlined">save</span>
+</button>
+<button class="header-action-btn header-action-btn--primary" title="Execute" type="button">
+<span class="material-symbols-outlined">play_arrow</span>
+</button>
+<div class="h-6 w-px bg-outline-variant mx-1"></div>
+<img alt="User avatar" class="w-8 h-8 rounded-full border border-outline-variant" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBcBFls6CeFFsYpCgrqhMT6lt-rY3G_o-CosTql2EXigTJJNOKUJiwaboENslzan0XWC8RLNT0q-Ec93lAmfWB4bpqi8SqPY9gH59tEm5fM8SHbRABRmTrrL7famM3N_ERpZ1yLNp2AUZQnYxN3VkZ22cB5IIThQFVxQ1VDNbG45gYpedSrUbG6iORwcXSUmXd_pcsY_vIMjzbU7BzrTaXpSo2LbM9LQ2ZE0krTq7dbM2fj1kfd0BNV4vUdsGAfwDbjRS4xf1vJKpfl">
+</div>
+</header>
+<main class="flex flex-1 min-h-0 w-full overflow-hidden">
+<!-- Workflow Panel -->
+<div class="h-full flex flex-row bg-surface-container-lowest z-30" id="workspace-column" style="display: none;">
+<div class="flex flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden" id="workflow-panel">
+<!-- Workflow Graph -->
+<section class="drawer-transition flex-1 min-h-0 bg-background relative node-canvas overflow-hidden" id="graph-drawer">
+<div class="absolute top-0 left-0 right-0 p-4 bg-surface-container-high/40 border-b border-outline-variant/20 z-10 flex justify-between items-center">
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-on-surface-variant px-2">Workflow Canvas</span>
+</div>
+<div class="absolute inset-0 p-12" id="canvas-content" style="transform: translate(4.18px, 5.06px);">
+<svg class="absolute inset-0 w-full h-full pointer-events-none">
+<path class="opacity-60" d="M 180 140 Q 280 140, 280 240" fill="none" stroke="#facc15" stroke-width="2"></path>
+</svg>
+<!-- Trigger Node -->
+<div class="absolute top-20 left-20 w-60 bg-surface-container rounded-lg border border-outline-variant p-4 glow-primary">
+<div class="flex items-center justify-between mb-3">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: &quot;FILL&quot; 1;">bolt</span>
+<span class="font-label-sm text-label-sm uppercase tracking-tight text-on-surface">Trigger</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest rounded p-2 border border-outline-variant/30 font-label-sm text-label-sm text-on-surface-variant">
+                                webhook.on('received')
+                            </div>
+</div>
+<!-- API Node -->
+<div class="absolute top-[300px] left-[150px] w-72 bg-surface-container rounded-lg border border-primary p-4 glow-primary">
+<div class="flex items-center justify-between mb-3">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: &quot;FILL&quot; 1;">api</span>
+<span class="font-label-sm text-label-sm uppercase tracking-tight text-on-surface">Production API</span>
+</div>
+<span class="px-1.5 py-0.5 bg-primary/10 text-primary text-[10px] rounded border border-primary/30">ACTIVE</span>
+</div>
+<div class="flex gap-2">
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+<span class="text-[10px] text-on-surface-variant font-label-sm uppercase">Transmitting...</span>
+</div>
+</div>
+</div>
+<!-- Canvas Controls -->
+<div class="absolute bottom-6 left-6 flex flex-col gap-2 z-30">
+<button class="w-10 h-10 rounded bg-surface-container border border-outline-variant text-on-surface-variant flex items-center justify-center hover:text-primary transition-colors shadow-lg"><span class="material-symbols-outlined">add</span></button>
+<button class="w-10 h-10 rounded bg-surface-container border border-outline-variant text-on-surface-variant flex items-center justify-center hover:text-primary transition-colors shadow-lg"><span class="material-symbols-outlined">remove</span></button>
+<button class="w-10 h-10 rounded bg-surface-container border border-outline-variant text-on-surface-variant flex items-center justify-center hover:text-primary transition-colors shadow-lg"><span class="material-symbols-outlined">near_me</span></button>
+</div>
+</section>
+<!-- Bottom Code Drawer Area -->
+<section class="drawer-transition w-full bg-surface-container-lowest border-t border-outline-variant overflow-hidden shrink-0 flex flex-col min-h-0" id="code-drawer" style="height: 0px; display: none;">
+<div class="flex items-center justify-between p-3 border-b border-outline-variant bg-surface-container-low">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">code</span>
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-on-surface-variant">Logic Source</span>
+</div>
+<div class="flex items-center gap-2">
+<button class="px-3 py-1 bg-primary/10 text-primary rounded text-[11px] font-bold uppercase tracking-wider border border-primary/20">Lint Code</button>
+</div>
+</div>
+<div class="p-4 font-label-sm text-label-sm h-full overflow-y-auto">
+<div class="space-y-0.5">
+<div class="code-line flex" data-line="1"><span class="text-primary">async function</span> <span class="text-primary-fixed">orchestrate</span>() {</div>
+<div class="code-line flex" data-line="2">&nbsp;&nbsp;<span class="text-tertiary-fixed-dim">const</span> <span class="text-on-surface">data</span> = <span class="text-primary">await</span> fetchAPI();</div>
+<div class="code-line flex" data-line="3">&nbsp;&nbsp;</div>
+<div class="code-line flex" data-line="4">&nbsp;&nbsp;<span class="text-outline italic">// Filter system signals</span></div>
+<div class="code-line flex" data-line="5">&nbsp;&nbsp;<span class="text-primary">if</span> (data.status === <span class="text-tertiary"> 'active' </span>) {</div>
+<div class="code-line flex" data-line="6">&nbsp;&nbsp;&nbsp;&nbsp;triggerNode(<span class="text-tertiary"> 'Filter_01' </span>);</div>
+<div class="code-line flex" data-line="7">&nbsp;&nbsp;&nbsp;&nbsp;<span class="text-primary">return</span> processStream(data);</div>
+<div class="code-line flex" data-line="8">&nbsp;&nbsp;}</div>
+<div class="code-line flex" data-line="9">}</div>
+</div>
+</div>
+</section>
+</div>
+</div>
+<!-- Column 2: Chat Assistant (Open by Default) -->
+<section class="drawer-transition flex flex-col h-full bg-surface-container border-outline-variant overflow-hidden min-w-0 is-full" id="chat-drawer">
+<div class="flex items-center p-4 bg-surface-container-high border-b border-outline-variant shrink-0">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-primary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary-container text-sm" style="font-variation-settings: &quot;FILL&quot; 1;">smart_toy</span>
+</div>
+<div>
+<h3 class="font-headline-md text-[14px] leading-tight text-on-surface">Logic Assistant</h3>
+<p class="text-[11px] text-on-surface-variant">Solaris Architect</p>
+</div>
+</div>
+</div>
+<!-- Chat Body -->
+<div class="flex-1 p-6 overflow-y-auto space-y-6 bg-surface-container/50">
+<div class="flex items-start gap-3 max-w-[90%]">
+<div class="w-6 h-6 rounded-full bg-surface-container-highest flex items-center justify-center shrink-0 border border-outline-variant">
+<span class="material-symbols-outlined text-[14px] text-primary">auto_awesome</span>
+</div>
+<div class="bg-surface-container-high p-3 rounded-lg rounded-tl-none border border-outline-variant/30">
+<p class="text-body-md text-on-surface">I've analyzed your current graph. The <span class="text-primary font-bold">Production API</span> node is currently processing a high volume of requests. Would you like me to implement a circuit breaker pattern?</p>
+</div>
+</div>
+<div class="flex items-start gap-3 flex-row-reverse max-w-[90%] ml-auto">
+<div class="w-6 h-6 rounded-full overflow-hidden shrink-0 border border-outline-variant">
+<img alt="User avatar" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB213C6If55rDwYg7toLdj5lPMhBmbF1A_5iUMQVbQfeKeAnsKLXE6CPtqn-CDkuaTNxFxnLWBYPSnrSJqBcGWBxLdt42XRje1nIG8neT_oL_oVVskDRybYe-826zE7GNMh5rjsWCrv2ayewQ7VoSohBDkmwpnRhSngcgfNNcTE2OBLqCb2lYHBOGTnuFcqKrRbHKkQboTLQeWVBHV-mcFI_PyTgjkYv2AafMtA0vnTeEuASRfBWyb2wnbAK77New49abvDtK8CA2iM">
+</div>
+<div class="bg-primary/10 p-3 rounded-lg rounded-tr-none border border-primary/20">
+<p class="text-body-md text-on-surface">Yes, please show me the logic for a 5-second timeout and retry logic.</p>
+</div>
+</div>
+</div>
+<!-- Chat Input Pod (Moved up) -->
+<div class="composer-bar">
+<div class="relative composer-bar-row">
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded py-3 px-4 text-on-surface focus:ring-1 focus:ring-primary focus:border-primary outline-none text-body-md placeholder:text-outline" placeholder="Ask assistant to modify logic..." type="text">
+<div class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+<button class="w-8 h-8 rounded bg-primary text-on-primary flex items-center justify-center hover:brightness-110">
+<span class="material-symbols-outlined text-[18px]">send</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+</main>
+<footer class="status-footer" id="status-footer">
+<div class="status-pill status-pill--valid">
+<span aria-hidden="true" class="status-pill-dot"></span>
+<span>Valid</span>
+</div>
+</footer>
+<script>
+        const state = {
+            chat: true,
+            workflow: false,
+            code: false
+        };
+
+        function activeCount() {
+            return [state.chat, state.workflow, state.code].filter(Boolean).length;
+        }
+
+        function toggleView(panel) {
+            if (state[panel]) {
+                if (activeCount() <= 1) return;
+                state[panel] = false;
+            } else {
+                state[panel] = true;
+                if (panel === 'workflow') state.code = false;
+                if (panel === 'code') state.workflow = false;
+            }
+            updateLayout();
+        }
+
+        function updateLayout() {
+            const chatDrawer = document.getElementById('chat-drawer');
+            const workspaceColumn = document.getElementById('workspace-column');
+            const workflowPanel = document.getElementById('workflow-panel');
+            const graphDrawer = document.getElementById('graph-drawer');
+            const codeDrawer = document.getElementById('code-drawer');
+
+            document.getElementById('btn-view-chat')?.classList.toggle('active-btn', state.chat);
+            document.getElementById('btn-view-workflow')?.classList.toggle('active-btn', state.workflow);
+            document.getElementById('btn-view-code')?.classList.toggle('active-btn', state.code);
+
+            const workspaceVisible = state.workflow || state.code;
+            const paired = workspaceVisible && state.chat;
+
+            chatDrawer.classList.remove('is-half', 'is-full');
+            workspaceColumn.classList.remove('is-half', 'is-full');
+
+            if (state.chat) {
+                chatDrawer.style.display = 'flex';
+                if (paired) {
+                    chatDrawer.classList.add('is-half', 'shrink-0');
+                } else {
+                    chatDrawer.classList.add('is-full');
+                }
+            } else {
+                chatDrawer.style.display = 'none';
+                chatDrawer.classList.remove('shrink-0');
+            }
+
+            if (workspaceVisible) {
+                workspaceColumn.style.display = 'flex';
+                workflowPanel.classList.add('flex');
+                if (paired) {
+                    workspaceColumn.classList.add('is-half');
+                } else {
+                    workspaceColumn.classList.add('is-full');
+                }
+
+                if (state.workflow) {
+                    graphDrawer.style.display = '';
+                    graphDrawer.classList.add('flex-1', 'min-h-0');
+                    codeDrawer.style.display = 'none';
+                    codeDrawer.style.height = '0px';
+                    codeDrawer.classList.remove('flex-1', 'min-h-0');
+                } else {
+                    graphDrawer.style.display = 'none';
+                    graphDrawer.classList.remove('flex-1', 'min-h-0');
+                    codeDrawer.style.display = 'flex';
+                    codeDrawer.style.height = '';
+                    codeDrawer.classList.add('flex-1', 'min-h-0');
+                }
+            } else {
+                workspaceColumn.style.display = 'none';
+                graphDrawer.style.display = 'none';
+                codeDrawer.style.display = 'none';
+                codeDrawer.style.height = '0px';
+            }
+        }
+
+        // Canvas parallax
+        document.addEventListener('mousemove', (e) => {
+            const canvas = document.getElementById('canvas-content');
+            if (canvas) {
+                const x = (window.innerWidth / 2 - e.pageX) / 100;
+                const y = (window.innerHeight / 2 - e.pageY) / 100;
+                canvas.style.transform = `translate(${x}px, ${y}px)`;
+            }
+        });
+
+        // Initialize
+        updateLayout();
+    </script>
+
+
+
+
+
+
+
+
+</body></html>

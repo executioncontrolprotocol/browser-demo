@@ -37,4 +37,6 @@
   --color-on-error-container: #ffdad6;
   --color-inverse-surface: #dae2fd;
   --color-inverse-on-surface: #283044;
+  --color-status-valid: #4ade80;
+  --color-status-valid-text: #86efac;
 }

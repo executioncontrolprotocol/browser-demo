@@ -1,22 +1,22 @@
 import { describe, expect, it } from "vitest"
-import { useWorkspaceLayout } from "../src/hooks/useWorkspaceLayout.js"
+import { useViewLayout } from "../src/hooks/useViewLayout.js"
 
-describe("useWorkspaceLayout", () => {
+describe("useViewLayout", () => {
   it("exports hook function", () => {
-    expect(typeof useWorkspaceLayout).toBe("function")
+    expect(typeof useViewLayout).toBe("function")
   })
 })
 
-describe("useWorkspaceLayout state shape", () => {
-  it("initializes with workspace closed and chat expanded", () => {
+describe("useViewLayout state shape", () => {
+  it("exposes view layout API", () => {
     const stateKeys = [
-      "chat",
-      "setChat",
-      "workspaceOpen",
-      "codeSidebarCollapsed",
-      "openWorkspace",
+      "views",
+      "toggleView",
       "onFirstWorkflow",
-      "toggleCodeSidebar",
+      "openWorkspace",
+      "ensureWorkflowVisible",
+      "workspaceVisible",
+      "paired",
     ]
     expect(stateKeys.length).toBe(7)
   })

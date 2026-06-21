@@ -28,7 +28,7 @@ export function MermaidDiagramViewer({
     let cancelled = false
     void (async () => {
       try {
-        const html = await renderMermaidDiagram(source, `mmd-${baseId}-${Date.now()}`)
+        const html = await renderMermaidDiagram(source, `mmd-${baseId}`)
         if (!cancelled) {
           setSvg(html)
           setError(null)

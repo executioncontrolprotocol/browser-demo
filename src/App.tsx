@@ -19,17 +19,17 @@ import { compileWorkflowSource } from "@executioncontextprotocol/core/browser"
 import { ChatPanel } from "./components/ChatPanel.js"
 import { ChromeInstallDialog } from "./components/ChromeInstallDialog.js"
 import { ChromeInstallToast } from "./components/ChromeInstallToast.js"
-import { CodeSidebar } from "./components/CodeSidebar.js"
+import { CodePanel } from "./components/CodePanel.js"
 import { FirstRunModal } from "./components/FirstRunModal.js"
 import { VaultSetupModal } from "./components/VaultSetupModal.js"
 import { VaultUnlockModal } from "./components/VaultUnlockModal.js"
 import { MermaidCanvas } from "./components/MermaidCanvas.js"
-import { SplitPane } from "./components/SplitPane.js"
+import { StatusFooter } from "./components/StatusFooter.js"
 import { TopAppBar } from "./components/TopAppBar.js"
+import { WorkspaceColumn } from "./components/WorkspaceColumn.js"
 import { useChatHistory } from "./hooks/useChatHistory.js"
 import { useChromeModelInstall } from "./hooks/useChromeModelInstall.js"
-import { useSplitPane } from "./hooks/useSplitPane.js"
-import { useWorkspaceLayout } from "./hooks/useWorkspaceLayout.js"
+import { useViewLayout } from "./hooks/useViewLayout.js"
 import { intentRoutesToAuthoring } from "./lib/chat-routing.js"
 import { formatRegisteredCapabilitiesSummary } from "./lib/capability-summary.js"
 import { createDemoAppEnvironment } from "./lib/demo-environment.js"
@@ -41,6 +41,7 @@ import {
 } from "./lib/harness-invoke-debug.js"
 import { environmentSourceFromDescriptor } from "./lib/environment-source.js"
 import { logUserPrompt } from "./lib/log-user-prompt.js"
+import { columnWidthClass } from "./lib/view-layout.js"
 import {
   providerCapabilityId,
   readStoredProviderMode,
@@ -49,15 +50,22 @@ import {
   type ChromeInstallUi,
   type ProviderMode,
 } from "./lib/provider-mode.js"
-import type { AppNavTab, CodeEditorTab, FormatTab } from "./types/workspace.js"
+import type { CodeEditorTab, FormatTab } from "./types/workspace.js"
 
 const EMPTY_MERMAID = "flowchart TD\n  empty[No workflow]"
 
 export function App() {
-  const layout = useWorkspaceLayout()
-  const split = useSplitPane()
+  const layout = useViewLayout()
   const [assistantMode, setAssistantMode] = useState<AssistantMode>("authoring")
-  const chat = useChatHistory(assistantMode)
+  const {
+    messages: chatMessages,
+    status: chatStatus,
+    setStatus: setChatStatus,
+    appendAgent,
+    appendAgentError,
+    appendUser,
+    setGuidedWelcome,
+  } = useChatHistory(assistantMode)
   const [ecp, setEcp] = useState<Ecp | null>(null)
   const [providerMode, setProviderMode] = useState<ProviderMode>("demo")
   const [showProviderModal, setShowProviderModal] = useState(false)
@@ -71,7 +79,6 @@ export function App() {
   const [descriptor, setDescriptor] = useState<EnvironmentDescriptor | null>(null)
   const [editorTab, setEditorTab] = useState<CodeEditorTab>("workflow")
   const [formatTab, setFormatTab] = useState<FormatTab>("fluent")
-  const [activeNav, setActiveNav] = useState<AppNavTab>("editor")
   const [fluent, setFluent] = useState("// Fluent API will appear here")
   const [json, setJson] = useState("{}")
   const [toon, setToon] = useState("")
@@ -81,8 +88,10 @@ export function App() {
   const [compileError, setCompileError] = useState<string | null>(null)
   const [runOutput, setRunOutput] = useState("")
   const [runBusy, setRunBusy] = useState(false)
+  const [runOverlayOpen, setRunOverlayOpen] = useState(false)
   const compileTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const ecpRef = useRef<Ecp | null>(null)
+  const ecpBootstrapped = useRef(false)
 
   const environmentSource = useMemo(
     () => environmentSourceFromDescriptor(descriptor),
@@ -93,6 +102,8 @@ export function App() {
     () => formatRegisteredCapabilitiesSummary(descriptor),
     [descriptor]
   )
+
+  const widthClass = columnWidthClass(layout.paired)
 
   const reloadEcp = useCallback(async () => {
     if (ecpRef.current) {
@@ -112,25 +123,29 @@ export function App() {
     setAssistantMode("authoring")
     setChromeReady(true)
     setChromeInstallUi("done")
-    chat.appendAgent("Chrome AI is ready. Authoring now uses the on-device model.")
-    chat.setStatus("Ready (chrome-ai).")
-  }, [reloadEcp, chat])
+    appendAgent("Chrome AI is ready. Authoring now uses the on-device model.")
+    setChatStatus("Ready (chrome-ai).")
+  }, [reloadEcp, appendAgent, setChatStatus])
 
   const chromeInstall = useChromeModelInstall(() => {
     void upgradeToChromeAi()
   })
+  const { installState: chromeInstallState, startInstall, stopPolling } = chromeInstall
 
   const beginChromeInstall = useCallback(
     async (surface: "dialog" | "toast") => {
       if (!ecp) return
       setChromeInstallUi(surface)
       setShowProviderModal(false)
-      await chromeInstall.startInstall(ecp)
+      await startInstall(ecp)
     },
-    [ecp, chromeInstall]
+    [ecp, startInstall]
   )
 
   const bootstrapAfterVault = useCallback(async () => {
+    if (ecpBootstrapped.current) return
+    ecpBootstrapped.current = true
+
     const { ecp: operational, descriptor: desc } = await createDemoAppEnvironment()
     ecpRef.current = operational
     setEcp(operational)
@@ -151,15 +166,15 @@ export function App() {
     if (stored) {
       setProviderMode(stored)
       setAssistantMode("authoring")
-      chat.setStatus(`Ready (${stored}).`)
+      setChatStatus(`Ready (${stored}).`)
       if (stored === "chrome-ai" && supported && !ready) {
         setChromeInstallUi("toast")
-        await chromeInstall.startInstall(operational)
+        await startInstall(operational)
       }
     } else {
       setShowProviderModal(true)
     }
-  }, [chat, chromeInstall])
+  }, [setChatStatus, startInstall])
 
   useEffect(() => {
     installBrowserWorkflowShim()
@@ -192,22 +207,22 @@ export function App() {
     setProviderMode(mode)
     setAssistantMode("authoring")
     setShowProviderModal(false)
-    chat.setStatus(`Ready (${mode}).`)
+    setChatStatus(`Ready (${mode}).`)
   }
 
   const onExplore = () => {
     setAssistantMode("guided")
     setProviderMode("demo")
     setShowProviderModal(false)
-    chat.setGuidedWelcome()
-    chat.setStatus("Guided mode — explore the editor.")
+    setGuidedWelcome()
+    setChatStatus("Guided mode — explore the editor.")
   }
 
   const onChromeInstallFromModal = () => {
     setAssistantMode("guided")
     setProviderMode("demo")
-    chat.setGuidedWelcome()
-    chat.setStatus("Installing Chrome AI...")
+    setGuidedWelcome()
+    setChatStatus("Installing Chrome AI...")
     void beginChromeInstall("dialog")
   }
 
@@ -255,8 +270,8 @@ export function App() {
       val?.valid === false
         ? "Workflow updated but has validation issues. See console for raw model output."
         : "Updated workflow."
-    chat.setStatus(msg)
-    chat.appendAgent(msg)
+    setChatStatus(msg)
+    appendAgent(msg)
   }
 
   const runAssistant = async (userRequest: string, cap: string) => {
@@ -278,8 +293,8 @@ export function App() {
 
     const harnessResult = invoked.result as HarnessInvokeResult<HarnessReply>
     logHarnessSuccess("workflow-assistant", harnessResult)
-    chat.appendAgent(harnessResult.artifact.answer)
-    chat.setStatus(assistantMode === "guided" ? "Guided mode" : "Ready")
+    appendAgent(harnessResult.artifact.answer)
+    setChatStatus(assistantMode === "guided" ? "Guided mode" : "Ready")
   }
 
   const classifyIntent = async (message: string, cap: string): Promise<EcpIntent | null> => {
@@ -307,28 +322,28 @@ export function App() {
   const onSubmit = async () => {
     if (!ecp || !prompt.trim()) return
     const userRequest = prompt.trim()
-    chat.appendUser(userRequest)
+    appendUser(userRequest)
     void logUserPrompt(userRequest, {
       assistantMode,
       providerMode,
     })
-    chat.setStatus("Thinking...")
+    setChatStatus("Thinking...")
     setPrompt("")
 
     try {
       const cap = providerCapabilityId(providerMode)
 
-      chat.setStatus("Classifying intent...")
+      setChatStatus("Classifying intent...")
       const classified = await classifyIntent(userRequest, cap)
       const routeToAuthoring = classified ? intentRoutesToAuthoring(classified.intent) : false
 
       if (!routeToAuthoring) {
-        chat.setStatus("Answering...")
+        setChatStatus("Answering...")
         await runAssistant(userRequest, cap)
         return
       }
 
-      chat.setStatus("Generating...")
+      setChatStatus("Generating...")
       await runAuthoring(userRequest, cap)
       if (assistantMode === "guided") {
         setAssistantMode("authoring")
@@ -336,8 +351,8 @@ export function App() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       console.error("[ecp] chat request failed:", err)
-      chat.setStatus("Error")
-      chat.appendAgentError(msg)
+      setChatStatus("Error")
+      appendAgentError(msg)
     }
   }
 
@@ -367,11 +382,11 @@ export function App() {
     if (!ecp || !manifest) return
     setRunBusy(true)
     setRunOutput("")
-    setActiveNav("run")
+    layout.ensureWorkflowVisible()
+    setRunOverlayOpen(true)
     try {
       const result = await ecp.run(manifest)
       setRunOutput(JSON.stringify(result, null, 2))
-      layout.openWorkspace()
     } catch (err) {
       setRunOutput(err instanceof Error ? err.message : String(err))
     } finally {
@@ -380,78 +395,74 @@ export function App() {
   }
 
   const chatBlocked = (showProviderModal && chromeInstallUi === "dialog") || vaultGate === "locked"
-  const chatHero = !layout.workspaceOpen
+  const chatHero = !layout.workspaceVisible
   const hasWorkflow = manifest !== null
   const showInstallToast =
     chromeInstallUi === "toast" &&
-    chromeInstall.installState.phase !== "ready" &&
-    chromeInstall.installState.phase !== "idle"
+    chromeInstallState.phase !== "ready" &&
+    chromeInstallState.phase !== "idle"
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background">
-      {layout.workspaceOpen ? (
-        <>
-          <TopAppBar
-            activeNav={activeNav}
-            onNavChange={setActiveNav}
-            onExecute={() => void onRun()}
-            executeDisabled={!ecp || !hasWorkflow}
-            executeBusy={runBusy}
-            onSettings={() => setShowProviderModal(true)}
-            validation={validation}
-          />
-          <main className="relative min-h-0 flex-1">
-            <SplitPane
-              leftWidth={split.leftWidth}
-              leftCollapsed={layout.codeSidebarCollapsed}
-              onDividerPointerDown={split.onPointerDown}
-              left={
-                <CodeSidebar
-                  editorTab={editorTab}
-                  onEditorTabChange={setEditorTab}
-                  formatTab={formatTab}
-                  onFormatTabChange={setFormatTab}
-                  fluent={fluent}
-                  json={json}
-                  toon={toon}
-                  patch={patch}
-                  environmentSource={environmentSource}
-                  compileError={compileError}
-                  onFluentChange={onFluentChange}
-                  collapsed={layout.codeSidebarCollapsed}
-                  onToggleCollapse={layout.toggleCodeSidebar}
-                />
-              }
-              right={
-                <MermaidCanvas
-                  mermaid={mermaid}
-                  activeNav={activeNav}
-                  validation={validation}
-                  runOutput={runOutput}
-                  runBusy={runBusy}
-                  onRun={onRun}
-                  hasWorkflow={hasWorkflow}
-                />
-              }
-            />
-          </main>
-        </>
-      ) : (
-        <main className="node-canvas relative min-h-0 flex-1" />
-      )}
-
-      <ChatPanel
-        chat={layout.chat}
-        onChatChange={layout.setChat}
-        messages={chat.messages}
-        status={chat.status}
-        prompt={prompt}
-        onPromptChange={setPrompt}
-        onSubmit={() => void onSubmit()}
-        disabled={!ecp || chatBlocked}
-        hero={chatHero}
-        capabilitySummary={capabilitySummary}
+      <TopAppBar
+        views={layout.views}
+        onToggleView={layout.toggleView}
+        onExecute={() => void onRun()}
+        executeDisabled={!ecp || !hasWorkflow}
+        executeBusy={runBusy}
+        onSettings={() => setShowProviderModal(true)}
       />
+
+      <main className="flex min-h-0 w-full flex-1 overflow-hidden">
+        {layout.views.chat ? (
+          <ChatPanel
+            visible
+            widthClass={widthClass}
+            paired={layout.paired}
+            messages={chatMessages}
+            status={chatStatus}
+            prompt={prompt}
+            onPromptChange={setPrompt}
+            onSubmit={() => void onSubmit()}
+            disabled={!ecp || chatBlocked}
+            hero={chatHero}
+            capabilitySummary={capabilitySummary}
+          />
+        ) : null}
+
+        {layout.workspaceVisible ? (
+          <WorkspaceColumn visible widthClass={widthClass}>
+            {layout.views.workflow ? (
+              <MermaidCanvas
+                mermaid={mermaid}
+                runOutput={runOutput}
+                runBusy={runBusy}
+                runOverlayOpen={runOverlayOpen}
+                onCloseRunOverlay={() => setRunOverlayOpen(false)}
+                onRun={onRun}
+                hasWorkflow={hasWorkflow}
+              />
+            ) : null}
+            {layout.views.code ? (
+              <CodePanel
+                editorTab={editorTab}
+                onEditorTabChange={setEditorTab}
+                formatTab={formatTab}
+                onFormatTabChange={setFormatTab}
+                fluent={fluent}
+                json={json}
+                toon={toon}
+                patch={patch}
+                environmentSource={environmentSource}
+                compileError={compileError}
+                onFluentChange={onFluentChange}
+              />
+            ) : null}
+          </WorkspaceColumn>
+        ) : null}
+      </main>
+
+      <StatusFooter validation={validation} />
 
       {showProviderModal ? (
         <FirstRunModal
@@ -495,17 +506,17 @@ export function App() {
 
       {chromeInstallUi === "dialog" ? (
         <ChromeInstallDialog
-          state={chromeInstall.installState}
+          state={chromeInstallState}
           onContinueInBackground={() => setChromeInstallUi("toast")}
           onCancel={() => {
             setChromeInstallUi("idle")
-            chromeInstall.stopPolling()
+            stopPolling()
             setShowProviderModal(true)
           }}
         />
       ) : null}
 
-      <ChromeInstallToast state={chromeInstall.installState} visible={showInstallToast} />
+      <ChromeInstallToast state={chromeInstallState} visible={showInstallToast} />
     </div>
   )
 }
