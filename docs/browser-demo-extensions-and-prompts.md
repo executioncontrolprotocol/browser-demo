@@ -13,7 +13,7 @@ The demo app is not “a model with a UI.” It is an **ECP environment** (`brow
 1. Calls **`ecp.describe()`** to learn bound extensions and capabilities.
 2. Routes chat through either **guided help** or **workflow authoring** (model-generated TOON).
 3. Uses the **canonical workflow manifest** (JSON-shaped `@ecp.workflow`) as the hub for Fluent, TOON, and Mermaid panels.
-4. Runs workflows via **`ecp.run(manifest)`**, which invokes step capabilities (e.g. `@executioncontextprotocol/test.echo`).
+4. Runs workflows via **`ecp.run(manifest)`**, which invokes step capabilities (e.g. `@executioncontextprotocol/demo.echo`).
 
 ```mermaid
 flowchart TB
@@ -39,7 +39,7 @@ flowchart TB
   Authoring --> Invoke
   Invoke --> Decode --> Validate --> Panels
   Panels --> Run
-  Run --> Echo["@executioncontextprotocol/test.echo"]
+  Run --> Echo["@executioncontextprotocol/demo.echo"]
 ```
 
 **Key separation:**
@@ -78,17 +78,16 @@ Source: [`packages/runtimes/browser/src/environment.ts`](https://github.com/Guil
 
 ### 2.2 Demo app environment manifest
 
-`createDemoAppEnvironment()` builds:
+`createDemoAppEnvironment()` builds on `createBrowserDemoEnvironment("browser-demo-app")` from `@executioncontextprotocol/browser`. The demo extension is **already bound** in that environment — no extra app-level bind is required.
 
-- Base: `createBrowserDemoEnvironment("browser-demo-app")` (extensions above).
-- **Extra bind:** `extension("@executioncontextprotocol/test").with({})` so `@executioncontextprotocol/test.echo` appears in `describe()` and validates for workflow steps.
-- **`registerTestExtension()`** registers `@executioncontextprotocol/test` on the registry (not in the default browser env list, but allowed by policy and bound at app init).
+- **`@executioncontextprotocol/demo`** is registered via `registerBrowserDefaults()` and bound with `extension("@executioncontextprotocol/demo").with({})`, so `@executioncontextprotocol/demo.echo` (and other demo step capabilities) appear in `describe()` and validate for workflow steps.
+- **`createDemoAppEnvironment()`** only calls `registerBrowserDefaults()`, creates the browser demo environment, and exposes `globalThis.ecp` via `createEcp(..., { exposeGlobal: true })`.
 
-Source: [`src/lib/demo-environment.ts`](../src/lib/demo-environment.ts).
+Source: [`src/lib/demo-environment.ts`](../src/lib/demo-environment.ts), [`packages/runtimes/browser/src/environment.ts`](https://github.com/GuillaumeCleme/executioncontrolprotocol/blob/main/packages/runtimes/browser/src/environment.ts).
 
 ### 2.3 Policy
 
-`@executioncontextprotocol/registry-control` allows namespaces: `@executioncontextprotocol/demo`, `@executioncontextprotocol/chrome-ai`, `@executioncontextprotocol/openai`, `@executioncontextprotocol/claude`, `@executioncontextprotocol/browser`, `@customer/*`, `@executioncontextprotocol/test`.
+`@executioncontextprotocol/registry-control` allows namespaces: `@executioncontextprotocol/demo`, `@executioncontextprotocol/chrome-ai`, `@executioncontextprotocol/openai`, `@executioncontextprotocol/claude`, `@executioncontextprotocol/browser`, `@customer/*`.
 
 ---
 
@@ -153,9 +152,9 @@ Implementation: [`packages/extensions/chrome-ai/src/model-install.ts`](../packag
 
 | Capability | Input | Output |
 | ---------- | ----- | ------ |
-| `@executioncontextprotocol/test.echo` | `{ value?: unknown }` | `{ echo: unknown }` |
+| `@executioncontextprotocol/demo.echo` | `{ value?: unknown }` | `{ echo: unknown }` |
 
-Registered via `@executioncontextprotocol/core` testing extension; bound in demo app environment. Demo-generated workflows reference `@executioncontextprotocol/test.echo` on the echo step.
+Registered via `@executioncontextprotocol/demo`; bound in the browser demo environment. Demo-generated workflows and the offline `generateText` stub reference `@executioncontextprotocol/demo.echo` on the echo step.
 
 ---
 
@@ -305,7 +304,7 @@ Recommendation: **A + C** — explicit intent enum; only workflow intents get TO
 
 [`@executioncontextprotocol/demo.generateText`](../packages/extensions/demo/src/index.ts) ignores `system`. It returns:
 
-- **Default:** fixed `@ecp.workflow` TOON with one step `echo` → `@executioncontextprotocol/test.echo`.
+- **Default:** fixed `@ecp.workflow` TOON with one step `echo` → `@executioncontextprotocol/demo.echo`.
 - **If prompt contains** `@ecp.patch` or `schema @ecp.patch`: fixed patch TOON patching `steps[echo].input`.
 
 Useful for UI tests without API keys or Chrome; **not** representative of real model quality.
@@ -373,7 +372,7 @@ Fluent edits compile in the browser (`compileWorkflowSource`) and re-enter the s
 | ----------- | --------- | ---------------- |
 | Chat (guided, FAQ) | `App.onSubmit` → | `@executioncontextprotocol/browser.guideChat` |
 | Chat (workflow) | `BrowserAuthoringService` → | `*.generateText` |
-| Execute | `ecp.run(manifest)` | Step `uses` e.g. `@executioncontextprotocol/test.echo` |
+| Execute | `ecp.run(manifest)` | Step `uses` e.g. `@executioncontextprotocol/demo.echo` |
 | Edit Fluent | `compileWorkflowSource` → `applyPanels` | validate + encode |
 | Settings / first run | Provider modal | chrome install capabilities |
 | Refresh capabilities view | `describe()` | (descriptor only) |

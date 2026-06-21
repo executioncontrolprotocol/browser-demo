@@ -8,7 +8,7 @@ const SAMPLE: EnvironmentDescriptor = {
   environment: { id: "browser-demo-app", label: "Browser demo" },
   runtime: { id: "@executioncontextprotocol/browser", features: {} },
   extensions: [
-    { id: "@executioncontextprotocol/test", order: 0, capabilities: ["@executioncontextprotocol/test.echo"] },
+    { id: "@executioncontextprotocol/demo", order: 0, capabilities: ["@executioncontextprotocol/demo.echo"] },
     { id: "@executioncontextprotocol/format-toon", order: 1, capabilities: [] },
   ],
   capabilities: [],
@@ -25,7 +25,7 @@ describe("environmentSourceFromDescriptor", () => {
   it("generates extension bindings from descriptor", () => {
     const src = environmentSourceFromDescriptor(SAMPLE)
     expect(src).toContain('environment("browser-demo-app", "Browser demo")')
-    expect(src).toContain('extension("@executioncontextprotocol/test")')
+    expect(src).toContain('extension("@executioncontextprotocol/demo")')
     expect(src).toContain('extension("@executioncontextprotocol/format-toon")')
     expect(src).toContain("View only")
   })
