@@ -3,7 +3,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest"
 const hasBrowserVault = vi.fn(() => false)
 const isBrowserVaultUnlocked = vi.fn(() => false)
 
-vi.mock("@executioncontextprotocol/browser", () => ({
+vi.mock("@executioncontrolprotocol/browser", () => ({
   hasBrowserVault: () => hasBrowserVault(),
   isBrowserVaultUnlocked: () => isBrowserVaultUnlocked(),
 }))

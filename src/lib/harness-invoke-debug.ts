@@ -1,4 +1,4 @@
-import type { HarnessInvokeResult, InvokeResult } from "@executioncontextprotocol/types"
+import type { HarnessInvokeResult, InvokeResult } from "@executioncontrolprotocol/types"
 
 const CHAT_RAW_SNIPPET_CHARS = 280
 

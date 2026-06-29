@@ -3,7 +3,7 @@ import { renderMermaidDiagram } from "../lib/mermaid-render.js"
 
 /** Props for {@link MermaidDiagramViewer}. */
 export interface MermaidDiagramViewerProps {
-  /** Mermaid flowchart source from @executioncontextprotocol/format-mermaid. */
+  /** Mermaid flowchart source from @executioncontrolprotocol/format-mermaid. */
   source: string
   /** Shown when source is empty. */
   emptyMessage?: string

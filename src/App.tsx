@@ -3,19 +3,19 @@ import {
   BrowserAuthoringService,
   HARNESS_TASKS,
   BROWSER_NANO_HARNESS_CAPABILITY,
+  chatResultAnswer,
+  chatResultWorkflow,
   installBrowserWorkflowShim,
   type BrowserOperationalEcp,
-} from "@executioncontextprotocol/browser"
+} from "@executioncontrolprotocol/browser"
 import type {
-  EcpIntent,
   EnvironmentDescriptor,
   HarnessInvokeResult,
-  HarnessReply,
   ValidationResult,
   WorkflowManifest,
-} from "@executioncontextprotocol/types"
-import type { Ecp } from "@executioncontextprotocol/core"
-import { compileWorkflowSource } from "@executioncontextprotocol/core/browser"
+} from "@executioncontrolprotocol/types"
+import type { Ecp } from "@executioncontrolprotocol/core"
+import { compileWorkflowSource } from "@executioncontrolprotocol/core/browser"
 import { ChatPanel } from "./components/ChatPanel.js"
 import { ChromeInstallDialog } from "./components/ChromeInstallDialog.js"
 import { ChromeInstallToast } from "./components/ChromeInstallToast.js"
@@ -30,7 +30,6 @@ import { WorkspaceColumn } from "./components/WorkspaceColumn.js"
 import { useChatHistory } from "./hooks/useChatHistory.js"
 import { useChromeModelInstall } from "./hooks/useChromeModelInstall.js"
 import { useViewLayout } from "./hooks/useViewLayout.js"
-import { intentRoutesToAuthoring } from "./lib/chat-routing.js"
 import { createDemoAppEnvironment } from "./lib/demo-environment.js"
 import { shouldBlockForVault } from "./lib/vault-gate.js"
 import {
@@ -88,6 +87,7 @@ export function App() {
   const [runBusy, setRunBusy] = useState(false)
   const [runOverlayOpen, setRunOverlayOpen] = useState(false)
   const [chatBusy, setChatBusy] = useState(false)
+  const [conversationSummary, setConversationSummary] = useState<string | undefined>()
   const compileTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const ecpRef = useRef<Ecp | null>(null)
   const ecpBootstrapped = useRef(false)
@@ -145,7 +145,7 @@ export function App() {
     setEcp(operational)
     setDescriptor(desc)
 
-    const avail = await operational.invoke("@executioncontextprotocol/chrome-ai.checkAvailability").with({}).process()
+    const avail = await operational.invoke("@executioncontrolprotocol/chrome-ai.checkAvailability").with({}).process()
     const result =
       avail.success && typeof avail.result === "object" && avail.result !== null
         ? (avail.result as { available: boolean; supported?: boolean; status?: string })
@@ -220,96 +220,61 @@ export function App() {
     void beginChromeInstall("dialog")
   }
 
-  const runAuthoring = async (userRequest: string, cap: string) => {
+  const runChat = async (userRequest: string, cap: string) => {
     if (!ecp) return
     const invoked = await ecp
       .invoke(BROWSER_NANO_HARNESS_CAPABILITY)
       .uses(cap)
       .with({
-        task: HARNESS_TASKS.WORKFLOW_AUTHORING,
-        request: userRequest,
-        ...(manifest ? { manifest } : {}),
-      })
-      .process()
-
-    logHarnessInvoke("workflow-authoring", invoked)
-
-    if (!invoked.success || !invoked.result) {
-      throw new Error(harnessInvokeChatError(invoked))
-    }
-
-    const harnessResult = invoked.result as HarnessInvokeResult<WorkflowManifest>
-    logHarnessSuccess("workflow-authoring", harnessResult)
-    const nextManifest = harnessResult.artifact
-    const service = new BrowserAuthoringService(ecp as BrowserOperationalEcp)
-    const panels = await service.encodePanels(nextManifest, harnessResult.raw)
-
-    const hadWorkflow = manifest !== null
-    setManifest(nextManifest)
-    setFluent(panels.fluent)
-    setJson(panels.json)
-    setToon(panels.toon)
-    setMermaid(panels.mermaid || EMPTY_MERMAID)
-    setPatch(panels.patch)
-    setValidation(
-      (harnessResult.validation as typeof validation) ??
-        (await ecp.validate(nextManifest))
-    )
-
-    if (!hadWorkflow) layout.onFirstWorkflow()
-    else layout.openWorkspace()
-
-    const val = harnessResult.validation as { valid?: boolean } | undefined
-    const msg =
-      val?.valid === false
-        ? "Workflow updated but has validation issues. See console for raw model output."
-        : "Updated workflow."
-    setChatStatus(msg)
-    appendAgent(msg)
-  }
-
-  const runAssistant = async (userRequest: string, cap: string) => {
-    if (!ecp) return
-    const invoked = await ecp
-      .invoke(BROWSER_NANO_HARNESS_CAPABILITY)
-      .uses(cap)
-      .with({
-        task: HARNESS_TASKS.WORKFLOW_ASSISTANT,
+        task: HARNESS_TASKS.CHAT,
         message: userRequest,
+        ...(manifest ? { manifest } : {}),
+        ...(conversationSummary ? { conversationSummary } : {}),
       })
       .process()
 
-    logHarnessInvoke("workflow-assistant", invoked)
+    logHarnessInvoke("chat", invoked)
 
     if (!invoked.success || !invoked.result) {
       throw new Error(harnessInvokeChatError(invoked))
     }
 
-    const harnessResult = invoked.result as HarnessInvokeResult<HarnessReply>
-    logHarnessSuccess("workflow-assistant", harnessResult)
-    appendAgent(harnessResult.artifact.answer)
-    setChatStatus(assistantMode === "guided" ? "Guided mode" : "Ready")
-  }
+    const harnessResult = invoked.result as HarnessInvokeResult
+    logHarnessSuccess("chat", harnessResult)
 
-  const classifyIntent = async (message: string, cap: string): Promise<EcpIntent | null> => {
-    if (!ecp) return null
-    try {
-      const invoked = await ecp
-        .invoke(BROWSER_NANO_HARNESS_CAPABILITY)
-        .uses(cap)
-        .with({ task: HARNESS_TASKS.INTENT_CLASSIFICATION, message })
-        .process()
-      logHarnessInvoke("intent-classification", invoked)
-      if (!invoked.success || !invoked.result) {
-        console.warn("[ecp harness] intent-classification failed:", harnessInvokeChatError(invoked))
-        return null
-      }
-      const harnessResult = invoked.result as HarnessInvokeResult<EcpIntent>
-      logHarnessSuccess("intent-classification", harnessResult)
-      return harnessResult.artifact
-    } catch (err) {
-      console.error("[ecp harness] intent-classification error:", err)
-      return null
+    const nextWorkflow = chatResultWorkflow(harnessResult)
+    if (nextWorkflow) {
+      const service = new BrowserAuthoringService(ecp as BrowserOperationalEcp)
+      const panels = await service.encodePanels(nextWorkflow, harnessResult.raw)
+      const hadWorkflow = manifest !== null
+      setManifest(nextWorkflow)
+      setFluent(panels.fluent)
+      setJson(panels.json)
+      setToon(panels.toon)
+      setMermaid(panels.mermaid || EMPTY_MERMAID)
+      setPatch(panels.patch)
+      setValidation(
+        (harnessResult.validation as typeof validation) ??
+          (await ecp.validate(nextWorkflow))
+      )
+      if (!hadWorkflow) layout.onFirstWorkflow()
+      else layout.openWorkspace()
+      const val = harnessResult.validation as { valid?: boolean } | undefined
+      const msg =
+        val?.valid === false
+          ? "Workflow updated but has validation issues. See console for raw model output."
+          : "Updated workflow."
+      setChatStatus(msg)
+      appendAgent(msg)
+      setConversationSummary(`User: ${userRequest}\nAssistant: ${msg}`)
+      return
+    }
+
+    const answer = chatResultAnswer(harnessResult)
+    if (answer) {
+      appendAgent(answer)
+      setChatStatus(assistantMode === "guided" ? "Guided mode" : "Ready")
+      setConversationSummary(`User: ${userRequest}\nAssistant: ${answer.slice(0, 200)}`)
     }
   }
 
@@ -326,16 +291,7 @@ export function App() {
 
     try {
       const cap = providerCapabilityId(providerMode)
-
-      const classified = await classifyIntent(userRequest, cap)
-      const routeToAuthoring = classified ? intentRoutesToAuthoring(classified.intent) : false
-
-      if (!routeToAuthoring) {
-        await runAssistant(userRequest, cap)
-        return
-      }
-
-      await runAuthoring(userRequest, cap)
+      await runChat(userRequest, cap)
       if (assistantMode === "guided") {
         setAssistantMode("authoring")
       }

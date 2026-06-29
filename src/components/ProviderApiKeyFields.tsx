@@ -3,7 +3,7 @@ import {
   hasBrowserVault,
   isBrowserVaultUnlocked,
   setBrowserSecret,
-} from "@executioncontextprotocol/browser"
+} from "@executioncontrolprotocol/browser"
 
 /** Props for {@link ProviderApiKeyFields}. */
 export interface ProviderApiKeyFieldsProps {

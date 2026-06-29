@@ -8,13 +8,13 @@ This repo is separate from the [Execution Control Protocol (ECP)](https://github
 
 | Package | Role |
 | ------- | ---- |
-| [`@executioncontextprotocol/browser`](https://www.npmjs.com/package/@executioncontextprotocol/browser) | Browser runtime host, demo environment helpers |
-| [`@executioncontextprotocol/core`](https://www.npmjs.com/package/@executioncontextprotocol/core) | Fluent API, browser compile (`@executioncontextprotocol/core/browser`) |
-| [`@executioncontextprotocol/types`](https://www.npmjs.com/package/@executioncontextprotocol/types) | Protocol types |
+| [`@executioncontrolprotocol/browser`](https://www.npmjs.com/package/@executioncontrolprotocol/browser) | Browser runtime host, demo environment helpers |
+| [`@executioncontrolprotocol/core`](https://www.npmjs.com/package/@executioncontrolprotocol/core) | Fluent API, browser compile (`@executioncontrolprotocol/core/browser`) |
+| [`@executioncontrolprotocol/types`](https://www.npmjs.com/package/@executioncontrolprotocol/types) | Protocol types |
 
-Transitive extensions (demo provider, formats, harness, Chrome AI) come via `@executioncontextprotocol/browser`.
+Transitive extensions (demo provider, formats, harness, Chrome AI) come via `@executioncontrolprotocol/browser`.
 
-> **Note:** `@executioncontextprotocol/*` packages must be published to npm (or linked locally — see below) before `npm install` succeeds.
+> **Note:** `@executioncontrolprotocol/*` packages must be published to npm (or linked locally — see below) before `npm install` succeeds.
 
 ## Quick start
 
@@ -31,6 +31,8 @@ npm run build
 npm test
 npm run typecheck
 ```
+
+Harness evals (Ollama `gemma3:1b`) run from the [ECP monorepo](https://github.com/GuillaumeCleme/executioncontrolprotocol): `npm run eval:matrix`. The demo app uses the same **chat** multi-shot harness (`HARNESS_TASKS.CHAT`) as the matrix.
 
 ## Local ECP development (`npm link`)
 
@@ -57,21 +59,21 @@ cd ../../runtimes/browser && npm link
 
 # 3. Consume linked packages in this repo
 cd ../../../executioncontrolprotocol-browser-demo
-npm link @executioncontextprotocol/types @executioncontextprotocol/core @executioncontextprotocol/policies @executioncontextprotocol/demo @executioncontextprotocol/format-eql \
-  @executioncontextprotocol/format-mermaid @executioncontextprotocol/format-toon @executioncontextprotocol/chrome-ai @executioncontextprotocol/extension-openai \
-  @executioncontextprotocol/claude @executioncontextprotocol/harnesses-browser-nano @executioncontextprotocol/browser
+npm link @executioncontrolprotocol/types @executioncontrolprotocol/core @executioncontrolprotocol/policies @executioncontrolprotocol/demo @executioncontrolprotocol/format-eql \
+  @executioncontrolprotocol/format-mermaid @executioncontrolprotocol/format-toon @executioncontrolprotocol/chrome-ai @executioncontrolprotocol/extension-openai \
+  @executioncontrolprotocol/claude @executioncontrolprotocol/harnesses-browser-nano @executioncontrolprotocol/browser
 npm run dev
 
 # 4. Restore registry versions when done
-npm unlink @executioncontextprotocol/types @executioncontextprotocol/core @executioncontextprotocol/policies @executioncontextprotocol/demo @executioncontextprotocol/format-eql \
-  @executioncontextprotocol/format-mermaid @executioncontextprotocol/format-toon @executioncontextprotocol/chrome-ai @executioncontextprotocol/extension-openai \
-  @executioncontextprotocol/claude @executioncontextprotocol/harnesses-browser-nano @executioncontextprotocol/browser
+npm unlink @executioncontrolprotocol/types @executioncontrolprotocol/core @executioncontrolprotocol/policies @executioncontrolprotocol/demo @executioncontrolprotocol/format-eql \
+  @executioncontrolprotocol/format-mermaid @executioncontrolprotocol/format-toon @executioncontrolprotocol/chrome-ai @executioncontrolprotocol/extension-openai \
+  @executioncontrolprotocol/claude @executioncontrolprotocol/harnesses-browser-nano @executioncontrolprotocol/browser
 npm install
 ```
 
 **Tips:**
 - Re-run `npm run build` in ECP after changing package source (link serves built `dist/`, not live TS).
-- Link all packages `@executioncontextprotocol/browser` depends on — not just the three direct imports.
+- Link all packages `@executioncontrolprotocol/browser` depends on — not just the three direct imports.
 - Optional: use `"file:../executioncontrolprotocol/packages/..."` overrides in `package.json` instead of `npm link`.
 
 ## Supabase prompt logging

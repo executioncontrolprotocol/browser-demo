@@ -8,10 +8,10 @@ export type AssistantMode = "guided" | "authoring"
 export const SELECTABLE_PROVIDER_MODES: readonly ProviderMode[] = ["chrome-ai"] as const
 
 const PROVIDER_CAPABILITY: Record<ProviderMode, string> = {
-  "chrome-ai": "@executioncontextprotocol/chrome-ai.generate",
-  openai: "@executioncontextprotocol/openai.generate",
-  claude: "@executioncontextprotocol/claude.generate",
-  demo: "@executioncontextprotocol/demo.generate",
+  "chrome-ai": "@executioncontrolprotocol/chrome-ai.generate",
+  openai: "@executioncontrolprotocol/openai.generate",
+  claude: "@executioncontrolprotocol/claude.generate",
+  demo: "@executioncontrolprotocol/demo.generate",
 }
 
 /** Whether the provider can be chosen in the demo UI. */
@@ -49,7 +49,7 @@ export function storeProviderMode(mode: ProviderMode): void {
 /** Chrome install UI surface. */
 export type ChromeInstallUi = "idle" | "dialog" | "toast" | "done"
 
-/** Install state from @executioncontextprotocol/chrome-ai.getModelInstallState. */
+/** Install state from @executioncontrolprotocol/chrome-ai.getModelInstallState. */
 export interface ChromeInstallSnapshot {
   phase: string
   status?: string

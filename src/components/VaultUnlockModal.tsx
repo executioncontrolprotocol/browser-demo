@@ -16,7 +16,7 @@ export function VaultUnlockModal({ onUnlocked, onSkip }: VaultUnlockModalProps) 
     setError(null)
     setBusy(true)
     try {
-      const { unlockBrowserVault } = await import("@executioncontextprotocol/browser")
+      const { unlockBrowserVault } = await import("@executioncontrolprotocol/browser")
       const ok = await unlockBrowserVault(passphrase)
       if (!ok) {
         setError("Incorrect passphrase.")

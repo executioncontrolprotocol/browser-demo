@@ -25,7 +25,7 @@ export function VaultSetupModal({ onComplete, onCancel }: VaultSetupModalProps) 
     }
     setBusy(true)
     try {
-      const { setupBrowserVault } = await import("@executioncontextprotocol/browser")
+      const { setupBrowserVault } = await import("@executioncontrolprotocol/browser")
       await setupBrowserVault(passphrase)
       onComplete()
     } catch (err) {

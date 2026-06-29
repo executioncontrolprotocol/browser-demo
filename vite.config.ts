@@ -5,7 +5,7 @@ import { dirname, join } from "node:path"
 import { browserPromptLoaderPlugin } from "./vite-browser-prompts-plugin.js"
 
 const appRoot = dirname(fileURLToPath(import.meta.url))
-const coreBrowserEntry = fileURLToPath(import.meta.resolve("@executioncontextprotocol/core/browser"))
+const coreBrowserEntry = fileURLToPath(import.meta.resolve("@executioncontrolprotocol/core/browser"))
 const corePrompts = join(dirname(coreBrowserEntry), "harness/prompts")
 const stubDir = join(appRoot, "src/stubs")
 
@@ -39,6 +39,6 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    exclude: ["@executioncontextprotocol/core", "@executioncontextprotocol/browser", "@executioncontextprotocol/format-mermaid", "@executioncontextprotocol/format-toon"],
+    exclude: ["@executioncontrolprotocol/core", "@executioncontrolprotocol/browser", "@executioncontrolprotocol/format-mermaid", "@executioncontrolprotocol/format-toon"],
   },
 })
