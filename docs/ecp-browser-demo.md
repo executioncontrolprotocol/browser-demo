@@ -996,20 +996,9 @@ no localStorage
 
 ---
 
-## Phase 4.7: Demo extension
+## Phase 4.7: Test extension for workflow steps
 
-### Capabilities
-
-Keep demo extension simple and reusable:
-
-```txt
-@executioncontrolprotocol/demo.echo
-@executioncontrolprotocol/demo.generateText
-@executioncontrolprotocol/demo.evaluateText
-@executioncontrolprotocol/demo.selectBest
-```
-
-Do not make browser authoring orchestration a demo extension unless explicitly needed.
+Use `@executioncontrolprotocol/test` (`echo`, `summarize`, `validate`, etc.) for eval fixtures and local workflow examples. The browser demo defaults to **Chrome AI** (`@executioncontrolprotocol/chrome-ai.generate`) for harness chat and authoring — no offline fake model provider.
 
 ### Acceptance criteria
 

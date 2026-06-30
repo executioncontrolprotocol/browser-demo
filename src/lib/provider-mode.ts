@@ -1,5 +1,5 @@
 /** Provider mode for the browser demo app UI. */
-export type ProviderMode = "chrome-ai" | "openai" | "claude" | "demo"
+export type ProviderMode = "chrome-ai" | "openai" | "claude"
 
 /** Chat assistant behavior. */
 export type AssistantMode = "guided" | "authoring"
@@ -11,7 +11,6 @@ const PROVIDER_CAPABILITY: Record<ProviderMode, string> = {
   "chrome-ai": "@executioncontrolprotocol/chrome-ai.generate",
   openai: "@executioncontrolprotocol/openai.generate",
   claude: "@executioncontrolprotocol/claude.generate",
-  demo: "@executioncontrolprotocol/demo.generate",
 }
 
 /** Whether the provider can be chosen in the demo UI. */
@@ -28,7 +27,7 @@ export function providerCapabilityId(mode: ProviderMode): string {
 export const PROVIDER_MODE_STORAGE_KEY = "ecp:browser-demo:provider-mode"
 
 function parseProviderMode(raw: string | null): ProviderMode | null {
-  if (raw === "chrome-ai" || raw === "openai" || raw === "claude" || raw === "demo") return raw
+  if (raw === "chrome-ai" || raw === "openai" || raw === "claude") return raw
   return null
 }
 

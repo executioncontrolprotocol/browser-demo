@@ -68,8 +68,7 @@ All of the following are registered on the global extension catalog when the bro
 | `@executioncontrolprotocol/browser` | `packages/runtimes/browser` | **`guideChat`** onboarding capability |
 | `@executioncontrolprotocol/format-toon` | `packages/extensions/format-toon` | Encode/decode TOON |
 | `@executioncontrolprotocol/format-mermaid` | `packages/extensions/format-mermaid` | Manifest → Mermaid source |
-| `@executioncontrolprotocol/demo` | `packages/extensions/demo` | Offline **`generateText`** stub |
-| `@executioncontrolprotocol/chrome-ai` | `packages/extensions/chrome-ai` | Chrome **`LanguageModel`** provider |
+| `@executioncontrolprotocol/chrome-ai` | `packages/extensions/chrome-ai` | Chrome **`LanguageModel`** provider (default) |
 | `@executioncontrolprotocol/openai` | `packages/extensions/openai` | OpenAI Chat Completions |
 | `@executioncontrolprotocol/claude` | `packages/extensions/claude` | Anthropic Messages API |
 | `@executioncontrolprotocol/policies` (standard) | `packages/policies` | Including `@executioncontrolprotocol/registry-control` |
@@ -88,7 +87,7 @@ Source: [`src/lib/demo-environment.ts`](../src/lib/demo-environment.ts).
 
 ### 2.3 Policy
 
-`@executioncontrolprotocol/registry-control` allows namespaces: `@executioncontrolprotocol/demo`, `@executioncontrolprotocol/chrome-ai`, `@executioncontrolprotocol/openai`, `@executioncontrolprotocol/claude`, `@executioncontrolprotocol/browser`, `@customer/*`, `@executioncontrolprotocol/test`.
+`@executioncontrolprotocol/registry-control` allows namespaces: `@executioncontrolprotocol/chrome-ai`, `@executioncontrolprotocol/openai`, `@executioncontrolprotocol/claude`, `@executioncontrolprotocol/browser`, `@customer/*`, `@executioncontrolprotocol/test`.
 
 ---
 
@@ -96,7 +95,7 @@ Source: [`src/lib/demo-environment.ts`](../src/lib/demo-environment.ts).
 
 ### 3.1 Model providers (`generateText`)
 
-Used **only** through `BrowserAuthoringService` for create/patch (except demo is also used in guided workflow path). Shared input shape from authoring:
+Used **only** through harness invoke for chat and authoring. Shared input shape from authoring:
 
 ```ts
 {
@@ -107,19 +106,17 @@ Used **only** through `BrowserAuthoringService` for create/patch (except demo is
 
 | Capability | Provider | Bound in env | `system` honored? | Notes |
 | ---------- | -------- | ------------ | ----------------- | ----- |
-| `@executioncontrolprotocol/chrome-ai.generateText` | Chrome `LanguageModel` | Yes | **Yes** → `systemPrompt` on `create()` | Throws if model not `available` |
-| `@executioncontrolprotocol/demo.generateText` | Deterministic stub | Yes | **No** (ignored) | Pattern-matches `prompt` string |
-| `@executioncontrolprotocol/openai.generateText` | OpenAI API | Yes (needs key) | **No** | Only `prompt` sent as user message |
-| `@executioncontrolprotocol/claude.generateText` | Anthropic API | Yes (needs key) | **Yes** | `system` + user `prompt` |
+| `@executioncontrolprotocol/chrome-ai.generate` | Chrome `LanguageModel` | Yes | **Yes** → `systemPrompt` on `create()` | Default provider; throws if model not `available` |
+| `@executioncontrolprotocol/openai.generate` | OpenAI API | Yes (needs key) | Varies | Bound when API key present |
+| `@executioncontrolprotocol/claude.generate` | Anthropic API | Yes (needs key) | **Yes** | Bound when API key present |
 
 **UI mapping** ([`provider-mode.ts`](../src/lib/provider-mode.ts)):
 
 | `ProviderMode` | Capability invoked |
 | -------------- | -------------------- |
-| `chrome-ai` | `@executioncontrolprotocol/chrome-ai.generateText` |
-| `demo` | `@executioncontrolprotocol/demo.generateText` |
-| `openai` | `@executioncontrolprotocol/openai.generateText` |
-| `claude` | `@executioncontrolprotocol/claude.generateText` |
+| `chrome-ai` | `@executioncontrolprotocol/chrome-ai.generate` |
+| `openai` | `@executioncontrolprotocol/openai.generate` |
+| `claude` | `@executioncontrolprotocol/claude.generate` |
 
 OpenAI extension also exposes `@executioncontrolprotocol/openai.generate`, `@executioncontrolprotocol/openai.evaluate`—not used by the browser demo chat/authoring path today.
 
@@ -301,18 +298,7 @@ Recommendation: **A + C** — explicit intent enum; only workflow intents get TO
 
 ---
 
-## 7. Demo provider behavior (offline reference)
-
-[`@executioncontrolprotocol/demo.generateText`](../packages/extensions/demo/src/index.ts) ignores `system`. It returns:
-
-- **Default:** fixed `@executioncontrolprotocol.workflow` TOON with one step `echo` → `@executioncontrolprotocol/test.echo`.
-- **If prompt contains** `@executioncontrolprotocol.patch` or `schema @executioncontrolprotocol.patch`: fixed patch TOON patching `steps[echo].input`.
-
-Useful for UI tests without API keys or Chrome; **not** representative of real model quality.
-
----
-
-## 8. Panel encoding hub (reasoning about extensions)
+## 7. Panel encoding hub (reasoning about extensions)
 
 From `encodePanels` ([`browser-authoring-service.ts`](../packages/runtimes/browser/src/authoring/browser-authoring-service.ts)):
 

@@ -64,7 +64,7 @@ export function App() {
     setGuidedWelcome,
   } = useChatHistory(assistantMode)
   const [ecp, setEcp] = useState<Ecp | null>(null)
-  const [providerMode, setProviderMode] = useState<ProviderMode>("demo")
+  const [providerMode, setProviderMode] = useState<ProviderMode>("chrome-ai")
   const [showProviderModal, setShowProviderModal] = useState(false)
   const [showVaultSetup, setShowVaultSetup] = useState(false)
   const [vaultGate, setVaultGate] = useState<"locked" | "ready">("ready")
@@ -206,7 +206,7 @@ export function App() {
 
   const onExplore = () => {
     setAssistantMode("guided")
-    setProviderMode("demo")
+    setProviderMode("chrome-ai")
     setShowProviderModal(false)
     setGuidedWelcome()
     setChatStatus("Guided mode — explore the editor.")
@@ -214,7 +214,7 @@ export function App() {
 
   const onChromeInstallFromModal = () => {
     setAssistantMode("guided")
-    setProviderMode("demo")
+    setProviderMode("chrome-ai")
     setGuidedWelcome()
     setChatStatus("Installing Chrome AI...")
     void beginChromeInstall("dialog")

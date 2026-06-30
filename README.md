@@ -12,7 +12,7 @@ This repo is separate from the [Execution Control Protocol (ECP)](https://github
 | [`@executioncontrolprotocol/core`](https://www.npmjs.com/package/@executioncontrolprotocol/core) | Fluent API, browser compile (`@executioncontrolprotocol/core/browser`) |
 | [`@executioncontrolprotocol/types`](https://www.npmjs.com/package/@executioncontrolprotocol/types) | Protocol types |
 
-Transitive extensions (demo provider, formats, harness, Chrome AI) come via `@executioncontrolprotocol/browser`.
+Transitive extensions (formats, harness, Chrome AI) come via `@executioncontrolprotocol/browser`.
 
 > **Note:** `@executioncontrolprotocol/*` packages must be published to npm (or linked locally — see below) before `npm install` succeeds.
 
@@ -47,7 +47,6 @@ npm install && npm run build
 cd packages/types && npm link
 cd ../core && npm link
 cd ../policies && npm link
-cd ../extensions/demo && npm link
 cd ../extensions/format-eql && npm link
 cd ../extensions/format-mermaid && npm link
 cd ../extensions/format-toon && npm link
@@ -59,13 +58,13 @@ cd ../../runtimes/browser && npm link
 
 # 3. Consume linked packages in this repo
 cd ../../../executioncontrolprotocol-browser-demo
-npm link @executioncontrolprotocol/types @executioncontrolprotocol/core @executioncontrolprotocol/policies @executioncontrolprotocol/demo @executioncontrolprotocol/format-eql \
+npm link @executioncontrolprotocol/types @executioncontrolprotocol/core @executioncontrolprotocol/policies @executioncontrolprotocol/format-eql \
   @executioncontrolprotocol/format-mermaid @executioncontrolprotocol/format-toon @executioncontrolprotocol/chrome-ai @executioncontrolprotocol/extension-openai \
   @executioncontrolprotocol/claude @executioncontrolprotocol/harnesses-browser-nano @executioncontrolprotocol/browser
 npm run dev
 
 # 4. Restore registry versions when done
-npm unlink @executioncontrolprotocol/types @executioncontrolprotocol/core @executioncontrolprotocol/policies @executioncontrolprotocol/demo @executioncontrolprotocol/format-eql \
+npm unlink @executioncontrolprotocol/types @executioncontrolprotocol/core @executioncontrolprotocol/policies @executioncontrolprotocol/format-eql \
   @executioncontrolprotocol/format-mermaid @executioncontrolprotocol/format-toon @executioncontrolprotocol/chrome-ai @executioncontrolprotocol/extension-openai \
   @executioncontrolprotocol/claude @executioncontrolprotocol/harnesses-browser-nano @executioncontrolprotocol/browser
 npm install
