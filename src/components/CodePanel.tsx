@@ -1,10 +1,11 @@
 import { FluentWorkflowEditor } from "./FluentWorkflowEditor.js"
 import { MonacoCodeEditor } from "./MonacoCodeEditor.js"
+import { PanelHeader } from "./PanelHeader.js"
 import { ENVIRONMENT_EDITOR_PATH } from "../lib/environment-source.js"
 import type { CodeEditorTab, FormatTab } from "../types/workspace.js"
 
-/** Props for {@link CodeSidebar}. */
-export interface CodeSidebarProps {
+/** Props for {@link CodePanel}. */
+export interface CodePanelProps {
   editorTab: CodeEditorTab
   onEditorTabChange: (tab: CodeEditorTab) => void
   formatTab: FormatTab
@@ -12,12 +13,10 @@ export interface CodeSidebarProps {
   fluent: string
   json: string
   toon: string
-  patch: string
+  mermaid: string
   environmentSource: string
   compileError?: string | null
   onFluentChange?: (value: string | undefined) => void
-  collapsed: boolean
-  onToggleCollapse: () => void
 }
 
 const EDITOR_TABS: { id: CodeEditorTab; label: string }[] = [
@@ -29,11 +28,11 @@ const FORMAT_TABS: { id: FormatTab; label: string }[] = [
   { id: "fluent", label: "Fluent" },
   { id: "json", label: "JSON" },
   { id: "toon", label: "TOON" },
-  { id: "patch", label: "Patch" },
+  { id: "mermaid", label: "Mermaid" },
 ]
 
-/** Left code sidebar with Workflow / Environment Monaco tabs. */
-export function CodeSidebar({
+/** Full-height code workspace view with Workflow / Environment Monaco tabs. */
+export function CodePanel({
   editorTab,
   onEditorTabChange,
   formatTab,
@@ -41,34 +40,26 @@ export function CodeSidebar({
   fluent,
   json,
   toon,
-  patch,
+  mermaid,
   environmentSource,
   compileError,
   onFluentChange,
-  collapsed,
-  onToggleCollapse,
-}: CodeSidebarProps) {
+}: CodePanelProps) {
   const readOnlyValue =
-    formatTab === "json" ? json : formatTab === "toon" ? toon : formatTab === "patch" ? patch : ""
+    formatTab === "json"
+      ? json
+      : formatTab === "toon"
+        ? toon
+        : formatTab === "mermaid"
+          ? mermaid
+          : ""
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="flex items-center justify-between border-b border-outline-variant p-4">
-        <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined text-primary">code</span>
-          <span className="font-mono text-label uppercase tracking-widest text-on-surface-variant">Logic Source</span>
-        </div>
-        <button
-          type="button"
-          onClick={onToggleCollapse}
-          className="rounded p-1 transition-colors hover:bg-surface-container-high"
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        >
-          <span className="material-symbols-outlined text-on-surface-variant">
-            {collapsed ? "last_page" : "first_page"}
-          </span>
-        </button>
-      </div>
+    <div
+      className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-surface-container-lowest"
+      id="code-drawer"
+    >
+      <PanelHeader icon="code" label="Logic Source" />
 
       <nav className="flex border-b border-outline-variant px-2">
         {EDITOR_TABS.map(({ id, label }) => (
@@ -123,7 +114,7 @@ export function CodeSidebar({
         ) : formatTab === "fluent" ? (
           <FluentWorkflowEditor value={fluent} onChange={onFluentChange} />
         ) : (
-          <pre className="h-full overflow-auto p-4 font-mono text-label text-on-surface-variant whitespace-pre-wrap">
+          <pre className="h-full overflow-auto whitespace-pre-wrap p-4 font-mono text-label text-on-surface-variant">
             {readOnlyValue}
           </pre>
         )}

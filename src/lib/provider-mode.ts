@@ -1,17 +1,16 @@
 /** Provider mode for the browser demo app UI. */
-export type ProviderMode = "chrome-ai" | "openai" | "claude" | "demo"
+export type ProviderMode = "chrome-ai" | "openai" | "claude"
 
 /** Chat assistant behavior. */
 export type AssistantMode = "guided" | "authoring"
 
 /** Provider modes selectable in the first-run modal (cloud providers are coming soon). */
-export const SELECTABLE_PROVIDER_MODES: readonly ProviderMode[] = ["chrome-ai", "demo"] as const
+export const SELECTABLE_PROVIDER_MODES: readonly ProviderMode[] = ["chrome-ai"] as const
 
 const PROVIDER_CAPABILITY: Record<ProviderMode, string> = {
-  "chrome-ai": "@executioncontextprotocol/chrome-ai.generate",
-  openai: "@executioncontextprotocol/openai.generate",
-  claude: "@executioncontextprotocol/claude.generate",
-  demo: "@executioncontextprotocol/demo.generate",
+  "chrome-ai": "@executioncontrolprotocol/chrome-ai.generate",
+  openai: "@executioncontrolprotocol/openai.generate",
+  claude: "@executioncontrolprotocol/claude.generate",
 }
 
 /** Whether the provider can be chosen in the demo UI. */
@@ -24,11 +23,11 @@ export function providerCapabilityId(mode: ProviderMode): string {
   return PROVIDER_CAPABILITY[mode]
 }
 
-/** localStorage key for persisted provider mode (not API keys). */
+/** localStorage key for persisted provider mode (API keys live in encrypted vault). */
 export const PROVIDER_MODE_STORAGE_KEY = "ecp:browser-demo:provider-mode"
 
 function parseProviderMode(raw: string | null): ProviderMode | null {
-  if (raw === "chrome-ai" || raw === "openai" || raw === "claude" || raw === "demo") return raw
+  if (raw === "chrome-ai" || raw === "openai" || raw === "claude") return raw
   return null
 }
 
@@ -40,7 +39,7 @@ export function readStoredProviderMode(): ProviderMode | null {
   return mode
 }
 
-/** Persist provider mode for this demo app (session keys are never stored). */
+/** Persist provider mode for this demo app. */
 export function storeProviderMode(mode: ProviderMode): void {
   if (typeof localStorage === "undefined") return
   localStorage.setItem(PROVIDER_MODE_STORAGE_KEY, mode)
@@ -49,7 +48,7 @@ export function storeProviderMode(mode: ProviderMode): void {
 /** Chrome install UI surface. */
 export type ChromeInstallUi = "idle" | "dialog" | "toast" | "done"
 
-/** Install state from @executioncontextprotocol/chrome-ai.getModelInstallState. */
+/** Install state from @executioncontrolprotocol/chrome-ai.getModelInstallState. */
 export interface ChromeInstallSnapshot {
   phase: string
   status?: string

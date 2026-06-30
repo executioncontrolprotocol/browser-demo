@@ -1,4 +1,4 @@
-import { ECP_INTENT_VALUES, type EcpIntentValue } from "@executioncontextprotocol/types"
+import { ECP_INTENT_VALUES, type EcpIntentValue } from "@executioncontrolprotocol/types"
 
 /**
  * Map harness {@link EcpIntentValue} to workflow-authoring vs workflow-assistant.

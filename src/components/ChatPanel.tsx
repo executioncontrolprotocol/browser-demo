@@ -1,152 +1,109 @@
-import type { ChatPanelState, ChatMessage } from "../types/workspace.js"
-
-const CHAT_HEIGHT: Record<ChatPanelState, string> = {
-  expanded: "min(60vh, 640px)",
-  compact: "280px",
-  collapsed: "56px",
-}
+import { useEffect, useRef } from "react"
+import type { ChatMessage } from "../types/workspace.js"
+import { PanelHeader } from "./PanelHeader.js"
 
 /** Props for {@link ChatPanel}. */
 export interface ChatPanelProps {
-  chat: ChatPanelState
-  onChatChange: (state: ChatPanelState) => void
+  visible: boolean
+  widthClass: "is-half" | "is-full"
+  paired: boolean
   messages: ChatMessage[]
-  status: string
   prompt: string
   onPromptChange: (value: string) => void
   onSubmit: () => void
   disabled?: boolean
-  hero?: boolean
-  /** Compact list of registered capability ids. */
-  capabilitySummary?: string
+  /** When true, show typing indicator in the message area. */
+  busy?: boolean
 }
 
-/** Floating bottom chat panel (Logic Assistant). */
+/** Full-height chat column (Logic Assistant). */
 export function ChatPanel({
-  chat,
-  onChatChange,
+  visible,
+  widthClass,
+  paired,
   messages,
-  status,
   prompt,
   onPromptChange,
   onSubmit,
   disabled,
-  hero = false,
-  capabilitySummary,
+  busy = false,
 }: ChatPanelProps) {
-  const visibleMessages = chat === "collapsed" ? messages.slice(-1) : messages.slice(-8)
-  const collapsed = chat === "collapsed"
+  const messageEndRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!busy) return
+    messageEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" })
+  }, [busy, messages])
+
+  if (!visible) return null
 
   return (
     <section
-      className={`glass-panel fixed bottom-6 left-1/2 z-40 flex -translate-x-1/2 flex-col overflow-hidden rounded-xl border border-outline-variant shadow-2xl transition-all duration-300 ${
-        hero ? "w-[min(720px,92vw)]" : "w-[min(900px,70vw)]"
-      }`}
-      style={{ height: CHAT_HEIGHT[chat] }}
+      className={`chat-drawer flex h-full min-w-0 flex-col overflow-hidden border-outline-variant bg-surface-container ${widthClass}${paired ? " shrink-0" : ""}`}
+      id="chat-drawer"
       aria-label="Logic Assistant"
     >
-      <header className="flex shrink-0 items-center justify-between border-b border-outline-variant bg-surface-container-high/60 p-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded bg-primary-container">
-            <span
-              className="material-symbols-outlined text-sm text-on-primary-container"
-              style={{ fontVariationSettings: "'FILL' 1" }}
-            >
-              smart_toy
-            </span>
-          </div>
-          <div>
-            <h3 className="font-display text-sm font-semibold leading-tight text-on-surface">
-              {hero ? "ECP Logic Assistant" : "Logic Assistant"}
-            </h3>
-            <p className="text-[11px] text-on-surface-variant">{status || "Solaris Architect"}</p>
-            {capabilitySummary ? (
-              <p className="mt-0.5 text-[10px] leading-snug text-on-surface-variant/80" title={capabilitySummary}>
-                Registered: {capabilitySummary}
-              </p>
-            ) : null}
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            className="material-symbols-outlined cursor-pointer text-sm text-on-surface-variant hover:text-primary"
-            onClick={() => onChatChange("expanded")}
-            aria-label="Expand chat"
-          >
-            open_in_full
-          </button>
-          <button
-            type="button"
-            className="material-symbols-outlined cursor-pointer text-sm text-on-surface-variant hover:text-primary"
-            onClick={() => onChatChange(chat === "compact" ? "expanded" : "compact")}
-            aria-label="Toggle chat size"
-          >
-            {chat === "expanded" ? "remove" : "expand"}
-          </button>
-          <button
-            type="button"
-            className="material-symbols-outlined cursor-pointer text-sm text-on-surface-variant hover:text-primary"
-            onClick={() => onChatChange("collapsed")}
-            aria-label="Collapse chat"
-          >
-            close
-          </button>
-        </div>
-      </header>
+      <PanelHeader icon="forum" label="Logic Assistant" />
 
-      {!collapsed ? (
-        <div className="min-h-0 flex-1 space-y-6 overflow-y-auto p-6">
-          {visibleMessages.length === 0 ? (
-            <p className="text-body text-on-surface-variant">
-              Describe a workflow or change to get started.
-            </p>
-          ) : (
-            visibleMessages.map((m) =>
-              m.role === "user" ? (
-                <div key={m.id} className="ml-auto flex max-w-[80%] flex-row-reverse items-start gap-3">
-                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-outline-variant bg-surface-container-highest">
-                    <span className="material-symbols-outlined text-[14px] text-on-surface-variant">person</span>
-                  </div>
-                  <div className="rounded-lg rounded-tr-none border border-primary/20 bg-primary/10 p-3">
-                    <p className="text-body text-on-surface">{m.text}</p>
-                  </div>
+      <div className="min-h-0 flex-1 space-y-6 overflow-y-auto bg-surface-container/50 p-6">
+        {messages.length === 0 && !busy ? (
+          <p className="text-body text-on-surface-variant">Describe a workflow or change to get started.</p>
+        ) : (
+          messages.map((m) =>
+            m.role === "user" ? (
+              <div key={m.id} className="ml-auto flex max-w-[90%] flex-row-reverse items-start gap-3">
+                <div className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full border border-outline-variant">
+                  <span className="material-symbols-outlined text-[14px] text-on-surface-variant">person</span>
                 </div>
-              ) : (
-                <div key={m.id} className="flex max-w-[80%] items-start gap-3">
-                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-outline-variant bg-surface-container-highest">
-                    <span className="material-symbols-outlined text-[14px] text-primary">auto_awesome</span>
-                  </div>
-                  <div
-                    className={`rounded-lg rounded-tl-none border p-3 ${
-                      m.variant === "error"
-                        ? "border-error/40 bg-error-container/30"
-                        : "border-outline-variant/30 bg-surface-container-high"
+                <div className="rounded-lg rounded-tr-none border border-primary/20 bg-primary/10 p-3">
+                  <p className="text-body text-on-surface">{m.text}</p>
+                </div>
+              </div>
+            ) : (
+              <div key={m.id} className="flex max-w-[90%] items-start gap-3">
+                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-outline-variant bg-surface-container-highest">
+                  <span className="material-symbols-outlined text-[14px] text-primary">auto_awesome</span>
+                </div>
+                <div
+                  className={`rounded-lg rounded-tl-none border p-3 ${
+                    m.variant === "error"
+                      ? "border-error/40 bg-error-container/30"
+                      : "border-outline-variant/30 bg-surface-container-high"
+                  }`}
+                >
+                  <p
+                    className={`whitespace-pre-wrap text-body ${
+                      m.variant === "error" ? "text-on-error-container" : "text-on-surface"
                     }`}
                   >
-                    <p
-                      className={`whitespace-pre-wrap text-body ${
-                        m.variant === "error" ? "text-on-error-container" : "text-on-surface"
-                      }`}
-                    >
-                      {m.text}
-                    </p>
-                  </div>
+                    {m.text}
+                  </p>
                 </div>
-              )
+              </div>
             )
-          )}
-        </div>
-      ) : null}
+          )
+        )}
+        {busy ? (
+          <div className="flex max-w-[90%] items-start gap-3">
+            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-outline-variant bg-surface-container-highest">
+              <span className="material-symbols-outlined text-[14px] text-primary">auto_awesome</span>
+            </div>
+            <div className="rounded-lg rounded-tl-none border border-outline-variant/30 bg-surface-container-high p-3">
+              <span className="typing-indicator font-mono text-label text-on-surface-variant">Thinking...</span>
+            </div>
+          </div>
+        ) : null}
+        <div ref={messageEndRef} aria-hidden="true" />
+      </div>
 
-      <div className="shrink-0 border-t border-outline-variant bg-surface-container-low/50 p-4">
-        <div className="relative">
+      <div className="composer-bar">
+        <div className="composer-bar-row relative">
           <input
             value={prompt}
             disabled={disabled}
             onChange={(e) => onPromptChange(e.target.value)}
             placeholder="Ask assistant to modify logic..."
-            className="w-full rounded border border-outline-variant bg-surface-container-lowest py-3 pl-4 pr-24 text-body text-on-surface outline-none placeholder:text-outline focus:border-primary focus:ring-1 focus:ring-primary"
+            className="w-full rounded border border-outline-variant bg-surface-container-lowest py-3 pl-4 pr-14 text-body text-on-surface outline-none placeholder:text-outline focus:border-primary focus:ring-1 focus:ring-primary"
             onKeyDown={(e) => {
               if (e.key === "Enter") onSubmit()
             }}

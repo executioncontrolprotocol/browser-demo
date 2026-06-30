@@ -7,9 +7,9 @@ import {
 } from "../src/lib/provider-mode.js"
 
 describe("isProviderModeSelectable", () => {
-  it("allows chrome-ai and demo", () => {
+  it("allows chrome-ai only in the setup modal", () => {
     expect(isProviderModeSelectable("chrome-ai")).toBe(true)
-    expect(isProviderModeSelectable("demo")).toBe(true)
+    expect(isProviderModeSelectable("demo")).toBe(false)
   })
 
   it("disables cloud providers until coming soon is lifted", () => {
@@ -37,11 +37,13 @@ describe("readStoredProviderMode", () => {
   })
 
   it("returns selectable stored modes", () => {
-    storeProviderMode("demo")
-    expect(readStoredProviderMode()).toBe("demo")
+    storeProviderMode("chrome-ai")
+    expect(readStoredProviderMode()).toBe("chrome-ai")
   })
 
   it("returns null when stored mode is no longer selectable", () => {
+    localStorage.setItem(PROVIDER_MODE_STORAGE_KEY, "demo")
+    expect(readStoredProviderMode()).toBe(null)
     localStorage.setItem(PROVIDER_MODE_STORAGE_KEY, "openai")
     expect(readStoredProviderMode()).toBe(null)
     localStorage.setItem(PROVIDER_MODE_STORAGE_KEY, "claude")

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { ECP_INTENT_VALUES } from "@executioncontextprotocol/types"
+import { ECP_INTENT_VALUES } from "@executioncontrolprotocol/types"
 import { intentRoutesToAuthoring } from "../src/lib/chat-routing.js"
 
 describe("intentRoutesToAuthoring", () => {

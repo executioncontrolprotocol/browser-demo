@@ -1,3 +1,4 @@
+import { useRef } from "react"
 import MonacoEditor, { type EditorProps } from "@monaco-editor/react"
 import type { ComponentType } from "react"
 import { configureFluentMonaco, SOLARIS_SLATE_THEME } from "../lib/fluent-monaco-config.js"
@@ -27,36 +28,58 @@ export function MonacoCodeEditor({
   onChange,
   readOnly = false,
 }: MonacoCodeEditorProps) {
+  const resizeObserverRef = useRef<ResizeObserver | null>(null)
+
   return (
-    <Editor
-      height="100%"
-      theme={SOLARIS_SLATE_THEME}
-      defaultLanguage={language}
-      language={language}
-      path={path}
-      value={value}
-      beforeMount={configureFluentMonaco}
-      onMount={(editor, monaco) => {
-        configureFluentMonaco(monaco)
-        const model = editor.getModel()
-        if (model) {
-          monaco.editor.setModelMarkers(model, "ecp", [])
-        }
-      }}
-      onChange={onChange}
-      options={{
-        readOnly,
-        minimap: { enabled: false },
-        fontSize: 13,
-        fontFamily: "JetBrains Mono, ui-monospace, monospace",
-        renderValidationDecorations: "off",
-        quickSuggestions: false,
-        parameterHints: { enabled: false },
-        suggestOnTriggerCharacters: false,
-        wordBasedSuggestions: "off",
-        scrollBeyondLastLine: false,
-        padding: { top: 8 },
-      }}
-    />
+    <div className="h-full min-h-0 w-full">
+      <Editor
+        height="100%"
+        theme={SOLARIS_SLATE_THEME}
+        defaultLanguage={language}
+        language={language}
+        path={path}
+        value={value}
+        beforeMount={configureFluentMonaco}
+        onMount={(editor, monaco) => {
+          configureFluentMonaco(monaco)
+          const model = editor.getModel()
+          if (model) {
+            monaco.editor.setModelMarkers(model, "ecp", [])
+          }
+
+          resizeObserverRef.current?.disconnect()
+          const container = editor.getDomNode()?.parentElement
+          if (!container) {
+            editor.layout()
+            return
+          }
+
+          let frame = 0
+          const layout = () => {
+            cancelAnimationFrame(frame)
+            frame = requestAnimationFrame(() => editor.layout())
+          }
+          layout()
+          const observer = new ResizeObserver(layout)
+          observer.observe(container)
+          resizeObserverRef.current = observer
+        }}
+        onChange={onChange}
+        options={{
+          readOnly,
+          minimap: { enabled: false },
+          fontSize: 13,
+          fontFamily: "JetBrains Mono, ui-monospace, monospace",
+          renderValidationDecorations: "off",
+          quickSuggestions: false,
+          parameterHints: { enabled: false },
+          suggestOnTriggerCharacters: false,
+          wordBasedSuggestions: "off",
+          scrollBeyondLastLine: false,
+          padding: { top: 8 },
+          automaticLayout: false,
+        }}
+      />
+    </div>
   )
 }

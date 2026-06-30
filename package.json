@@ -1,5 +1,5 @@
 {
-  "name": "@executioncontextprotocol/browser-demo",
+  "name": "@executioncontrolprotocol/browser-demo",
   "version": "1.0.0",
   "private": true,
   "type": "module",
@@ -18,9 +18,9 @@
     "supabase:status": "supabase migration list"
   },
   "dependencies": {
-    "@executioncontextprotocol/browser": "^1.0.0",
-    "@executioncontextprotocol/core": "^1.0.0",
-    "@executioncontextprotocol/types": "^1.0.0",
+    "@executioncontrolprotocol/browser": "^1.0.0",
+    "@executioncontrolprotocol/core": "^1.0.0",
+    "@executioncontrolprotocol/types": "^1.0.0",
     "@monaco-editor/react": "^4.7.0",
     "@supabase/supabase-js": "^2.107.0",
     "mermaid": "^11.4.0",

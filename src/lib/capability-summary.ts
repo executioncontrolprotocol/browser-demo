@@ -1,4 +1,4 @@
-import type { EnvironmentDescriptor } from "@executioncontextprotocol/types"
+import type { EnvironmentDescriptor } from "@executioncontrolprotocol/types"
 
 /** Compact one-line capability summary for the demo UI. */
 export function formatRegisteredCapabilitiesSummary(

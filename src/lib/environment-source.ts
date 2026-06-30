@@ -1,4 +1,4 @@
-import type { EnvironmentDescriptor } from "@executioncontextprotocol/types"
+import type { EnvironmentDescriptor } from "@executioncontrolprotocol/types"
 
 /** Virtual URI for environment Fluent source in Monaco. */
 export const ENVIRONMENT_EDITOR_PATH = "file:///ecp-workflow/environment.ts"
@@ -6,11 +6,11 @@ export const ENVIRONMENT_EDITOR_PATH = "file:///ecp-workflow/environment.ts"
 /** Synthesize browser environment Fluent source from a describe() descriptor. */
 export function environmentSourceFromDescriptor(descriptor: EnvironmentDescriptor | null): string {
   if (!descriptor) {
-    return `import { environment, extension } from "@executioncontextprotocol/browser"
+    return `import { environment, extension } from "@executioncontrolprotocol/browser"
 
 // Environment not loaded yet.
 export default await environment("browser-demo-app").withExtensions([
-  extension("@executioncontextprotocol/test").with({}),
+  extension("@executioncontrolprotocol/test").with({}),
 ])
 `
   }
@@ -24,7 +24,7 @@ export default await environment("browser-demo-app").withExtensions([
       ? sorted.map((ext) => `  extension("${ext.id}").with({}),`).join("\n")
       : "  // No extensions bound."
 
-  return `import { environment, extension } from "@executioncontextprotocol/browser"
+  return `import { environment, extension } from "@executioncontrolprotocol/browser"
 
 // View only — environment rebind is not yet supported in the browser demo.
 export default await environment("${id}"${labelArg}).withExtensions([
