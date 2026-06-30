@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react"
+import type { WorkflowQuickStart } from "../lib/workflow-quick-starts.js"
 import type { ChatMessage } from "../types/workspace.js"
 import { PanelHeader } from "./PanelHeader.js"
 
@@ -14,6 +15,10 @@ export interface ChatPanelProps {
   disabled?: boolean
   /** When true, show typing indicator in the message area. */
   busy?: boolean
+  /** When true, render workflow quick-start bubbles below messages. */
+  showQuickStarts?: boolean
+  quickStarts?: WorkflowQuickStart[]
+  onQuickStartClick?: (prompt: string) => void
 }
 
 /** Full-height chat column (Logic Assistant). */
@@ -27,6 +32,9 @@ export function ChatPanel({
   onSubmit,
   disabled,
   busy = false,
+  showQuickStarts = false,
+  quickStarts = [],
+  onQuickStartClick,
 }: ChatPanelProps) {
   const messageEndRef = useRef<HTMLDivElement>(null)
 
@@ -49,39 +57,71 @@ export function ChatPanel({
         {messages.length === 0 && !busy ? (
           <p className="text-body text-on-surface-variant">Describe a workflow or change to get started.</p>
         ) : (
-          messages.map((m) =>
-            m.role === "user" ? (
-              <div key={m.id} className="ml-auto flex max-w-[90%] flex-row-reverse items-start gap-3">
-                <div className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full border border-outline-variant">
-                  <span className="material-symbols-outlined text-[14px] text-on-surface-variant">person</span>
+          messages.map((m, index) => {
+            const attachQuickStarts =
+              showQuickStarts &&
+              !busy &&
+              quickStarts.length > 0 &&
+              index === 0 &&
+              m.role === "agent"
+
+            if (m.role === "user") {
+              return (
+                <div key={m.id} className="ml-auto flex max-w-[90%] flex-row-reverse items-start gap-3">
+                  <div className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full border border-outline-variant">
+                    <span className="material-symbols-outlined text-[14px] text-on-surface-variant">person</span>
+                  </div>
+                  <div className="rounded-lg rounded-tr-none border border-primary/20 bg-primary/10 p-3">
+                    <p className="text-body text-on-surface">{m.text}</p>
+                  </div>
                 </div>
-                <div className="rounded-lg rounded-tr-none border border-primary/20 bg-primary/10 p-3">
-                  <p className="text-body text-on-surface">{m.text}</p>
-                </div>
-              </div>
-            ) : (
+              )
+            }
+
+            return (
               <div key={m.id} className="flex max-w-[90%] items-start gap-3">
                 <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-outline-variant bg-surface-container-highest">
                   <span className="material-symbols-outlined text-[14px] text-primary">auto_awesome</span>
                 </div>
-                <div
-                  className={`rounded-lg rounded-tl-none border p-3 ${
-                    m.variant === "error"
-                      ? "border-error/40 bg-error-container/30"
-                      : "border-outline-variant/30 bg-surface-container-high"
-                  }`}
-                >
-                  <p
-                    className={`whitespace-pre-wrap text-body ${
-                      m.variant === "error" ? "text-on-error-container" : "text-on-surface"
+                <div className="flex min-w-0 flex-col gap-2">
+                  <div
+                    className={`rounded-lg rounded-tl-none border p-3 ${
+                      m.variant === "error"
+                        ? "border-error/40 bg-error-container/30"
+                        : "border-outline-variant/30 bg-surface-container-high"
                     }`}
                   >
-                    {m.text}
-                  </p>
+                    <p
+                      className={`whitespace-pre-wrap text-body ${
+                        m.variant === "error" ? "text-on-error-container" : "text-on-surface"
+                      }`}
+                    >
+                      {m.text}
+                    </p>
+                  </div>
+                  {attachQuickStarts ? (
+                    <div className="flex min-w-0 flex-col gap-1.5">
+                      <p className="text-label text-on-surface-variant">Quickstart:</p>
+                      <div className="flex min-w-0 flex-wrap gap-2">
+                        {quickStarts.map((item) => (
+                          <button
+                            key={item.label}
+                            type="button"
+                            disabled={disabled || busy}
+                            onClick={() => onQuickStartClick?.(item.prompt)}
+                            aria-label={item.prompt}
+                            className="quick-start-bubble shrink-0 rounded-lg rounded-tl-none border border-outline-variant/30 bg-surface-container-high px-2.5 py-2 text-label text-on-surface transition-colors hover:border-primary/40 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {item.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               </div>
             )
-          )
+          })
         )}
         {busy ? (
           <div className="flex max-w-[90%] items-start gap-3">

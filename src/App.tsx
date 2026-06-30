@@ -48,6 +48,10 @@ import {
   type ChromeInstallUi,
   type ProviderMode,
 } from "./lib/provider-mode.js"
+import {
+  WORKFLOW_QUICK_STARTS,
+  shouldShowWorkflowQuickStarts,
+} from "./lib/workflow-quick-starts.js"
 import type { CodeEditorTab, FormatTab } from "./types/workspace.js"
 
 const EMPTY_MERMAID = "flowchart TD\n  empty[No workflow]"
@@ -278,20 +282,19 @@ export function App() {
     }
   }
 
-  const onSubmit = async () => {
-    if (!ecp || !prompt.trim()) return
-    const userRequest = prompt.trim()
-    appendUser(userRequest)
-    void logUserPrompt(userRequest, {
+  const submitMessage = async (userRequest: string) => {
+    const text = userRequest.trim()
+    if (!ecp || !text) return
+    appendUser(text)
+    void logUserPrompt(text, {
       assistantMode,
       providerMode,
     })
-    setPrompt("")
     setChatBusy(true)
 
     try {
       const cap = providerCapabilityId(providerMode)
-      await runChat(userRequest, cap)
+      await runChat(text, cap)
       if (assistantMode === "guided") {
         setAssistantMode("authoring")
       }
@@ -303,6 +306,11 @@ export function App() {
     } finally {
       setChatBusy(false)
     }
+  }
+
+  const onSubmit = () => {
+    void submitMessage(prompt)
+    setPrompt("")
   }
 
   const onFluentChange = (value: string | undefined) => {
@@ -370,9 +378,12 @@ export function App() {
             messages={chatMessages}
             prompt={prompt}
             onPromptChange={setPrompt}
-            onSubmit={() => void onSubmit()}
+            onSubmit={onSubmit}
             disabled={!ecp || chatBlocked}
             busy={chatBusy}
+            showQuickStarts={shouldShowWorkflowQuickStarts(chatMessages)}
+            quickStarts={WORKFLOW_QUICK_STARTS}
+            onQuickStartClick={(text) => void submitMessage(text)}
           />
         ) : null}
 
