@@ -14,6 +14,7 @@ export interface ProviderApiKeyFieldsProps {
 export function ProviderApiKeyFields({ onRequestVaultSetup }: ProviderApiKeyFieldsProps) {
   const [openaiKey, setOpenaiKey] = useState("")
   const [claudeKey, setClaudeKey] = useState("")
+  const [falKey, setFalKey] = useState("")
   const [status, setStatus] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -33,8 +34,12 @@ export function ProviderApiKeyFields({ onRequestVaultSetup }: ProviderApiKeyFiel
       if (claudeKey.trim()) {
         await setBrowserSecret("ANTHROPIC_API_KEY", claudeKey.trim())
       }
+      if (falKey.trim()) {
+        await setBrowserSecret("FAL_KEY", falKey.trim())
+      }
       setOpenaiKey("")
       setClaudeKey("")
+      setFalKey("")
       setStatus("API keys saved to encrypted vault.")
     } catch (err) {
       setStatus(err instanceof Error ? err.message : String(err))
@@ -48,7 +53,7 @@ export function ProviderApiKeyFields({ onRequestVaultSetup }: ProviderApiKeyFiel
       <p className="font-mono text-label font-bold text-on-surface">Encrypted API keys</p>
       {!hasBrowserVault() ? (
         <p className="text-body text-on-surface-variant">
-          Create a vault to store OpenAI and Claude keys locally (encrypted).
+          Create a vault to store OpenAI, Claude, and FAL keys locally (encrypted).
         </p>
       ) : !isBrowserVaultUnlocked() ? (
         <p className="text-body text-on-surface-variant">Unlock the vault to store or update keys.</p>
@@ -72,6 +77,17 @@ export function ProviderApiKeyFields({ onRequestVaultSetup }: ProviderApiKeyFiel
               value={claudeKey}
               onChange={(e) => setClaudeKey(e.target.value)}
               placeholder="sk-ant-..."
+              className="rounded border border-outline-variant bg-surface px-3 py-2 font-mono text-body"
+              autoComplete="off"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-body">
+            <span>FAL API key</span>
+            <input
+              type="password"
+              value={falKey}
+              onChange={(e) => setFalKey(e.target.value)}
+              placeholder="fal-..."
               className="rounded border border-outline-variant bg-surface px-3 py-2 font-mono text-body"
               autoComplete="off"
             />

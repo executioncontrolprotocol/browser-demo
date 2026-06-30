@@ -374,8 +374,8 @@ This solves the model-call split:
 
 | Use case                | Access pattern                                                  |
 | ----------------------- | --------------------------------------------------------------- |
-| Workflow step execution | `step("@executioncontrolprotocol/chrome-ai.generateText").with(...)`                 |
-| Browser app authoring   | `ecp.invoke("@executioncontrolprotocol/chrome-ai.generateText").with(...).process()` |
+| Workflow step execution | `step("@executioncontrolprotocol/chrome-ai.generate").with(...)`                 |
+| Browser app authoring   | `ecp.invoke("@executioncontrolprotocol/chrome-ai.generate").with(...).process()` |
 
 The browser app owns the orchestration. ECP owns capability registration and execution.
 
@@ -387,7 +387,7 @@ The browser app owns the orchestration. ECP owns capability registration and exe
 
 ```ts
 const response = await ecp
-  .invoke("@executioncontrolprotocol/chrome-ai.generateText")
+  .invoke("@executioncontrolprotocol/chrome-ai.generate")
   .with({
     prompt,
     system: "Return only ECP TOON patch.",
@@ -470,7 +470,7 @@ Implement minimal model providers:
 Each should expose at least:
 
 ```txt
-.generateText
+.generate
 ```
 
 ### Chrome AI extension
@@ -479,19 +479,19 @@ Capabilities:
 
 ```txt
 @executioncontrolprotocol/chrome-ai.checkAvailability
-@executioncontrolprotocol/chrome-ai.generateText
+@executioncontrolprotocol/chrome-ai.generate
 ```
 
 ### OpenAI extension
 
 ```txt
-@executioncontrolprotocol/openai.generateText
+@executioncontrolprotocol/openai.generate
 ```
 
 ### Claude extension
 
 ```txt
-@executioncontrolprotocol/claude.generateText
+@executioncontrolprotocol/claude.generate
 ```
 
 ### Acceptance criteria
@@ -783,7 +783,7 @@ ecp.encode(descriptor).uses("@executioncontrolprotocol/format-toon")
 ↓
 ecp.encode(manifest).uses("@executioncontrolprotocol/format-toon")
 ↓
-ecp.invoke(selectedModel.generateText)
+ecp.invoke(selectedModel.generate)
 ↓
 ecp.decode(model.result.text).uses("@executioncontrolprotocol/format-toon").to("@executioncontrolprotocol.patch")
 ↓
@@ -964,7 +964,7 @@ no localStorage
 
 ```txt
 @executioncontrolprotocol/chrome-ai.checkAvailability
-@executioncontrolprotocol/chrome-ai.generateText
+@executioncontrolprotocol/chrome-ai.generate
 ```
 
 ### Acceptance criteria
@@ -972,8 +972,8 @@ no localStorage
 * Availability check works.
 * Unsupported browsers/devices return clear status.
 * Supported Chrome can prepare/use local model.
-* `generateText` can be used through `ecp.invoke(...)`.
-* `generateText` can be used as a workflow step.
+* `generate` can be used through `ecp.invoke(...)`.
+* `generate` can be used as a workflow step.
 
 ---
 
@@ -982,8 +982,8 @@ no localStorage
 ### Capabilities
 
 ```txt
-@executioncontrolprotocol/openai.generateText
-@executioncontrolprotocol/claude.generateText
+@executioncontrolprotocol/openai.generate
+@executioncontrolprotocol/claude.generate
 ```
 
 ### Acceptance criteria
@@ -996,15 +996,14 @@ no localStorage
 
 ---
 
-## Phase 4.7: Test extension for workflow steps
+## Phase 4.7: Workflow step capabilities (demo)
 
-Use `@executioncontrolprotocol/test` (`echo`, `summarize`, `validate`, etc.) for eval fixtures and local workflow examples. The browser demo defaults to **Chrome AI** (`@executioncontrolprotocol/chrome-ai.generate`) for harness chat and authoring — no offline fake model provider.
+The browser demo uses real bound capabilities (for example `@executioncontrolprotocol/chrome-ai.generate`) for workflow steps. `@executioncontrolprotocol/test` remains available in the **monorepo** for unit tests and eval fixtures only — it is not bound in the demo app environment.
 
 ### Acceptance criteria
 
-* Demo mode can generate deterministic outputs.
-* Demo workflows can validate and render.
-* Demo mode works without API keys or Chrome AI.
+* Demo workflows can validate and render with bound provider capabilities.
+* Demo authoring uses Chrome AI by default (`@executioncontrolprotocol/chrome-ai.generate`).
 
 ---
 
@@ -1028,7 +1027,7 @@ full round-trip tests
 ecp.invoke
 model provider capability reuse
 policy-aware direct invocation
-Chrome/OpenAI/Claude minimal generateText
+Chrome/OpenAI/Claude minimal generate
 ```
 
 ## Milestone 3: Browser app
@@ -1060,7 +1059,7 @@ This gives us a clean path: validate the substrate, add direct capability invoca
 
 ## Encrypted secrets vault (browser-secrets)
 
-Cloud provider API keys (OpenAI, Claude) use the `@executioncontrolprotocol/browser-secrets` extension and the fluent helper `browser("KEY")`, which resolves from a passphrase-protected AES-GCM vault in `localStorage`.
+Cloud provider API keys (OpenAI, Claude, FAL) use the `@executioncontrolprotocol/browser-secrets` extension and the fluent helper `browser("KEY")`, which resolves from a passphrase-protected AES-GCM vault in `localStorage`.
 
 ### Demo UX
 
@@ -1068,6 +1067,6 @@ Cloud provider API keys (OpenAI, Claude) use the `@executioncontrolprotocol/brow
 | ------ | ---- | ------ |
 | **Vault unlock** | Returning visit, vault exists, locked | Enter passphrase or choose "Explore without cloud keys" |
 | **Vault setup** | Settings → encrypted API keys, no vault yet | Set + confirm passphrase |
-| **Provider settings** | Settings modal, vault unlocked | Paste API keys → stored as `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` |
+| **Provider settings** | Settings modal, vault unlocked | Paste API keys → stored as `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / `FAL_KEY` |
 
 Provider mode (`ecp:browser-demo:provider-mode`) is still plain `localStorage`; only API keys are encrypted. Unlock the vault before cloud providers can resolve `browser(...)` bindings in the environment.
