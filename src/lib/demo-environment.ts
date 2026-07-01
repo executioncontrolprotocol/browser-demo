@@ -1,3 +1,4 @@
+import { warmBrowserWorkflowCompile } from "@executioncontrolprotocol/core/browser"
 import { createBrowserDemoEnvironment, createEcp, registerBrowserDefaults } from "@executioncontrolprotocol/browser"
 import type { Ecp } from "@executioncontrolprotocol/core"
 import type { EnvironmentDescriptor } from "@executioncontrolprotocol/types"
@@ -10,6 +11,7 @@ export async function createDemoAppEnvironment(): Promise<{
   await registerBrowserDefaults()
   const env = createBrowserDemoEnvironment("browser-demo-app")
   const ecp = await createEcp(env, { exposeGlobal: true })
+  await warmBrowserWorkflowCompile()
   const descriptor = await ecp.describe()
   return { ecp, descriptor }
 }

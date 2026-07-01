@@ -30,6 +30,7 @@ import { WorkspaceColumn } from "./components/WorkspaceColumn.js"
 import { useChatHistory } from "./hooks/useChatHistory.js"
 import { useChromeModelInstall } from "./hooks/useChromeModelInstall.js"
 import { useViewLayout } from "./hooks/useViewLayout.js"
+import { installEsbuildWasmUrl } from "./lib/esbuild-wasm-bootstrap.js"
 import { createDemoAppEnvironment } from "./lib/demo-environment.js"
 import { shouldBlockForVault } from "./lib/vault-gate.js"
 import {
@@ -39,6 +40,18 @@ import {
 } from "./lib/harness-invoke-debug.js"
 import { environmentSourceFromDescriptor } from "./lib/environment-source.js"
 import { logUserPrompt } from "./lib/log-user-prompt.js"
+import {
+  logFluentChangeReceived,
+  logFluentCompileResult,
+  logFluentCompileScheduled,
+  logFluentCompileSkipped,
+  logFluentCompileStale,
+  logFluentCompileStart,
+  logFluentPipelineError,
+  logFluentSyncComplete,
+  logFluentSyncSkipped,
+  logFluentSyncStart,
+} from "./lib/fluent-edit-debug.js"
 import { columnWidthClass } from "./lib/view-layout.js"
 import {
   providerCapabilityId,
@@ -81,6 +94,7 @@ export function App() {
   const [editorTab, setEditorTab] = useState<CodeEditorTab>("workflow")
   const [formatTab, setFormatTab] = useState<FormatTab>("fluent")
   const [fluent, setFluent] = useState("// Fluent API will appear here")
+  const [fluentEditorKey, setFluentEditorKey] = useState(0)
   const [json, setJson] = useState("{}")
   const [toon, setToon] = useState("")
   const [, setPatch] = useState("")
@@ -93,6 +107,13 @@ export function App() {
   const [chatBusy, setChatBusy] = useState(false)
   const [conversationSummary, setConversationSummary] = useState<string | undefined>()
   const compileTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const compileGeneration = useRef(0)
+  const syncFromManifestRef = useRef<
+    (
+      nextManifest: WorkflowManifest,
+      options: { refreshFluent: boolean; patchToon?: string; validation?: ValidationResult | null }
+    ) => Promise<void>
+  >(async () => {})
   const ecpRef = useRef<Ecp | null>(null)
   const ecpBootstrapped = useRef(false)
 
@@ -175,6 +196,7 @@ export function App() {
   }, [setChatStatus, startInstall])
 
   useEffect(() => {
+    installEsbuildWasmUrl()
     installBrowserWorkflowShim()
     if (shouldBlockForVault()) {
       setVaultGate("locked")
@@ -183,22 +205,48 @@ export function App() {
     void bootstrapAfterVault()
   }, [bootstrapAfterVault])
 
-  const applyPanels = useCallback(
-    async (nextManifest: WorkflowManifest, patchToon = "") => {
-      if (!ecp) return
-      const service = new BrowserAuthoringService(ecp as BrowserOperationalEcp)
-      const panels = await service.encodePanels(nextManifest, patchToon)
+  const syncFromManifest = useCallback(
+    async (
+      nextManifest: WorkflowManifest,
+      options: { refreshFluent: boolean; patchToon?: string; validation?: ValidationResult | null }
+    ) => {
+      const operational = ecpRef.current
+      if (!operational) {
+        logFluentSyncSkipped("ecpRef.current is null")
+        return
+      }
+
+      logFluentSyncStart(
+        options.refreshFluent ? "assistant" : "user-compile",
+        options.refreshFluent,
+        nextManifest.workflow.label ?? nextManifest.workflow.id
+      )
+
       setManifest(nextManifest)
-      setFluent(panels.fluent)
+
+      const service = new BrowserAuthoringService(operational as BrowserOperationalEcp)
+      const panels = await service.encodePanels(nextManifest, options.patchToon ?? "")
+      if (options.refreshFluent) {
+        setFluent(panels.fluent)
+        setFluentEditorKey((key) => key + 1)
+      }
       setJson(panels.json)
       setToon(panels.toon)
       setMermaid(panels.mermaid || EMPTY_MERMAID)
       setPatch(panels.patch)
-      const val = await ecp.validate(nextManifest)
+      const val = options.validation ?? (await operational.validate(nextManifest))
       setValidation(val)
+      logFluentSyncComplete({
+        jsonLength: panels.json.length,
+        toonLength: panels.toon.length,
+        mermaidLength: (panels.mermaid || EMPTY_MERMAID).length,
+        validationValid: val.valid,
+      })
     },
-    [ecp]
+    []
   )
+
+  syncFromManifestRef.current = syncFromManifest
 
   const onProviderComplete = (mode: ProviderMode) => {
     storeProviderMode(mode)
@@ -248,22 +296,16 @@ export function App() {
 
     const nextWorkflow = chatResultWorkflow(harnessResult)
     if (nextWorkflow) {
-      const service = new BrowserAuthoringService(ecp as BrowserOperationalEcp)
-      const panels = await service.encodePanels(nextWorkflow, harnessResult.raw)
       const hadWorkflow = manifest !== null
-      setManifest(nextWorkflow)
-      setFluent(panels.fluent)
-      setJson(panels.json)
-      setToon(panels.toon)
-      setMermaid(panels.mermaid || EMPTY_MERMAID)
-      setPatch(panels.patch)
-      setValidation(
-        (harnessResult.validation as typeof validation) ??
-          (await ecp.validate(nextWorkflow))
-      )
+      const harnessValidation = harnessResult.validation as ValidationResult | undefined
+      await syncFromManifest(nextWorkflow, {
+        refreshFluent: true,
+        patchToon: harnessResult.raw,
+        ...(harnessValidation ? { validation: harnessValidation } : {}),
+      })
       if (!hadWorkflow) layout.onFirstWorkflow()
       else layout.openWorkspace()
-      const val = harnessResult.validation as { valid?: boolean } | undefined
+      const val = harnessValidation as { valid?: boolean } | undefined
       const msg =
         val?.valid === false
           ? "Workflow updated but has validation issues. See console for raw model output."
@@ -313,27 +355,79 @@ export function App() {
     setPrompt("")
   }
 
-  const onFluentChange = (value: string | undefined) => {
-    const source = value ?? ""
-    setFluent(source)
-    if (compileTimer.current) clearTimeout(compileTimer.current)
-    compileTimer.current = setTimeout(() => {
-      void (async () => {
-        const compiled = await compileWorkflowSource({
-          source,
-          filename: "workflow.ts",
-          resolveImports: "browser-global",
+  const onFluentChange = useCallback(
+    (value: string | undefined) => {
+      if (value === undefined) {
+        logFluentCompileSkipped("onChange value is undefined")
+        return
+      }
+      const trimmed = value.trim()
+      if (!trimmed || trimmed.startsWith("// Fluent API will appear here")) {
+        logFluentCompileSkipped("placeholder or empty source", {
+          sourceLength: value.length,
         })
-        if (!compiled.ok || !compiled.manifest || !ecp) {
-          setCompileError(compiled.compileErrors?.map((e) => e.message).join("; ") ?? "Compile failed")
-          return
-        }
-        setCompileError(null)
-        await applyPanels(compiled.manifest)
-        layout.openWorkspace()
-      })()
-    }, 400)
-  }
+        return
+      }
+
+      // Persist draft for remount (Monaco is uncontrolled; defaultValue is read only on mount).
+      setFluent(value)
+
+      if (compileTimer.current) clearTimeout(compileTimer.current)
+      const generation = ++compileGeneration.current
+      logFluentChangeReceived(value.length, generation)
+      logFluentCompileScheduled(generation, 400)
+      compileTimer.current = setTimeout(() => {
+        void (async () => {
+          try {
+            logFluentCompileStart(generation, value.length)
+            const compiled = await compileWorkflowSource({
+              source: value,
+              filename: "workflow.ts",
+              resolveImports: "browser-global",
+            })
+            if (generation !== compileGeneration.current) {
+              logFluentCompileStale(generation, compileGeneration.current)
+              return
+            }
+            logFluentCompileResult(generation, {
+              ok: compiled.ok,
+              hasManifest: Boolean(compiled.manifest),
+              workflowLabel: compiled.manifest?.workflow.label ?? compiled.manifest?.workflow.id,
+              stepCount: compiled.manifest?.steps.length,
+              compileErrors: compiled.compileErrors?.map((e) => e.message),
+              validationErrors: compiled.validation?.errors?.map((e) => e.message),
+            })
+            if (!compiled.manifest || !ecpRef.current) {
+              const validationMsg = compiled.validation?.errors?.[0]?.message
+              logFluentSyncSkipped(
+                !ecpRef.current ? "ecpRef.current is null after compile" : "no manifest from compile"
+              )
+              setCompileError(
+                compiled.compileErrors?.map((e) => e.message).join("; ") ??
+                  validationMsg ??
+                  "Compile failed"
+              )
+              return
+            }
+            setCompileError(null)
+            await syncFromManifestRef.current(compiled.manifest, {
+              refreshFluent: false,
+              ...(compiled.validation ? { validation: compiled.validation } : {}),
+            })
+            layout.openWorkspace()
+          } catch (err) {
+            if (generation !== compileGeneration.current) {
+              logFluentCompileStale(generation, compileGeneration.current)
+              return
+            }
+            logFluentPipelineError("compile/sync", err)
+            setCompileError(err instanceof Error ? err.message : String(err))
+          }
+        })()
+      }, 400)
+    },
+    [layout]
+  )
 
   const onRun = async () => {
     if (!ecp || !manifest) return
@@ -407,6 +501,7 @@ export function App() {
                 formatTab={formatTab}
                 onFormatTabChange={setFormatTab}
                 fluent={fluent}
+                fluentEditorKey={fluentEditorKey}
                 json={json}
                 toon={toon}
                 mermaid={mermaid}
