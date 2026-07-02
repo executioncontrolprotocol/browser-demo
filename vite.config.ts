@@ -28,14 +28,15 @@ export default defineConfig({
   resolve: {
     alias: {
       esbuild: "esbuild-wasm",
+      "node:fs/promises": aliasPath(stubDir, "node-fs-promises-stub.ts"),
       "node:fs": aliasPath(stubDir, "node-fs-stub.ts"),
-      "node:fs/promises": aliasPath(stubDir, "node-fs-stub.ts"),
       "node:path": aliasPath(stubDir, "node-path-stub.ts"),
       "node:url": aliasPath(stubDir, "node-url-stub.ts"),
       "node:os": aliasPath(stubDir, "node-empty.ts"),
       "node:http": aliasPath(stubDir, "node-empty.ts"),
       "node:child_process": aliasPath(stubDir, "node-empty.ts"),
       "node:util": aliasPath(stubDir, "node-empty.ts"),
+      sharp: aliasPath(stubDir, "sharp-stub.ts"),
     },
   },
   optimizeDeps: {

@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from "react"
+import { useEffect, useId, useRef, useState } from "react"
 import { renderMermaidDiagram } from "../lib/mermaid-render.js"
 
 /** Props for {@link MermaidDiagramViewer}. */
@@ -15,6 +15,7 @@ export function MermaidDiagramViewer({
   emptyMessage = "Generate a workflow to see the graph.",
 }: MermaidDiagramViewerProps) {
   const baseId = useId().replace(/:/g, "")
+  const renderSeq = useRef(0)
   const [svg, setSvg] = useState<string>("")
   const [error, setError] = useState<string | null>(null)
 
@@ -24,10 +25,11 @@ export function MermaidDiagramViewer({
       setError(null)
       return
     }
+    const renderId = `mmd-${baseId}-${++renderSeq.current}`
     let cancelled = false
     void (async () => {
       try {
-        const html = await renderMermaidDiagram(source, `mmd-${baseId}`)
+        const html = await renderMermaidDiagram(source, renderId)
         if (!cancelled) {
           setSvg(html)
           setError(null)

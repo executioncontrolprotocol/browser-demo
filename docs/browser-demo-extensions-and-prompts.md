@@ -13,7 +13,7 @@ The demo app is not “a model with a UI.” It is an **ECP environment** (`brow
 1. Calls **`ecp.describe()`** to learn bound extensions and capabilities.
 2. Routes chat through either **guided help** or **workflow authoring** (model-generated TOON).
 3. Uses the **canonical workflow manifest** (JSON-shaped `@executioncontrolprotocol.workflow`) as the hub for Fluent, TOON, and Mermaid panels.
-4. Runs workflows via **`ecp.run(manifest)`**, which invokes step capabilities (e.g. `@executioncontrolprotocol/test.echo`).
+4. Runs workflows via **`ecp.run(manifest)`**, which invokes step capabilities (e.g. `@executioncontrolprotocol/chrome-ai.generate`).
 
 ```mermaid
 flowchart TB
@@ -39,7 +39,7 @@ flowchart TB
   Authoring --> Invoke
   Invoke --> Decode --> Validate --> Panels
   Panels --> Run
-  Run --> Echo["@executioncontrolprotocol/test.echo"]
+  Run --> Gen["@executioncontrolprotocol/chrome-ai.generate"]
 ```
 
 **Key separation:**
@@ -47,7 +47,7 @@ flowchart TB
 | Concern | Mechanism | Output |
 | -------- | ----------- | -------- |
 | “Explain ECP / UI” | `@executioncontrolprotocol/browser.guideChat` or Nano with future general prompt | Prose in chat |
-| “Create / change workflow” | `BrowserAuthoringService` → `*.generateText` | TOON → manifest → panels |
+| “Create / change workflow” | `BrowserAuthoringService` → `*.generate` | TOON → manifest → panels |
 | “Run workflow” | `ecp.run` | Step capability results (JSON in Run panel) |
 | “Show graph / code” | `encodePanels` from manifest | Independent encoders (no TOON→Mermaid pipeline) |
 
@@ -71,29 +71,27 @@ All of the following are registered on the global extension catalog when the bro
 | `@executioncontrolprotocol/chrome-ai` | `packages/extensions/chrome-ai` | Chrome **`LanguageModel`** provider (default) |
 | `@executioncontrolprotocol/openai` | `packages/extensions/openai` | OpenAI Chat Completions |
 | `@executioncontrolprotocol/claude` | `packages/extensions/claude` | Anthropic Messages API |
+| `@executioncontrolprotocol/fal` | `packages/extensions/fal` | FAL image/model inference (`generate`) |
+| `@executioncontrolprotocol/image-sharp` | `packages/extensions/image-sharp` | Image inspect/transform capabilities (describe + authoring; native `sharp` runs on Node only) |
 | `@executioncontrolprotocol/policies` (standard) | `packages/policies` | Including `@executioncontrolprotocol/registry-control` |
 
 Source: [`packages/runtimes/browser/src/environment.ts`](https://github.com/GuillaumeCleme/executioncontrolprotocol/blob/main/packages/runtimes/browser/src/environment.ts).
 
 ### 2.2 Demo app environment manifest
 
-`createDemoAppEnvironment()` builds:
-
-- Base: `createBrowserDemoEnvironment("browser-demo-app")` (extensions above).
-- **Extra bind:** `extension("@executioncontrolprotocol/test").with({})` so `@executioncontrolprotocol/test.echo` appears in `describe()` and validates for workflow steps.
-- **`registerTestExtension()`** registers `@executioncontrolprotocol/test` on the registry (not in the default browser env list, but allowed by policy and bound at app init).
+`createDemoAppEnvironment()` builds on `createBrowserDemoEnvironment("browser-demo-app")` with Chrome AI, format extensions, and model providers bound for authoring and workflow steps. The demo does **not** bind `@executioncontrolprotocol/test` (that extension is for monorepo unit tests and eval fixtures only).
 
 Source: [`src/lib/demo-environment.ts`](../src/lib/demo-environment.ts).
 
 ### 2.3 Policy
 
-`@executioncontrolprotocol/registry-control` allows namespaces: `@executioncontrolprotocol/chrome-ai`, `@executioncontrolprotocol/openai`, `@executioncontrolprotocol/claude`, `@executioncontrolprotocol/browser`, `@customer/*`, `@executioncontrolprotocol/test`.
+`@executioncontrolprotocol/registry-control` allows namespaces: `@executioncontrolprotocol/chrome-ai`, `@executioncontrolprotocol/openai`, `@executioncontrolprotocol/claude`, `@executioncontrolprotocol/fal`, `@executioncontrolprotocol/image-sharp`, `@executioncontrolprotocol/browser`, `@customer/*`.
 
 ---
 
 ## 3. Capabilities reference (browser demo)
 
-### 3.1 Model providers (`generateText`)
+### 3.1 Model providers (`generate`)
 
 Used **only** through harness invoke for chat and authoring. Shared input shape from authoring:
 
@@ -150,9 +148,20 @@ Implementation: [`packages/extensions/chrome-ai/src/model-install.ts`](../packag
 
 | Capability | Input | Output |
 | ---------- | ----- | ------ |
-| `@executioncontrolprotocol/test.echo` | `{ value?: unknown }` | `{ echo: unknown }` |
+| `@executioncontrolprotocol/chrome-ai.generate` | `{ prompt: string, system?: string, ... }` | `{ text: string }` |
 
-Registered via `@executioncontrolprotocol/core` testing extension; bound in demo app environment. Demo-generated workflows reference `@executioncontrolprotocol/test.echo` on the echo step.
+Demo-generated workflows may reference `@executioncontrolprotocol/chrome-ai.generate` for on-device summarization and similar steps when Chrome AI is available.
+
+### 3.6 Image workflows (FAL + image-sharp)
+
+| Extension | Capability examples | Config | Browser run |
+| --------- | ------------------- | ------ | ----------- |
+| `@executioncontrolprotocol/fal` | `@executioncontrolprotocol/fal.generate` | `apiKey` via `browser("FAL_KEY")` in vault; step `input` requires FAL endpoint payload (`endpoint?`, `input`, `mode?`) | **Yes** — calls FAL from the browser |
+| `@executioncontrolprotocol/image-sharp` | `inspect`, `metadata`, `transform`, `resize`, `crop`, `convert`, `composite`, … | Extension binding `{}`; steps pass `image` (buffer/base64/path per schema) | **Describe/author only** — native `sharp` is not available in the browser bundle; execution fails at runtime until a Node host runs the same manifest |
+
+Store `FAL_KEY` in the encrypted vault (Settings → encrypted API keys) alongside OpenAI and Claude keys. Harness authoring summaries include required vs optional fields from each capability schema so models can propose valid `WITH` blocks.
+
+Reference workflow: [`examples/03-fal-chain/workflow.ts`](https://github.com/GuillaumeCleme/executioncontrolprotocol/blob/main/examples/03-fal-chain/workflow.ts) in the protocol repo.
 
 ---
 
@@ -161,7 +170,7 @@ Registered via `@executioncontrolprotocol/core` testing extension; bound in demo
 All workflow creation and patching goes through [`BrowserAuthoringService`](../packages/runtimes/browser/src/authoring/browser-authoring-service.ts). The service **always**:
 
 1. Calls `ecp.describe()` and encodes the descriptor to compact TOON.
-2. Invokes the selected `*.generateText` with a constructed **prompt** and **system** string.
+2. Invokes the selected `*.generate` with a constructed **prompt** and **system** string.
 3. Decodes returned text as TOON → `@executioncontrolprotocol.workflow` or `@executioncontrolprotocol.patch`.
 4. Validates and encodes panels.
 
@@ -319,7 +328,7 @@ Fluent edits compile in the browser (`compileWorkflowSource`) and re-enter the s
 | Goal | Use | Avoid |
 | ---- | --- | ----- |
 | Teach UI / ECP concepts offline | `guideChat` or future Nano general prompt | `BrowserAuthoringService` |
-| Generate/edit workflow | `BrowserAuthoringService` + chosen `*.generateText` | Raw `invoke(generateText)` without TOON decode/validate |
+| Generate/edit workflow | `BrowserAuthoringService` + chosen `*.generate` | Raw `invoke(generate)` without TOON decode/validate |
 | Reliable CI / no keys | `demo` provider | chrome-ai / openai / claude |
 | On-device privacy | `chrome-ai` after install | Sending descriptor TOON to cloud |
 | Best TOON adherence | Claude or Chrome (system honored) | OpenAI until `system` forwarded |
@@ -346,7 +355,7 @@ Fluent edits compile in the browser (`compileWorkflowSource`) and re-enter the s
 1. **Introduce `Intent` enum** — `faq` \| `workflow-create` \| `workflow-patch` \| `general` (and maybe `run`).
 2. **Classifier** — Keywords first; optional Nano call with tiny JSON-only system prompt when keywords ambiguous.
 3. **Split prompts** — `AuthoringPrompts` module: TOON system/user templates only for workflow intents; `ChatPrompts` for Nano/Claude general Q&A with short ECP context (no full descriptor unless user asks environment questions).
-4. **Align OpenAI** — Add `system?: string` to `@executioncontrolprotocol/openai.generateText` and pass it through to Chat Completions API.
+4. **Align OpenAI** — Add `system?: string` to `@executioncontrolprotocol/openai.generate` and pass it through to Chat Completions API.
 5. **Chrome general chat** — After install, route `faq`/`general` to Nano with non-TOON system message; keep authoring on strict TOON system.
 6. **Telemetry** — Log intent, provider, and decode/validation success to compare Nano vs cloud on workflow tasks.
 7. **Tests** — Golden files for prompt assembly; table-driven intent routing cases.
@@ -358,8 +367,8 @@ Fluent edits compile in the browser (`compileWorkflowSource`) and re-enter the s
 | User action | Code path | Capability / API |
 | ----------- | --------- | ---------------- |
 | Chat (guided, FAQ) | `App.onSubmit` → | `@executioncontrolprotocol/browser.guideChat` |
-| Chat (workflow) | `BrowserAuthoringService` → | `*.generateText` |
-| Execute | `ecp.run(manifest)` | Step `uses` e.g. `@executioncontrolprotocol/test.echo` |
+| Chat (workflow) | `BrowserAuthoringService` → | `*.generate` |
+| Execute | `ecp.run(manifest)` | Step `uses` e.g. `@executioncontrolprotocol/chrome-ai.generate` |
 | Edit Fluent | `compileWorkflowSource` → `applyPanels` | validate + encode |
 | Settings / first run | Provider modal | chrome install capabilities |
 | Refresh capabilities view | `describe()` | (descriptor only) |

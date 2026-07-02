@@ -18,6 +18,7 @@
     "supabase:status": "supabase migration list"
   },
   "dependencies": {
+    "esbuild-wasm": "^0.25.0",
     "@executioncontrolprotocol/browser": "^1.0.0",
     "@executioncontrolprotocol/core": "^1.0.0",
     "@executioncontrolprotocol/types": "^1.0.0",

@@ -10,7 +10,9 @@ export function environmentSourceFromDescriptor(descriptor: EnvironmentDescripto
 
 // Environment not loaded yet.
 export default await environment("browser-demo-app").withExtensions([
-  extension("@executioncontrolprotocol/test").with({}),
+  extension("@executioncontrolprotocol/chrome-ai").with({}),
+  extension("@executioncontrolprotocol/fal").with({}),
+  extension("@executioncontrolprotocol/image-sharp").with({}),
 ])
 `
   }

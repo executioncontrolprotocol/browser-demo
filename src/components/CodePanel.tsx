@@ -11,6 +11,8 @@ export interface CodePanelProps {
   formatTab: FormatTab
   onFormatTabChange: (tab: FormatTab) => void
   fluent: string
+  /** Bumped when assistant replaces Fluent source so Monaco remounts with new defaultValue. */
+  fluentEditorKey: number
   json: string
   toon: string
   mermaid: string
@@ -38,6 +40,7 @@ export function CodePanel({
   formatTab,
   onFormatTabChange,
   fluent,
+  fluentEditorKey,
   json,
   toon,
   mermaid,
@@ -102,22 +105,29 @@ export function CodePanel({
         </p>
       )}
 
-      {compileError && editorTab === "workflow" && formatTab === "fluent" ? (
+      {compileError && editorTab === "workflow" ? (
         <p className="border-b border-error-container bg-error-container/20 px-4 py-2 text-label text-error">
           {compileError}
         </p>
       ) : null}
 
-      <div className="monaco-host min-h-0 flex-1 bg-surface-container-lowest">
-        {editorTab === "environment" ? (
+      <div className="monaco-host relative min-h-0 flex-1 bg-surface-container-lowest">
+        <div className={editorTab === "environment" ? "h-full" : "hidden h-full"}>
           <MonacoCodeEditor path={ENVIRONMENT_EDITOR_PATH} value={environmentSource} readOnly />
-        ) : formatTab === "fluent" ? (
-          <FluentWorkflowEditor value={fluent} onChange={onFluentChange} />
-        ) : (
-          <pre className="h-full overflow-auto whitespace-pre-wrap p-4 font-mono text-label text-on-surface-variant">
-            {readOnlyValue}
-          </pre>
-        )}
+        </div>
+        <div className={editorTab === "workflow" ? "relative h-full" : "hidden relative h-full"}>
+          <FluentWorkflowEditor
+            key={fluentEditorKey}
+            defaultValue={fluent}
+            onChange={onFluentChange}
+            visible={formatTab === "fluent"}
+          />
+          {formatTab !== "fluent" ? (
+            <pre className="absolute inset-0 overflow-auto whitespace-pre-wrap bg-surface-container-lowest p-4 font-mono text-label text-on-surface-variant">
+              {readOnlyValue}
+            </pre>
+          ) : null}
+        </div>
       </div>
     </div>
   )

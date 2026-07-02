@@ -382,6 +382,12 @@
     animation: typing-pulse 1.2s ease-in-out infinite;
   }
 
+  .quick-start-bubble:focus-visible {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 1px var(--color-primary);
+  }
+
   @keyframes typing-pulse {
     0%,
     100% {

@@ -2,9 +2,21 @@ import { existsSync } from "node:fs"
 import { join } from "node:path"
 import type { Plugin } from "vite"
 
+const NODE_BUILTIN_STUBS: Record<string, string> = {
+  "node:fs": "node-fs-stub.ts",
+  "node:fs/promises": "node-fs-promises-stub.ts",
+  "node:path": "node-path-stub.ts",
+  "node:url": "node-url-stub.ts",
+  "node:os": "node-empty.ts",
+  "node:http": "node-empty.ts",
+  "node:child_process": "node-empty.ts",
+  "node:util": "node-empty.ts",
+  sharp: "sharp-stub.ts",
+}
+
 /**
- * Redirect harness prompt loaders to browser-safe modules.
- * Vite `resolve.alias` on absolute paths does not match relative `./load-*.js` imports in dev.
+ * Redirect harness prompt loaders and Node builtins to browser-safe modules.
+ * Vite `resolve.alias` does not reliably match imports from linked monorepo packages.
  */
 export function browserPromptLoaderPlugin(options: {
   corePromptsDir: string
@@ -54,6 +66,10 @@ export function browserPromptLoaderPlugin(options: {
     name: "browser-prompt-loader",
     enforce: "pre",
     resolveId(source) {
+      const nodeStub = NODE_BUILTIN_STUBS[source]
+      if (nodeStub) {
+        return join(stubDir, nodeStub)
+      }
       if (isPromptLoaderId(source)) {
         return resolveCorePrompt("load-harness-prompt")
       }
