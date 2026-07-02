@@ -13,7 +13,7 @@ export const WORKFLOW_QUICK_STARTS: WorkflowQuickStart[] = [
   {
     label: "Email + Key Actions",
     prompt:
-      "Build a workflow that uses Chrome AI to generate a short email, then extract key action items from it in a second step.",
+      "Build a workflow that uses Chrome AI to generate a short sample email with a meeting summary, then extract key action items from it in a second step.",
   },
   {
     label: "Haiku + explain",
