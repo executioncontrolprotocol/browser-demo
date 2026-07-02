@@ -1,6 +1,6 @@
 {
   "name": "@executioncontrolprotocol/browser-demo",
-  "version": "1.0.0",
+  "version": "0.0.10",
   "private": true,
   "type": "module",
   "description": "ECP Graph Editor — browser demo app (Vite + React)",
@@ -19,9 +19,9 @@
   },
   "dependencies": {
     "esbuild-wasm": "^0.25.0",
-    "@executioncontrolprotocol/browser": "^1.0.0",
-    "@executioncontrolprotocol/core": "^1.0.0",
-    "@executioncontrolprotocol/types": "^1.0.0",
+    "@executioncontrolprotocol/browser": "file:../executioncontrolprotocol/packages/runtimes/browser",
+    "@executioncontrolprotocol/core": "file:../executioncontrolprotocol/packages/core",
+    "@executioncontrolprotocol/types": "file:../executioncontrolprotocol/packages/types",
     "@monaco-editor/react": "^4.7.0",
     "@supabase/supabase-js": "^2.107.0",
     "mermaid": "^11.4.0",
