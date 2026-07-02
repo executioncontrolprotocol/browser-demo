@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs"
-import { join } from "node:path"
+import { dirname, join } from "node:path"
 import type { Plugin } from "vite"
 
 const NODE_BUILTIN_STUBS: Record<string, string> = {
@@ -65,10 +65,18 @@ export function browserPromptLoaderPlugin(options: {
   return {
     name: "browser-prompt-loader",
     enforce: "pre",
-    resolveId(source) {
+    resolveId(source, importer) {
       const nodeStub = NODE_BUILTIN_STUBS[source]
       if (nodeStub) {
         return join(stubDir, nodeStub)
+      }
+      if (isPromptLoaderId(source) && importer) {
+        const importerDir = dirname(importer)
+        const localBrowserTs = join(importerDir, "load-harness-prompt.browser.ts")
+        const localBrowserJs = join(importerDir, "load-harness-prompt.browser.js")
+        if (existsSync(localBrowserTs)) return localBrowserTs
+        if (existsSync(localBrowserJs)) return localBrowserJs
+        return resolveCorePrompt("load-harness-prompt")
       }
       if (isPromptLoaderId(source)) {
         return resolveCorePrompt("load-harness-prompt")
