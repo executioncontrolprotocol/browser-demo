@@ -4,15 +4,30 @@ Standalone **ECP Graph Editor** demo app (Vite + React): chat-first UX, workflow
 
 This repo is separate from the [Execution Control Protocol (ECP)](https://github.com/GuillaumeCleme/executioncontrolprotocol) monorepo. ECP is consumed as npm packages (or linked locally during protocol development).
 
+## Architecture (app owns composition)
+
+| Layer | Package | Role here |
+| ----- | ------- | --------- |
+| Compile | `@executioncontrolprotocol/core/browser` | Fluent/TS compile in the page |
+| Runtime host | `@executioncontrolprotocol/browser` | Executor, registry, session — **no harnesses** |
+| This app | `createDemoAppEnvironment` | Binds formats, Chrome AI / Ollama / …, **nano + coding harnesses** |
+
+Provider and harness are independent switches (`resolveDemoSession`). Today, choosing **Ollama** also selects the **Fluent/TS coding** harness; Chrome AI uses the nano (EQL) harness.
+
+Ollama settings (base URL, model) are non-secret `localStorage` values (default `http://localhost:11434` / `qwen2.5-coder:1.5b`). Browser → Ollama needs CORS (`OLLAMA_ORIGINS`).
+
+See monorepo [AGENTS.md](https://github.com/GuillaumeCleme/executioncontrolprotocol/blob/main/AGENTS.md) for compile vs runtime vs app boundaries.
+
 ## Prerequisites
 
 | Requirement | Notes |
 | ----------- | ----- |
 | **Node.js >= 22** | Enforced in `package.json` `engines` |
 | **Chrome** (recommended) | Default provider uses Chrome built-in AI (`@executioncontrolprotocol/chrome-ai`) |
+| **Ollama** (optional) | Local models — select Ollama in first-run / settings; set `OLLAMA_ORIGINS` for the Vite origin |
 | **ECP monorepo clone** (local dev only) | Sibling checkout — see [Repository layout](#repository-layout) |
 
-Optional: [Ollama](https://ollama.com/) with `gemma3:1b` for harness evals in the ECP repo (`npm run eval:matrix`).
+Optional: [Ollama](https://ollama.com/) with `gemma3:1b` / `qwen2.5-coder:1.5b` for harness evals in the ECP repo (`npm run eval:matrix` / `eval:matrix:coding`).
 
 ## Repository layout
 
@@ -30,11 +45,12 @@ Paths below assume `browser-demo` is a sibling of `executioncontrolprotocol`. Ad
 
 | Package | Role |
 | ------- | ---- |
-| [`@executioncontrolprotocol/browser`](https://www.npmjs.com/package/@executioncontrolprotocol/browser) | Browser runtime host, demo environment helpers |
+| [`@executioncontrolprotocol/browser`](https://www.npmjs.com/package/@executioncontrolprotocol/browser) | Browser runtime host |
 | [`@executioncontrolprotocol/core`](https://www.npmjs.com/package/@executioncontrolprotocol/core) | Fluent API, browser compile (`@executioncontrolprotocol/core/browser`) |
 | [`@executioncontrolprotocol/types`](https://www.npmjs.com/package/@executioncontrolprotocol/types) | Protocol types |
-
-Transitive extensions (formats, harness, Chrome AI, providers) come via `@executioncontrolprotocol/browser`.
+| `@executioncontrolprotocol/harnesses-browser-nano` | EQL harness (Chrome AI path) |
+| `@executioncontrolprotocol/harnesses-browser-coding` | Fluent/TS harness (Ollama path) |
+| Providers / formats | Chrome AI, Ollama, OpenAI, Claude, fal, TOON, Mermaid, EQL — **direct** app deps |
 
 > **Note:** `@executioncontrolprotocol/*` packages must be published to npm (or linked locally — see below) before `npm install` succeeds.
 

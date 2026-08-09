@@ -1,7 +1,9 @@
 import { useState } from "react"
 import type { ProviderMode } from "../lib/provider-mode.js"
 import { isProviderModeSelectable } from "../lib/provider-mode.js"
+import type { OllamaSettings } from "../lib/ollama-settings.js"
 import { ProviderApiKeyFields } from "./ProviderApiKeyFields.js"
+import { OllamaSettingsFields } from "./OllamaSettingsFields.js"
 
 /** Props for {@link FirstRunModal}. */
 export interface FirstRunModalProps {
@@ -10,11 +12,14 @@ export interface FirstRunModalProps {
   /** Chrome model is already available. */
   chromeReady: boolean
   onExplore: () => void
-  onComplete: (mode: ProviderMode) => void
+  onComplete: (mode: ProviderMode, ollama?: OllamaSettings) => void
   /** User chose Chrome but model must download first. */
   onChromeInstall: () => void
   /** Open vault setup when user wants encrypted API key storage. */
   onRequestVaultSetup: () => void
+  /** Current Ollama settings (editable when Ollama selected). */
+  ollamaSettings: OllamaSettings
+  onOllamaSettingsChange: (settings: OllamaSettings) => void
 }
 
 /** First-run provider selection modal. */
@@ -25,10 +30,14 @@ export function FirstRunModal({
   onComplete,
   onChromeInstall,
   onRequestVaultSetup,
+  ollamaSettings,
+  onOllamaSettingsChange,
 }: FirstRunModalProps) {
   const [mode, setMode] = useState<ProviderMode>("chrome-ai")
 
-  const canContinue = isProviderModeSelectable(mode) && (mode !== "chrome-ai" || chromeSupported)
+  const canContinue =
+    isProviderModeSelectable(mode) &&
+    (mode === "ollama" || (mode === "chrome-ai" && chromeSupported))
 
   const submit = () => {
     if (!canContinue) return
@@ -36,7 +45,7 @@ export function FirstRunModal({
       onChromeInstall()
       return
     }
-    onComplete(mode)
+    onComplete(mode, mode === "ollama" ? ollamaSettings : undefined)
   }
 
   return (
@@ -81,6 +90,15 @@ export function FirstRunModal({
                   ? " (download required)"
                   : ""}
             </label>
+            <label className="flex cursor-pointer items-center gap-2 text-body">
+              <input
+                type="radio"
+                name="provider"
+                checked={mode === "ollama"}
+                onChange={() => setMode("ollama")}
+              />
+              Ollama (Fluent / TypeScript harness)
+            </label>
             <label className="flex items-center gap-2 text-body text-on-surface-variant">
               <input type="radio" name="provider" checked={mode === "openai"} disabled />
               OpenAI (coming soon)
@@ -90,6 +108,9 @@ export function FirstRunModal({
               Claude (coming soon)
             </label>
           </div>
+          {mode === "ollama" ? (
+            <OllamaSettingsFields value={ollamaSettings} onChange={onOllamaSettingsChange} />
+          ) : null}
           <ProviderApiKeyFields onRequestVaultSetup={onRequestVaultSetup} />
         </div>
 

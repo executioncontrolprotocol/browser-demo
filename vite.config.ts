@@ -6,6 +6,11 @@ import { browserPromptLoaderPlugin } from "./vite-browser-prompts-plugin.js"
 
 const appRoot = dirname(fileURLToPath(import.meta.url))
 const coreBrowserEntry = fileURLToPath(import.meta.resolve("@executioncontrolprotocol/core/browser"))
+const coreCompileBrowserEntry = join(
+  dirname(coreBrowserEntry),
+  "compile",
+  "index.browser.js"
+)
 const corePrompts = join(dirname(coreBrowserEntry), "harness/prompts")
 const stubDir = join(appRoot, "src/stubs")
 
@@ -28,6 +33,7 @@ export default defineConfig({
   resolve: {
     alias: {
       esbuild: "esbuild-wasm",
+      "@executioncontrolprotocol/core/compile": aliasPath(coreCompileBrowserEntry),
       "node:fs/promises": aliasPath(stubDir, "node-fs-promises-stub.ts"),
       "node:fs": aliasPath(stubDir, "node-fs-stub.ts"),
       "node:path": aliasPath(stubDir, "node-path-stub.ts"),
@@ -40,6 +46,14 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    exclude: ["@executioncontrolprotocol/core", "@executioncontrolprotocol/browser", "@executioncontrolprotocol/format-mermaid", "@executioncontrolprotocol/format-toon"],
+    exclude: [
+      "@executioncontrolprotocol/core",
+      "@executioncontrolprotocol/browser",
+      "@executioncontrolprotocol/format-mermaid",
+      "@executioncontrolprotocol/format-toon",
+      // Keep Vite `import.meta.glob` for harness prompt fixtures (esbuild prebundle strips it).
+      "@executioncontrolprotocol/harnesses-browser-nano",
+      "@executioncontrolprotocol/harnesses-browser-coding",
+    ],
   },
 })
