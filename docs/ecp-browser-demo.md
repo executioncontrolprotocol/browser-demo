@@ -1070,3 +1070,7 @@ Cloud provider API keys (OpenAI, Claude, FAL) use the `@executioncontrolprotocol
 | **Provider settings** | Settings modal, vault unlocked | Paste API keys → stored as `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / `FAL_KEY` |
 
 Provider mode (`ecp:browser-demo:provider-mode`) is still plain `localStorage`; only API keys are encrypted. Unlock the vault before cloud providers can resolve `browser(...)` bindings in the environment.
+
+## Follow-ups
+
+See [`todos.md`](todos.md) for temporary workarounds (e.g. harness prompt fixture glob shim for npm `0.10.0`) and protocol publish steps needed before removing them.

@@ -211,6 +211,7 @@ npm run eval:matrix
 | Type errors in demo after ECP API change | Rebuild ECP, then `npm run typecheck` here; update demo imports if the API moved |
 | Linked package still shows old behavior | Confirm link targets built `dist/` (`npm run build` in ECP); restart `npm run dev` |
 | `npm install` fails on `@executioncontrolprotocol/*` | Publish packages or complete `npm link` setup above |
+| `Harness prompt fixture not found: intent-classification` | Published harness `0.10.0` has a bad `import.meta.glob` path. Demo Vite plugin rewrites it — see [`docs/todos.md`](docs/todos.md). If you still see this after deploy, confirm Pages built with that plugin and registry deps (not stale `file:` links). |
 
 **Alternative to `npm link`:** add `"file:../executioncontrolprotocol/packages/..."` overrides in `package.json` for each `@executioncontrolprotocol/*` dependency (more stable on some platforms, but edit `package.json` when package paths change).
 
@@ -264,10 +265,13 @@ Local Pages build:
 GITHUB_PAGES=true GITHUB_REPOSITORY=GuillaumeCleme/executioncontrolprotocol-browser-demo npm run build:pages
 ```
 
+**Temporary Pages shim:** Vite rewrites a wrong harness prompt fixture glob in published `@executioncontrolprotocol/harnesses-browser-*@0.10.0` so chat can load `intent-classification`. Remove that shim after a patched ECP publish — see [`docs/todos.md`](docs/todos.md).
+
 ## Spec
 
 - [`docs/ecp-browser-demo.md`](docs/ecp-browser-demo.md) — phased plan and milestones
 - [`docs/browser-demo-extensions-and-prompts.md`](docs/browser-demo-extensions-and-prompts.md) — extensions and harness wiring
+- [`docs/todos.md`](docs/todos.md) — follow-ups (including shim removal)
 
 ## Related repos
 
