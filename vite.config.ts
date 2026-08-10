@@ -31,6 +31,10 @@ export default defineConfig({
   ],
   server: { port: 5173 },
   resolve: {
+    dedupe: [
+      "@executioncontrolprotocol/core",
+      "@executioncontrolprotocol/types",
+    ],
     alias: {
       esbuild: "esbuild-wasm",
       "@executioncontrolprotocol/core/compile": aliasPath(coreCompileBrowserEntry),
@@ -49,6 +53,8 @@ export default defineConfig({
     exclude: [
       "@executioncontrolprotocol/core",
       "@executioncontrolprotocol/browser",
+      "@executioncontrolprotocol/fal",
+      "@executioncontrolprotocol/image-sharp",
       "@executioncontrolprotocol/format-mermaid",
       "@executioncontrolprotocol/format-toon",
       // Keep Vite `import.meta.glob` for harness prompt fixtures (esbuild prebundle strips it).
