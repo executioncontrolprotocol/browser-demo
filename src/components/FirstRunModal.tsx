@@ -1,6 +1,6 @@
 import { useState } from "react"
 import type { ProviderMode } from "../lib/provider-mode.js"
-import { isProviderModeSelectable } from "../lib/provider-mode.js"
+import { canContinueFirstRun } from "../lib/provider-mode.js"
 import type { OllamaSettings } from "../lib/ollama-settings.js"
 import { ProviderApiKeyFields } from "./ProviderApiKeyFields.js"
 import { OllamaSettingsFields } from "./OllamaSettingsFields.js"
@@ -34,10 +34,13 @@ export function FirstRunModal({
   onOllamaSettingsChange,
 }: FirstRunModalProps) {
   const [mode, setMode] = useState<ProviderMode>("chrome-ai")
+  const [ollamaReady, setOllamaReady] = useState(false)
 
-  const canContinue =
-    isProviderModeSelectable(mode) &&
-    (mode === "ollama" || (mode === "chrome-ai" && chromeSupported))
+  const canContinue = canContinueFirstRun(mode, {
+    chromeSupported,
+    ollamaReady,
+    ollamaModel: ollamaSettings.model,
+  })
 
   const submit = () => {
     if (!canContinue) return
@@ -109,7 +112,11 @@ export function FirstRunModal({
             </label>
           </div>
           {mode === "ollama" ? (
-            <OllamaSettingsFields value={ollamaSettings} onChange={onOllamaSettingsChange} />
+            <OllamaSettingsFields
+              value={ollamaSettings}
+              onChange={onOllamaSettingsChange}
+              onReadyChange={setOllamaReady}
+            />
           ) : null}
           <ProviderApiKeyFields onRequestVaultSetup={onRequestVaultSetup} />
         </div>

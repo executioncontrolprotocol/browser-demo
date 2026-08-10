@@ -46,6 +46,34 @@ export function isProviderModeSelectable(mode: ProviderMode): boolean {
   return SELECTABLE_PROVIDER_MODES.includes(mode)
 }
 
+/** Options for {@link canContinueFirstRun}. */
+export interface FirstRunContinueOptions {
+  /** Chrome LanguageModel API is present. */
+  chromeSupported: boolean
+  /** Ollama listing succeeded and a listed model is selected. */
+  ollamaReady: boolean
+  /** Current draft Ollama model tag. */
+  ollamaModel: string
+}
+
+/**
+ * Whether Continue is enabled for the first-run provider modal.
+ * Ollama requires a successful `/api/tags` list and a selected installed model.
+ */
+export function canContinueFirstRun(
+  mode: ProviderMode,
+  options: FirstRunContinueOptions
+): boolean {
+  if (!isProviderModeSelectable(mode)) return false
+  if (mode === "ollama") {
+    return options.ollamaReady && Boolean(options.ollamaModel.trim())
+  }
+  if (mode === "chrome-ai") {
+    return options.chromeSupported
+  }
+  return false
+}
+
 /** Map provider mode to a harness-compatible generate capability id. */
 export function providerCapabilityId(mode: ProviderMode): string {
   return PROVIDER_CAPABILITY[mode]

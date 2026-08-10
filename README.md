@@ -14,7 +14,7 @@ This repo is separate from the [Execution Control Protocol (ECP)](https://github
 
 Provider and harness are independent switches (`resolveDemoSession`). Today, choosing **Ollama** also selects the **Fluent/TS coding** harness; Chrome AI uses the nano (EQL) harness.
 
-Ollama settings (base URL, model) are non-secret `localStorage` values (default `http://localhost:11434` / `qwen2.5-coder:1.5b`). Browser → Ollama needs CORS (`OLLAMA_ORIGINS`).
+Ollama settings (base URL, model) are non-secret `localStorage` values (default `http://localhost:11434` / `qwen2.5-coder:1.5b`). After you set the base URL, settings list installed models from `/api/tags`; pull with `ollama pull` if the list is empty. Browser → Ollama needs CORS (`OLLAMA_ORIGINS`).
 
 See monorepo [AGENTS.md](https://github.com/GuillaumeCleme/executioncontrolprotocol/blob/main/AGENTS.md) for compile vs runtime vs app boundaries.
 
