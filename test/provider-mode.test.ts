@@ -44,7 +44,7 @@ describe("isProviderModeSelectable", () => {
 describe("resolveDemoSession", () => {
   it("maps ollama UI value to coding harness + ollama provider", () => {
     expect(resolveDemoSession("ollama")).toEqual({ provider: "ollama", harness: "coding" })
-    expect(providerCapabilityId("ollama")).toBe("@executioncontrolprotocol/ollama.generate")
+    expect(providerCapabilityId("ollama")).toBe("@browser-demo/bridge-ollama.generate")
     expect(harnessCapabilityId("coding")).toBe(
       "@executioncontrolprotocol/harness-browser-coding.evaluate"
     )

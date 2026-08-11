@@ -2,6 +2,7 @@ import { useState } from "react"
 import type { ProviderMode } from "../lib/provider-mode.js"
 import { canContinueFirstRun } from "../lib/provider-mode.js"
 import type { OllamaSettings } from "../lib/ollama-settings.js"
+import type { BridgeSettings } from "../lib/ecp-bridge.js"
 import { ProviderApiKeyFields } from "./ProviderApiKeyFields.js"
 import { OllamaSettingsFields } from "./OllamaSettingsFields.js"
 
@@ -11,6 +12,10 @@ export interface FirstRunModalProps {
   chromeSupported: boolean
   /** Chrome model is already available. */
   chromeReady: boolean
+  /** Local `ecp up` is reachable and Ollama is up. */
+  ollamaBridgeAvailable: boolean
+  /** Optional status hint when Ollama is disabled. */
+  ollamaBridgeHint?: string
   onExplore: () => void
   onComplete: (mode: ProviderMode, ollama?: OllamaSettings) => void
   /** User chose Chrome but model must download first. */
@@ -20,24 +25,31 @@ export interface FirstRunModalProps {
   /** Current Ollama settings (editable when Ollama selected). */
   ollamaSettings: OllamaSettings
   onOllamaSettingsChange: (settings: OllamaSettings) => void
+  bridgeSettings: BridgeSettings
+  onBridgeSettingsChange: (settings: BridgeSettings) => void
 }
 
 /** First-run provider selection modal. */
 export function FirstRunModal({
   chromeSupported,
   chromeReady,
+  ollamaBridgeAvailable,
+  ollamaBridgeHint,
   onExplore,
   onComplete,
   onChromeInstall,
   onRequestVaultSetup,
   ollamaSettings,
   onOllamaSettingsChange,
+  bridgeSettings,
+  onBridgeSettingsChange,
 }: FirstRunModalProps) {
   const [mode, setMode] = useState<ProviderMode>("chrome-ai")
   const [ollamaReady, setOllamaReady] = useState(false)
 
   const canContinue = canContinueFirstRun(mode, {
     chromeSupported,
+    ollamaBridgeAvailable,
     ollamaReady,
     ollamaModel: ollamaSettings.model,
   })
@@ -93,15 +105,22 @@ export function FirstRunModal({
                   ? " (download required)"
                   : ""}
             </label>
-            <label className="flex cursor-pointer items-center gap-2 text-body">
+            <label
+              className={`flex items-center gap-2 text-body ${ollamaBridgeAvailable ? "cursor-pointer" : "text-on-surface-variant"}`}
+            >
               <input
                 type="radio"
                 name="provider"
                 checked={mode === "ollama"}
+                disabled={!ollamaBridgeAvailable}
                 onChange={() => setMode("ollama")}
               />
               Ollama (Fluent / TypeScript harness)
+              {!ollamaBridgeAvailable ? " (unavailable)" : ""}
             </label>
+            {!ollamaBridgeAvailable && ollamaBridgeHint ? (
+              <p className="pl-6 text-body text-on-surface-variant">{ollamaBridgeHint}</p>
+            ) : null}
             <label className="flex items-center gap-2 text-body text-on-surface-variant">
               <input type="radio" name="provider" checked={mode === "openai"} disabled />
               OpenAI (coming soon)
@@ -111,10 +130,12 @@ export function FirstRunModal({
               Claude (coming soon)
             </label>
           </div>
-          {mode === "ollama" ? (
+          {mode === "ollama" && ollamaBridgeAvailable ? (
             <OllamaSettingsFields
               value={ollamaSettings}
               onChange={onOllamaSettingsChange}
+              bridge={bridgeSettings}
+              onBridgeChange={onBridgeSettingsChange}
               onReadyChange={setOllamaReady}
             />
           ) : null}

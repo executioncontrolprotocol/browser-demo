@@ -37,7 +37,8 @@
     "@supabase/supabase-js": "^2.107.0",
     "mermaid": "^11.4.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "zod": "^3.24.0"
   },
   "devDependencies": {
     "@types/react": "^19.2.17",

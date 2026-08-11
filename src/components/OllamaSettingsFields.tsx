@@ -3,10 +3,14 @@ import type { OllamaSettings } from "../lib/ollama-settings.js"
 import { DEFAULT_OLLAMA_SETTINGS } from "../lib/ollama-settings.js"
 import {
   formatOllamaListError,
-  listOllamaModels,
   pickOllamaModelFromList,
   type OllamaModelListStatus,
 } from "../lib/ollama-models.js"
+import {
+  DEFAULT_BRIDGE_BASE_URL,
+  listModelsViaBridge,
+  type BridgeSettings,
+} from "../lib/ecp-bridge.js"
 
 const LIST_DEBOUNCE_MS = 400
 
@@ -14,14 +18,18 @@ const LIST_DEBOUNCE_MS = 400
 export interface OllamaSettingsFieldsProps {
   value: OllamaSettings
   onChange: (next: OllamaSettings) => void
+  bridge: BridgeSettings
+  onBridgeChange: (next: BridgeSettings) => void
   /** Fires when listing readiness changes (Continue gating). */
   onReadyChange?: (ready: boolean) => void
 }
 
-/** Non-secret Ollama endpoint and model fields with live `/api/tags` listing. */
+/** Bridge pairing + Ollama model fields (lists models via `ecp up`). */
 export function OllamaSettingsFields({
   value,
   onChange,
+  bridge,
+  onBridgeChange,
   onReadyChange,
 }: OllamaSettingsFieldsProps) {
   const [status, setStatus] = useState<OllamaModelListStatus>("idle")
@@ -53,12 +61,11 @@ export function OllamaSettingsFields({
   }, [])
 
   const refresh = useCallback(
-    async (baseURL: string, signal?: AbortSignal) => {
-      const trimmed = baseURL.trim()
-      if (!trimmed) {
+    async (settings: BridgeSettings, signal?: AbortSignal) => {
+      if (!settings.token.trim()) {
         setStatus("error")
         setModels([])
-        setErrorMessage("Base URL is required")
+        setErrorMessage("Paste the pairing token printed by `ecp up`")
         onReadyChangeRef.current?.(false)
         return
       }
@@ -66,7 +73,7 @@ export function OllamaSettingsFields({
       setErrorMessage(null)
       onReadyChangeRef.current?.(false)
       try {
-        const nextModels = await listOllamaModels(trimmed, { signal })
+        const nextModels = await listModelsViaBridge(settings, signal)
         if (signal?.aborted) return
         applyModels(nextModels)
       } catch (err) {
@@ -85,13 +92,13 @@ export function OllamaSettingsFields({
   useEffect(() => {
     const controller = new AbortController()
     const timer = window.setTimeout(() => {
-      void refresh(value.baseURL, controller.signal)
+      void refresh(bridge, controller.signal)
     }, LIST_DEBOUNCE_MS)
     return () => {
       controller.abort()
       window.clearTimeout(timer)
     }
-  }, [value.baseURL, refresh])
+  }, [bridge.baseURL, bridge.token, refresh])
 
   useEffect(() => {
     if (status !== "ready") {
@@ -104,7 +111,7 @@ export function OllamaSettingsFields({
   const statusLine = (() => {
     switch (status) {
       case "loading":
-        return "Loading installed models…"
+        return "Loading installed models via ecp up…"
       case "ready":
         return `${models.length} model${models.length === 1 ? "" : "s"} available`
       case "empty":
@@ -118,19 +125,30 @@ export function OllamaSettingsFields({
 
   return (
     <div className="space-y-3 rounded-lg border border-outline-variant p-3">
-      <p className="font-mono text-label font-bold text-on-surface">Ollama settings</p>
+      <p className="font-mono text-label font-bold text-on-surface">Ollama via ecp up</p>
       <p className="text-body text-on-surface-variant">
-        Browser calls need CORS. Set{" "}
-        <code className="font-mono text-label">OLLAMA_ORIGINS</code> to your Vite origin (e.g.{" "}
-        <code className="font-mono text-label">http://localhost:5173</code>).
+        Run <code className="font-mono text-label">ecp up</code> to open this demo with a pairing
+        token, or paste a token below. The daemon talks to Ollama on loopback (Chromium Private
+        Network Access on hosted HTTPS).
       </p>
       <label className="flex flex-col gap-1 text-body">
-        <span>Base URL</span>
+        <span>Bridge URL</span>
         <input
           type="url"
-          value={value.baseURL}
-          onChange={(e) => onChange({ ...value, baseURL: e.target.value })}
-          placeholder={DEFAULT_OLLAMA_SETTINGS.baseURL}
+          value={bridge.baseURL}
+          onChange={(e) => onBridgeChange({ ...bridge, baseURL: e.target.value })}
+          placeholder={DEFAULT_BRIDGE_BASE_URL}
+          className="rounded border border-outline-variant bg-surface px-3 py-2 font-mono text-body"
+          autoComplete="off"
+        />
+      </label>
+      <label className="flex flex-col gap-1 text-body">
+        <span>Pairing token</span>
+        <input
+          type="password"
+          value={bridge.token}
+          onChange={(e) => onBridgeChange({ ...bridge, token: e.target.value })}
+          placeholder="from ecp up"
           className="rounded border border-outline-variant bg-surface px-3 py-2 font-mono text-body"
           autoComplete="off"
         />
@@ -156,7 +174,7 @@ export function OllamaSettingsFields({
           </select>
           <button
             type="button"
-            onClick={() => void refresh(value.baseURL)}
+            onClick={() => void refresh(bridge)}
             disabled={status === "loading"}
             className="shrink-0 rounded border border-outline-variant px-3 py-2 font-mono text-label font-bold disabled:opacity-50"
           >
