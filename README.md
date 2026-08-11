@@ -228,7 +228,7 @@ npm run eval:matrix
 | Type errors in demo after ECP API change | Rebuild ECP, then `npm run typecheck` here; update demo imports if the API moved |
 | Linked package still shows old behavior | Confirm link targets built `dist/` (`npm run build` in ECP); restart `npm run dev` |
 | `npm install` fails on `@executioncontrolprotocol/*` | Publish packages or complete `npm link` setup above |
-| `Harness prompt fixture not found: intent-classification` | Published harness `0.10.0` has a bad `import.meta.glob` path. Demo Vite plugin rewrites it — see [`docs/todos.md`](docs/todos.md). If you still see this after deploy, confirm Pages built with that plugin and registry deps (not stale `file:` links). |
+| `Harness prompt fixture not found: intent-classification` | Ensure `@executioncontrolprotocol/harnesses-browser-*` is `>=0.10.1` (0.10.0 had a bad `import.meta.glob` path). Reinstall from the lockfile; do not use stale `file:` links to unbuilt packages. |
 
 **Alternative to `npm link` (local only — do not commit):** temporarily override ranges with `"file:../executioncontrolprotocol/packages/..."` in `package.json`, or use `npm install ../executioncontrolprotocol/packages/<pkg>`. Restore caret ranges before push so GitHub Actions / Pages can resolve from the npm registry.
 
@@ -282,13 +282,13 @@ Local Pages build:
 GITHUB_PAGES=true GITHUB_REPOSITORY=GuillaumeCleme/executioncontrolprotocol-browser-demo npm run build:pages
 ```
 
-**Temporary Pages shim:** Vite rewrites a wrong harness prompt fixture glob in published `@executioncontrolprotocol/harnesses-browser-*@0.10.0` so chat can load `intent-classification`. Remove that shim after a patched ECP publish — see [`docs/todos.md`](docs/todos.md).
+Requires `@executioncontrolprotocol/*@^0.10.1` so browser `core/compile` exports `compileHarnessArtifactSource` (used by the coding harness).
 
 ## Spec
 
 - [`docs/ecp-browser-demo.md`](docs/ecp-browser-demo.md) — phased plan and milestones
 - [`docs/browser-demo-extensions-and-prompts.md`](docs/browser-demo-extensions-and-prompts.md) — extensions and harness wiring
-- [`docs/todos.md`](docs/todos.md) — follow-ups (including shim removal)
+- [`docs/todos.md`](docs/todos.md) — follow-ups / resolved workarounds
 
 ## Related repos
 

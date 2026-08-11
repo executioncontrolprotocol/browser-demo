@@ -15,41 +15,6 @@ const NODE_BUILTIN_STUBS: Record<string, string> = {
 }
 
 /**
- * TEMPORARY SHIM — remove after ECP publishes harness packages with the fixed glob.
- * Tracked in docs/todos.md ("Remove harness prompt fixture glob shim").
- *
- * Published `@executioncontrolprotocol/harnesses-browser-nano@0.10.0` (and coding)
- * ships `import.meta.glob("../../../fixtures/...")` from `dist/prompts/`, which
- * resolves above the package and yields an empty fixture map. Correct path is
- * `../../fixtures/...` (package root).
- */
-export const BROKEN_HARNESS_PROMPT_FIXTURE_GLOB =
-  "../../../fixtures/harness-prompts/*.prompt.json" as const
-
-/** Correct glob relative to `src/prompts` or `dist/prompts`. */
-export const HARNESS_PROMPT_FIXTURE_GLOB =
-  "../../fixtures/harness-prompts/*.prompt.json" as const
-
-/**
- * Rewrite the broken published harness prompt fixture glob to the package-root path.
- * Safe no-op when the loader already uses {@link HARNESS_PROMPT_FIXTURE_GLOB}.
- */
-export function rewriteHarnessPromptFixtureGlob(code: string): string {
-  return code.replaceAll(
-    JSON.stringify(BROKEN_HARNESS_PROMPT_FIXTURE_GLOB),
-    JSON.stringify(HARNESS_PROMPT_FIXTURE_GLOB),
-  )
-}
-
-function isHarnessPromptBrowserLoader(id: string): boolean {
-  const normalized = id.replace(/\\/g, "/")
-  return (
-    normalized.includes("load-harness-prompt.browser.js") ||
-    normalized.includes("load-harness-prompt.browser.ts")
-  )
-}
-
-/**
  * Redirect harness prompt loaders and Node builtins to browser-safe modules.
  * Vite `resolve.alias` does not reliably match imports from linked monorepo packages.
  */
@@ -126,12 +91,6 @@ export function browserPromptLoaderPlugin(options: {
         return join(stubDir, "load-schema-example-node-stub.ts")
       }
       return undefined
-    },
-    transform(code, id) {
-      if (!isHarnessPromptBrowserLoader(id)) return undefined
-      const next = rewriteHarnessPromptFixtureGlob(code)
-      if (next === code) return undefined
-      return { code: next, map: null }
     },
   }
 }

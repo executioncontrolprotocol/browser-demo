@@ -1073,4 +1073,4 @@ Provider mode (`ecp:browser-demo:provider-mode`) is still plain `localStorage`; 
 
 ## Follow-ups
 
-See [`todos.md`](todos.md) for temporary workarounds (e.g. harness prompt fixture glob shim for npm `0.10.0`) and protocol publish steps needed before removing them.
+See [`todos.md`](todos.md) for open and resolved workarounds.
