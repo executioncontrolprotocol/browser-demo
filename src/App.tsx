@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   BrowserAuthoringService,
-  HARNESS_TASKS,
-  BROWSER_NANO_HARNESS_CAPABILITY,
-  chatResultAnswer,
-  chatResultWorkflow,
   installBrowserWorkflowShim,
   type BrowserOperationalEcp,
 } from "@executioncontrolprotocol/browser"
+import {
+  HARNESS_TASKS as NANO_HARNESS_TASKS,
+  chatResultAnswer,
+  chatResultWorkflow,
+} from "@executioncontrolprotocol/harnesses-browser-nano"
 import type {
   EnvironmentDescriptor,
   HarnessInvokeResult,
@@ -54,13 +55,29 @@ import {
 } from "./lib/fluent-edit-debug.js"
 import { columnWidthClass } from "./lib/view-layout.js"
 import {
+  harnessCapabilityId,
   providerCapabilityId,
   readStoredProviderMode,
+  resolveDemoSession,
   storeProviderMode,
   type AssistantMode,
   type ChromeInstallUi,
   type ProviderMode,
 } from "./lib/provider-mode.js"
+import {
+  readOllamaSettings,
+  storeOllamaSettings,
+  type OllamaSettings,
+} from "./lib/ollama-settings.js"
+import {
+  detectEcpBridge,
+  isOllamaBridgeUsable,
+  consumeBridgeQueryParams,
+  readBridgeSettings,
+  storeBridgeSettings,
+  type BridgeDetectResult,
+  type BridgeSettings,
+} from "./lib/ecp-bridge.js"
 import {
   WORKFLOW_QUICK_STARTS,
   shouldShowWorkflowQuickStarts,
@@ -68,6 +85,16 @@ import {
 import type { CodeEditorTab, FormatTab } from "./types/workspace.js"
 
 const EMPTY_MERMAID = "flowchart TD\n  empty[No workflow]"
+
+function ollamaBridgeHintFromDetect(result: BridgeDetectResult): string {
+  if (!result.available) {
+    return "Run ecp up locally to enable Ollama (Chromium required for hosted HTTPS)."
+  }
+  if (!result.ollamaReachable) {
+    return "ecp up is running but Ollama is unreachable — start Ollama and retry."
+  }
+  return ""
+}
 
 export function App() {
   const layout = useViewLayout()
@@ -81,7 +108,17 @@ export function App() {
     setGuidedWelcome,
   } = useChatHistory(assistantMode)
   const [ecp, setEcp] = useState<Ecp | null>(null)
-  const [providerMode, setProviderMode] = useState<ProviderMode>("chrome-ai")
+  const [providerMode, setProviderMode] = useState<ProviderMode>(
+    () => readStoredProviderMode() ?? "chrome-ai"
+  )
+  const [ollamaSettings, setOllamaSettings] = useState<OllamaSettings>(() => readOllamaSettings())
+  const [bridgeSettings, setBridgeSettings] = useState<BridgeSettings>(() =>
+    consumeBridgeQueryParams()
+  )
+  const [ollamaBridgeAvailable, setOllamaBridgeAvailable] = useState(false)
+  const [ollamaBridgeHint, setOllamaBridgeHint] = useState(
+    "Checking for local ecp up daemon…"
+  )
   const [showProviderModal, setShowProviderModal] = useState(false)
   const [showVaultSetup, setShowVaultSetup] = useState(false)
   const [vaultGate, setVaultGate] = useState<"locked" | "ready">("ready")
@@ -124,15 +161,27 @@ export function App() {
 
   const widthClass = columnWidthClass(layout.paired)
 
-  const reloadEcp = useCallback(async () => {
+  const reloadEcp = useCallback(async (nextOllama?: OllamaSettings, nextBridge?: BridgeSettings) => {
     if (ecpRef.current) {
       await ecpRef.current.terminate()
     }
-    const { ecp: operational, descriptor: desc } = await createDemoAppEnvironment()
+    const settings = nextOllama ?? readOllamaSettings()
+    const bridge = nextBridge ?? readBridgeSettings()
+    const { ecp: operational, descriptor: desc } = await createDemoAppEnvironment({
+      ollama: settings,
+      bridge,
+    })
     ecpRef.current = operational
     setEcp(operational)
     setDescriptor(desc)
     return operational
+  }, [])
+
+  const refreshBridgeDetect = useCallback(async (baseURL?: string) => {
+    const result = await detectEcpBridge(baseURL ?? readBridgeSettings().baseURL)
+    setOllamaBridgeAvailable(isOllamaBridgeUsable(result))
+    setOllamaBridgeHint(ollamaBridgeHintFromDetect(result))
+    return result
   }, [])
 
   const upgradeToChromeAi = useCallback(async () => {
@@ -165,10 +214,16 @@ export function App() {
     if (ecpBootstrapped.current) return
     ecpBootstrapped.current = true
 
-    const { ecp: operational, descriptor: desc } = await createDemoAppEnvironment()
+    const { ecp: operational, descriptor: desc } = await createDemoAppEnvironment({
+      ollama: readOllamaSettings(),
+      bridge: readBridgeSettings(),
+    })
     ecpRef.current = operational
     setEcp(operational)
     setDescriptor(desc)
+
+    const bridgeDetect = await refreshBridgeDetect()
+    const bridgeOk = isOllamaBridgeUsable(bridgeDetect)
 
     const avail = await operational.invoke("@executioncontrolprotocol/chrome-ai.checkAvailability").with({}).process()
     const result =
@@ -182,10 +237,14 @@ export function App() {
     setChromeReady(ready)
 
     const stored = readStoredProviderMode()
-    if (stored) {
+    if (stored === "ollama" && !bridgeOk) {
+      setShowProviderModal(true)
+      setChatStatus("Ollama bridge unavailable — run ecp up or choose another provider.")
+    } else if (stored) {
       setProviderMode(stored)
       setAssistantMode("authoring")
-      setChatStatus(`Ready (${stored}).`)
+      const resolved = resolveDemoSession(stored)
+      setChatStatus(`Ready (${stored} / ${resolved.harness}).`)
       if (stored === "chrome-ai" && supported && !ready) {
         setChromeInstallUi("toast")
         await startInstall(operational)
@@ -193,7 +252,7 @@ export function App() {
     } else {
       setShowProviderModal(true)
     }
-  }, [setChatStatus, startInstall])
+  }, [setChatStatus, startInstall, refreshBridgeDetect])
 
   useEffect(() => {
     installEsbuildWasmUrl()
@@ -227,6 +286,10 @@ export function App() {
       const service = new BrowserAuthoringService(operational as BrowserOperationalEcp)
       const panels = await service.encodePanels(nextManifest, options.patchToon ?? "")
       if (options.refreshFluent) {
+        // Invalidate any pending user-compile debounce and prevent the old
+        // Monaco instance from flushing stale source back into React state.
+        if (compileTimer.current) clearTimeout(compileTimer.current)
+        compileGeneration.current += 1
         setFluent(panels.fluent)
         setFluentEditorKey((key) => key + 1)
       }
@@ -248,12 +311,23 @@ export function App() {
 
   syncFromManifestRef.current = syncFromManifest
 
-  const onProviderComplete = (mode: ProviderMode) => {
+  const onProviderComplete = (mode: ProviderMode, nextOllama?: OllamaSettings) => {
     storeProviderMode(mode)
     setProviderMode(mode)
     setAssistantMode("authoring")
     setShowProviderModal(false)
-    setChatStatus(`Ready (${mode}).`)
+    storeBridgeSettings(bridgeSettings)
+    if (nextOllama) {
+      storeOllamaSettings(nextOllama)
+      setOllamaSettings(nextOllama)
+      void reloadEcp(nextOllama, bridgeSettings).then(() => {
+        const resolved = resolveDemoSession(mode)
+        setChatStatus(`Ready (${mode} / ${resolved.harness}).`)
+      })
+      return
+    }
+    const resolved = resolveDemoSession(mode)
+    setChatStatus(`Ready (${mode} / ${resolved.harness}).`)
   }
 
   const onExplore = () => {
@@ -272,16 +346,18 @@ export function App() {
     void beginChromeInstall("dialog")
   }
 
-  const runChat = async (userRequest: string, cap: string) => {
+  const runChat = async (userRequest: string) => {
     if (!ecp) return
+    const { provider, harness } = resolveDemoSession(providerMode)
     const invoked = await ecp
-      .invoke(BROWSER_NANO_HARNESS_CAPABILITY)
-      .uses(cap)
+      .invoke(harnessCapabilityId(harness))
+      .uses(providerCapabilityId(provider))
       .with({
-        task: HARNESS_TASKS.CHAT,
+        task: NANO_HARNESS_TASKS.CHAT,
         message: userRequest,
         ...(manifest ? { manifest } : {}),
         ...(conversationSummary ? { conversationSummary } : {}),
+        ...(provider === "ollama" ? { model: ollamaSettings.model } : {}),
       })
       .process()
 
@@ -335,8 +411,7 @@ export function App() {
     setChatBusy(true)
 
     try {
-      const cap = providerCapabilityId(providerMode)
-      await runChat(text, cap)
+      await runChat(text)
       if (assistantMode === "guided") {
         setAssistantMode("authoring")
       }
@@ -520,9 +595,19 @@ export function App() {
         <FirstRunModal
           chromeSupported={chromeSupported}
           chromeReady={chromeReady}
+          ollamaBridgeAvailable={ollamaBridgeAvailable}
+          ollamaBridgeHint={ollamaBridgeHint}
+          initialMode={providerMode}
           onExplore={onExplore}
           onComplete={onProviderComplete}
           onChromeInstall={onChromeInstallFromModal}
+          ollamaSettings={ollamaSettings}
+          onOllamaSettingsChange={setOllamaSettings}
+          bridgeSettings={bridgeSettings}
+          onBridgeSettingsChange={(next) => {
+            setBridgeSettings(next)
+            void refreshBridgeDetect(next.baseURL)
+          }}
           onRequestVaultSetup={() => {
             setShowProviderModal(false)
             setShowVaultSetup(true)

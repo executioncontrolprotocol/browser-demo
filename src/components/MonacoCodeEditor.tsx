@@ -48,12 +48,11 @@ export function MonacoCodeEditor({
 
   useEffect(() => {
     return () => {
-      if (!readOnly && editorRef.current) {
-        onChangeRef.current?.(editorRef.current.getValue())
-      }
+      resizeObserverRef.current?.disconnect()
+      resizeObserverRef.current = null
       editorRef.current = null
     }
-  }, [readOnly])
+  }, [])
 
   const editorValueProps =
     defaultValue !== undefined ? { defaultValue } : { value: value ?? "" }

@@ -1,48 +1,77 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+﻿import { describe, expect, it, beforeEach } from "vitest"
 import {
-  PROVIDER_MODE_STORAGE_KEY,
+  harnessCapabilityId,
   isProviderModeSelectable,
+  providerCapabilityId,
   readStoredProviderMode,
+  resolveDemoSession,
   storeProviderMode,
+  PROVIDER_MODE_STORAGE_KEY,
 } from "../src/lib/provider-mode.js"
 
+function installMemoryLocalStorage(): void {
+  const store = new Map<string, string>()
+  Object.defineProperty(globalThis, "localStorage", {
+    configurable: true,
+    value: {
+      getItem: (key: string) => store.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        store.set(key, String(value))
+      },
+      removeItem: (key: string) => {
+        store.delete(key)
+      },
+      clear: () => {
+        store.clear()
+      },
+    },
+  })
+}
+
 describe("isProviderModeSelectable", () => {
-  it("allows chrome-ai only in the setup modal", () => {
+  it("allows chrome-ai and ollama", () => {
     expect(isProviderModeSelectable("chrome-ai")).toBe(true)
-    expect(isProviderModeSelectable("demo")).toBe(false)
+    expect(isProviderModeSelectable("ollama")).toBe(true)
+    expect(isProviderModeSelectable("demo" as never)).toBe(false)
   })
 
-  it("disables cloud providers until coming soon is lifted", () => {
+  it("keeps cloud providers unavailable in the modal", () => {
     expect(isProviderModeSelectable("openai")).toBe(false)
     expect(isProviderModeSelectable("claude")).toBe(false)
   })
 })
 
+describe("resolveDemoSession", () => {
+  it("maps ollama UI value to coding harness + ollama provider", () => {
+    expect(resolveDemoSession("ollama")).toEqual({ provider: "ollama", harness: "coding" })
+    expect(providerCapabilityId("ollama")).toBe("@browser-demo/bridge-ollama.generate")
+    expect(harnessCapabilityId("coding")).toBe(
+      "@executioncontrolprotocol/harness-browser-coding.evaluate"
+    )
+  })
+
+  it("maps chrome-ai to nano harness", () => {
+    expect(resolveDemoSession("chrome-ai")).toEqual({ provider: "chrome-ai", harness: "nano" })
+    expect(harnessCapabilityId("nano")).toBe(
+      "@executioncontrolprotocol/harness-browser-nano.evaluate"
+    )
+  })
+})
+
 describe("readStoredProviderMode", () => {
   beforeEach(() => {
-    const store = new Map<string, string>()
-    vi.stubGlobal("localStorage", {
-      getItem: (key: string) => store.get(key) ?? null,
-      setItem: (key: string, value: string) => {
-        store.set(key, value)
-      },
-      removeItem: (key: string) => {
-        store.delete(key)
-      },
-    })
+    installMemoryLocalStorage()
+    localStorage.clear()
   })
 
-  afterEach(() => {
-    vi.unstubAllGlobals()
-  })
-
-  it("returns selectable stored modes", () => {
+  it("round-trips selectable modes", () => {
     storeProviderMode("chrome-ai")
     expect(readStoredProviderMode()).toBe("chrome-ai")
+    storeProviderMode("ollama")
+    expect(readStoredProviderMode()).toBe("ollama")
   })
 
-  it("returns null when stored mode is no longer selectable", () => {
-    localStorage.setItem(PROVIDER_MODE_STORAGE_KEY, "demo")
+  it("ignores non-selectable stored cloud modes", () => {
     expect(readStoredProviderMode()).toBe(null)
     localStorage.setItem(PROVIDER_MODE_STORAGE_KEY, "openai")
     expect(readStoredProviderMode()).toBe(null)

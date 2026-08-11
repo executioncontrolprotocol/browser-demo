@@ -378,6 +378,15 @@
     box-shadow: 0 0 8px rgba(255, 180, 171, 0.4);
   }
 
+  /* Long capability ids / URLs must wrap; otherwise pre-wrap + overflow can stack lines. */
+  .chat-bubble-text {
+    margin: 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    line-height: 1.5;
+  }
+
   .typing-indicator {
     animation: typing-pulse 1.2s ease-in-out infinite;
   }
