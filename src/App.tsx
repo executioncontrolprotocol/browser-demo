@@ -108,7 +108,9 @@ export function App() {
     setGuidedWelcome,
   } = useChatHistory(assistantMode)
   const [ecp, setEcp] = useState<Ecp | null>(null)
-  const [providerMode, setProviderMode] = useState<ProviderMode>("chrome-ai")
+  const [providerMode, setProviderMode] = useState<ProviderMode>(
+    () => readStoredProviderMode() ?? "chrome-ai"
+  )
   const [ollamaSettings, setOllamaSettings] = useState<OllamaSettings>(() => readOllamaSettings())
   const [bridgeSettings, setBridgeSettings] = useState<BridgeSettings>(() =>
     consumeBridgeQueryParams()
@@ -284,6 +286,10 @@ export function App() {
       const service = new BrowserAuthoringService(operational as BrowserOperationalEcp)
       const panels = await service.encodePanels(nextManifest, options.patchToon ?? "")
       if (options.refreshFluent) {
+        // Invalidate any pending user-compile debounce and prevent the old
+        // Monaco instance from flushing stale source back into React state.
+        if (compileTimer.current) clearTimeout(compileTimer.current)
+        compileGeneration.current += 1
         setFluent(panels.fluent)
         setFluentEditorKey((key) => key + 1)
       }
@@ -591,6 +597,7 @@ export function App() {
           chromeReady={chromeReady}
           ollamaBridgeAvailable={ollamaBridgeAvailable}
           ollamaBridgeHint={ollamaBridgeHint}
+          initialMode={providerMode}
           onExplore={onExplore}
           onComplete={onProviderComplete}
           onChromeInstall={onChromeInstallFromModal}

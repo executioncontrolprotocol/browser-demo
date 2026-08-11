@@ -16,6 +16,8 @@ export interface FirstRunModalProps {
   ollamaBridgeAvailable: boolean
   /** Optional status hint when Ollama is disabled. */
   ollamaBridgeHint?: string
+  /** Last selected provider (from app state / localStorage). */
+  initialMode?: ProviderMode
   onExplore: () => void
   onComplete: (mode: ProviderMode, ollama?: OllamaSettings) => void
   /** User chose Chrome but model must download first. */
@@ -35,6 +37,7 @@ export function FirstRunModal({
   chromeReady,
   ollamaBridgeAvailable,
   ollamaBridgeHint,
+  initialMode = "chrome-ai",
   onExplore,
   onComplete,
   onChromeInstall,
@@ -44,7 +47,7 @@ export function FirstRunModal({
   bridgeSettings,
   onBridgeSettingsChange,
 }: FirstRunModalProps) {
-  const [mode, setMode] = useState<ProviderMode>("chrome-ai")
+  const [mode, setMode] = useState<ProviderMode>(initialMode)
   const [ollamaReady, setOllamaReady] = useState(false)
 
   const canContinue = canContinueFirstRun(mode, {
