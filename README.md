@@ -229,7 +229,7 @@ npm run eval:matrix
 | Linked package still shows old behavior | Confirm link targets built `dist/` (`npm run build` in ECP); restart `npm run dev` |
 | `npm install` fails on `@executioncontrolprotocol/*` | Publish packages or complete `npm link` setup above |
 
-**Alternative to `npm link`:** add `"file:../executioncontrolprotocol/packages/..."` overrides in `package.json` for each `@executioncontrolprotocol/*` dependency (more stable on some platforms, but edit `package.json` when package paths change).
+**Alternative to `npm link` (local only — do not commit):** temporarily override ranges with `"file:../executioncontrolprotocol/packages/..."` in `package.json`, or use `npm install ../executioncontrolprotocol/packages/<pkg>`. Restore caret ranges before push so GitHub Actions / Pages can resolve from the npm registry.
 
 ## Local ECP development (`npm link`) — summary
 
