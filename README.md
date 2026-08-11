@@ -14,7 +14,7 @@ This repo is separate from the [Execution Control Protocol (ECP)](https://github
 
 Provider and harness are independent switches (`resolveDemoSession`). Today, choosing **Ollama** also selects the **Fluent/TS coding** harness; Chrome AI uses the nano (EQL) harness.
 
-Ollama settings (base URL, model) are non-secret `localStorage` values (default `http://localhost:11434` / `qwen2.5-coder:1.5b`). After you set the base URL, settings list installed models from `/api/tags`; pull with `ollama pull` if the list is empty. Browser → Ollama needs CORS (`OLLAMA_ORIGINS`).
+Ollama settings use the local **`ecp up`** daemon (default `http://127.0.0.1:3090`). Prefer `ecp up`, which opens this demo with `?token=` (and `?bridge=`) so pairing is automatic. The Ollama provider enables when `/health` reports `ollamaReachable`. Hosted HTTPS pages need **Chromium** (Private Network Access); local Vite works in any browser.
 
 See monorepo [AGENTS.md](https://github.com/GuillaumeCleme/executioncontrolprotocol/blob/main/AGENTS.md) for compile vs runtime vs app boundaries.
 
@@ -24,7 +24,8 @@ See monorepo [AGENTS.md](https://github.com/GuillaumeCleme/executioncontrolproto
 | ----------- | ----- |
 | **Node.js >= 22** | Enforced in `package.json` `engines` |
 | **Chrome** (recommended) | Default provider uses Chrome built-in AI (`@executioncontrolprotocol/chrome-ai`) |
-| **Ollama** (optional) | Local models — select Ollama in first-run / settings; set `OLLAMA_ORIGINS` for the Vite origin |
+| **Ollama** (optional) | Local models via `ecp up` — option enabled when daemon `/health` reports `ollamaReachable` |
+| **ECP CLI `ecp up`** (for Ollama) | Loopback daemon on port 3090; paste pairing token in the demo |
 | **ECP monorepo clone** (local dev only) | Sibling checkout — see [Repository layout](#repository-layout) |
 
 Optional: [Ollama](https://ollama.com/) with `gemma3:1b` / `qwen2.5-coder:1.5b` for harness evals in the ECP repo (`npm run eval:matrix` / `eval:matrix:coding`).
@@ -227,8 +228,9 @@ npm run eval:matrix
 | Type errors in demo after ECP API change | Rebuild ECP, then `npm run typecheck` here; update demo imports if the API moved |
 | Linked package still shows old behavior | Confirm link targets built `dist/` (`npm run build` in ECP); restart `npm run dev` |
 | `npm install` fails on `@executioncontrolprotocol/*` | Publish packages or complete `npm link` setup above |
+| `Harness prompt fixture not found: intent-classification` | Ensure `@executioncontrolprotocol/harnesses-browser-*` is `>=0.10.1` (0.10.0 had a bad `import.meta.glob` path). Reinstall from the lockfile; do not use stale `file:` links to unbuilt packages. |
 
-**Alternative to `npm link`:** add `"file:../executioncontrolprotocol/packages/..."` overrides in `package.json` for each `@executioncontrolprotocol/*` dependency (more stable on some platforms, but edit `package.json` when package paths change).
+**Alternative to `npm link` (local only — do not commit):** temporarily override ranges with `"file:../executioncontrolprotocol/packages/..."` in `package.json`, or use `npm install ../executioncontrolprotocol/packages/<pkg>`. Restore caret ranges before push so GitHub Actions / Pages can resolve from the npm registry.
 
 ## Local ECP development (`npm link`) — summary
 
@@ -280,10 +282,13 @@ Local Pages build:
 GITHUB_PAGES=true GITHUB_REPOSITORY=GuillaumeCleme/executioncontrolprotocol-browser-demo npm run build:pages
 ```
 
+Requires `@executioncontrolprotocol/*@^0.10.1` so browser `core/compile` exports `compileHarnessArtifactSource` (used by the coding harness).
+
 ## Spec
 
 - [`docs/ecp-browser-demo.md`](docs/ecp-browser-demo.md) — phased plan and milestones
 - [`docs/browser-demo-extensions-and-prompts.md`](docs/browser-demo-extensions-and-prompts.md) — extensions and harness wiring
+- [`docs/todos.md`](docs/todos.md) — follow-ups / resolved workarounds
 
 ## Related repos
 

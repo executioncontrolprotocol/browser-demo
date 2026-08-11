@@ -23,8 +23,8 @@ import { registerChromeAiExtension } from "@executioncontrolprotocol/chrome-ai"
 import { registerOpenaiExtension } from "@executioncontrolprotocol/extension-openai"
 import { registerClaudeExtension } from "@executioncontrolprotocol/claude"
 import { registerOllamaExtension } from "@executioncontrolprotocol/extension-ollama"
-import { registerFalExtension } from "@executioncontrolprotocol/fal"
-import { registerImageSharpExtension } from "@executioncontrolprotocol/image-sharp"
+import { registerFalExtension } from "@executioncontrolprotocol/extension-fal"
+import { registerImageSharpExtension } from "@executioncontrolprotocol/extension-image-sharp"
 import { registerFormatEqlExtension } from "@executioncontrolprotocol/format-eql"
 import { registerFormatToonExtension } from "@executioncontrolprotocol/format-toon"
 import { registerFormatMermaidExtension } from "@executioncontrolprotocol/format-mermaid"
@@ -32,17 +32,25 @@ import "@executioncontrolprotocol/chrome-ai"
 import "@executioncontrolprotocol/extension-openai"
 import "@executioncontrolprotocol/claude"
 import "@executioncontrolprotocol/extension-ollama"
-import "@executioncontrolprotocol/fal"
-import "@executioncontrolprotocol/image-sharp"
+import "@executioncontrolprotocol/extension-fal"
+import "@executioncontrolprotocol/extension-image-sharp"
 import "@executioncontrolprotocol/format-eql"
 import "@executioncontrolprotocol/format-toon"
 import "@executioncontrolprotocol/format-mermaid"
 import { readOllamaSettings, type OllamaSettings } from "./ollama-settings.js"
+import {
+  BRIDGE_OLLAMA_EXTENSION_ID,
+  BRIDGE_OLLAMA_GENERATE_ID,
+  registerBridgeOllamaExtension,
+} from "./bridge-ollama-extension.js"
+import { readBridgeSettings, type BridgeSettings } from "./ecp-bridge.js"
 
 /** Options for {@link createDemoAppEnvironment}. */
 export interface CreateDemoAppEnvironmentOptions {
-  /** Ollama base URL / model (defaults from localStorage). */
+  /** Ollama model (and legacy baseURL for display). */
   ollama?: OllamaSettings
+  /** Local `ecp up` pairing settings (required for Ollama / coding harness). */
+  bridge?: BridgeSettings
 }
 
 /** Build the browser demo app environment (app owns harness + provider composition). */
@@ -53,6 +61,7 @@ export async function createDemoAppEnvironment(
   descriptor: EnvironmentDescriptor
 }> {
   const ollama = options?.ollama ?? readOllamaSettings()
+  const bridge = options?.bridge ?? readBridgeSettings()
 
   await registerBrowserHost()
   registerBrowserNanoHarnesses()
@@ -61,6 +70,7 @@ export async function createDemoAppEnvironment(
   await registerOpenaiExtension()
   await registerClaudeExtension()
   await registerOllamaExtension()
+  await registerBridgeOllamaExtension()
   await registerFalExtension()
   await registerImageSharpExtension()
   await registerFormatEqlExtension()
@@ -75,6 +85,11 @@ export async function createDemoAppEnvironment(
   env.addExtensionBinding("@executioncontrolprotocol/chrome-ai", {})
   env.addExtensionBinding("@executioncontrolprotocol/ollama", {
     baseURL: ollama.baseURL,
+    defaultModel: ollama.model,
+  })
+  env.addExtensionBinding(BRIDGE_OLLAMA_EXTENSION_ID, {
+    bridgeBaseURL: bridge.baseURL,
+    token: bridge.token,
     defaultModel: ollama.model,
   })
   env.addExtensionBinding("@executioncontrolprotocol/openai", {
@@ -94,7 +109,7 @@ export async function createDemoAppEnvironment(
       .uses("@executioncontrolprotocol/chrome-ai.generate")
       .with({ ...HARNESS_NANO_BINDING }),
     harness(BROWSER_CODING_HARNESS_ID, "Coding Harness")
-      .uses("@executioncontrolprotocol/ollama.generate")
+      .uses(BRIDGE_OLLAMA_GENERATE_ID)
       .with({ ...HARNESS_CODING_BINDING }),
   ])
 
@@ -105,6 +120,7 @@ export async function createDemoAppEnvironment(
         "@executioncontrolprotocol/openai",
         "@executioncontrolprotocol/claude",
         "@executioncontrolprotocol/ollama",
+        "@browser-demo/bridge-ollama",
         "@executioncontrolprotocol/fal",
         "@executioncontrolprotocol/image-sharp",
         "@executioncontrolprotocol/browser",

@@ -71,8 +71,8 @@ export function ChatPanel({
                   <div className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full border border-outline-variant">
                     <span className="material-symbols-outlined text-[14px] text-on-surface-variant">person</span>
                   </div>
-                  <div className="rounded-lg rounded-tr-none border border-primary/20 bg-primary/10 p-3">
-                    <p className="text-body text-on-surface">{m.text}</p>
+                  <div className="min-w-0 max-w-full rounded-lg rounded-tr-none border border-primary/20 bg-primary/10 p-3">
+                    <p className="chat-bubble-text text-body text-on-surface">{m.text}</p>
                   </div>
                 </div>
               )
@@ -85,14 +85,14 @@ export function ChatPanel({
                 </div>
                 <div className="flex min-w-0 flex-col gap-2">
                   <div
-                    className={`rounded-lg rounded-tl-none border p-3 ${
+                    className={`min-w-0 max-w-full rounded-lg rounded-tl-none border p-3 ${
                       m.variant === "error"
                         ? "border-error/40 bg-error-container/30"
                         : "border-outline-variant/30 bg-surface-container-high"
                     }`}
                   >
                     <p
-                      className={`whitespace-pre-wrap text-body ${
+                      className={`chat-bubble-text text-body ${
                         m.variant === "error" ? "text-on-error-container" : "text-on-surface"
                       }`}
                     >

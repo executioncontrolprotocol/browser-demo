@@ -41,6 +41,7 @@ describe("canContinueFirstRun", () => {
     expect(
       canContinueFirstRun("ollama", {
         chromeSupported: true,
+        ollamaBridgeAvailable: true,
         ollamaReady: false,
         ollamaModel: "qwen2.5-coder:1.5b",
       })
@@ -48,6 +49,7 @@ describe("canContinueFirstRun", () => {
     expect(
       canContinueFirstRun("ollama", {
         chromeSupported: true,
+        ollamaBridgeAvailable: true,
         ollamaReady: true,
         ollamaModel: "",
       })
@@ -55,6 +57,7 @@ describe("canContinueFirstRun", () => {
     expect(
       canContinueFirstRun("ollama", {
         chromeSupported: false,
+        ollamaBridgeAvailable: true,
         ollamaReady: true,
         ollamaModel: "qwen2.5-coder:1.5b",
       })
@@ -65,6 +68,7 @@ describe("canContinueFirstRun", () => {
     expect(
       canContinueFirstRun("chrome-ai", {
         chromeSupported: false,
+        ollamaBridgeAvailable: true,
         ollamaReady: true,
         ollamaModel: "x",
       })
@@ -72,6 +76,7 @@ describe("canContinueFirstRun", () => {
     expect(
       canContinueFirstRun("chrome-ai", {
         chromeSupported: true,
+        ollamaBridgeAvailable: false,
         ollamaReady: false,
         ollamaModel: "",
       })

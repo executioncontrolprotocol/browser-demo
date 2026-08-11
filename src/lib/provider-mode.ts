@@ -14,7 +14,7 @@ const PROVIDER_CAPABILITY: Record<ProviderMode, string> = {
   "chrome-ai": "@executioncontrolprotocol/chrome-ai.generate",
   openai: "@executioncontrolprotocol/openai.generate",
   claude: "@executioncontrolprotocol/claude.generate",
-  ollama: "@executioncontrolprotocol/ollama.generate",
+  ollama: "@browser-demo/bridge-ollama.generate",
 }
 
 const HARNESS_CAPABILITY: Record<HarnessMode, string> = {
@@ -50,6 +50,8 @@ export function isProviderModeSelectable(mode: ProviderMode): boolean {
 export interface FirstRunContinueOptions {
   /** Chrome LanguageModel API is present. */
   chromeSupported: boolean
+  /** Local `ecp up` daemon is up and Ollama is reachable. */
+  ollamaBridgeAvailable: boolean
   /** Ollama listing succeeded and a listed model is selected. */
   ollamaReady: boolean
   /** Current draft Ollama model tag. */
@@ -58,7 +60,7 @@ export interface FirstRunContinueOptions {
 
 /**
  * Whether Continue is enabled for the first-run provider modal.
- * Ollama requires a successful `/api/tags` list and a selected installed model.
+ * Ollama requires a usable local bridge (`ecp up`) plus a selected installed model.
  */
 export function canContinueFirstRun(
   mode: ProviderMode,
@@ -66,7 +68,11 @@ export function canContinueFirstRun(
 ): boolean {
   if (!isProviderModeSelectable(mode)) return false
   if (mode === "ollama") {
-    return options.ollamaReady && Boolean(options.ollamaModel.trim())
+    return (
+      options.ollamaBridgeAvailable &&
+      options.ollamaReady &&
+      Boolean(options.ollamaModel.trim())
+    )
   }
   if (mode === "chrome-ai") {
     return options.chromeSupported
