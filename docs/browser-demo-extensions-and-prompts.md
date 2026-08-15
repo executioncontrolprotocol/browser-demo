@@ -2,7 +2,7 @@
 
 This report describes what exists in the **ECP browser demo** today: which extensions are registered, how capabilities are invoked, what system and user prompts are passed to each model path, and how chat intent is filtered before authoring runs. Use it to reason about next steps—especially **intent classification** for workflow authoring vs general Q&A on Chrome Gemini Nano and other providers.
 
-**Scope:** this repo (`executioncontrolprotocol-browser-demo`), [`@executioncontrolprotocol/browser`](https://github.com/GuillaumeCleme/executioncontrolprotocol/tree/main/packages/runtimes/browser), and extensions bound by `createBrowserDemoEnvironment()` / `createDemoAppEnvironment()`. Other ECP extensions (Ollama, Slack, storage, etc.) exist in the protocol repo but are **not** wired into the browser demo environment unless noted.
+**Scope:** this repo (`browser-demo`), [`@executioncontrolprotocol/browser`](https://github.com/executioncontrolprotocol/executioncontrolprotocol/tree/main/packages/runtimes/browser), and extensions bound by `createBrowserDemoEnvironment()` / `createDemoAppEnvironment()`. Other ECP extensions (Ollama, Slack, storage, etc.) exist in the protocol repo but are **not** wired into the browser demo environment unless noted.
 
 ---
 
@@ -75,7 +75,7 @@ All of the following are registered on the global extension catalog when the bro
 | `@executioncontrolprotocol/image-sharp` | `packages/extensions/image-sharp` | Image inspect/transform capabilities (describe + authoring; native `sharp` runs on Node only) |
 | `@executioncontrolprotocol/policies` (standard) | `packages/policies` | Including `@executioncontrolprotocol/registry-control` |
 
-Source: [`packages/runtimes/browser/src/environment.ts`](https://github.com/GuillaumeCleme/executioncontrolprotocol/blob/main/packages/runtimes/browser/src/environment.ts).
+Source: [`packages/runtimes/browser/src/environment.ts`](https://github.com/executioncontrolprotocol/executioncontrolprotocol/blob/main/packages/runtimes/browser/src/environment.ts).
 
 ### 2.2 Demo app environment manifest
 
@@ -161,7 +161,7 @@ Demo-generated workflows may reference `@executioncontrolprotocol/chrome-ai.gene
 
 Store `FAL_KEY` in the encrypted vault (Settings → encrypted API keys) alongside OpenAI and Claude keys. Harness authoring summaries include required vs optional fields from each capability schema so models can propose valid `WITH` blocks.
 
-Reference workflow: [`examples/03-fal-chain/workflow.ts`](https://github.com/GuillaumeCleme/executioncontrolprotocol/blob/main/examples/03-fal-chain/workflow.ts) in the protocol repo.
+Reference workflow: [`examples/03-fal-chain/workflow.ts`](https://github.com/executioncontrolprotocol/executioncontrolprotocol/blob/main/examples/03-fal-chain/workflow.ts) in the protocol repo.
 
 ---
 

@@ -2,7 +2,7 @@
 
 Standalone **ECP Graph Editor** demo app (Vite + React): chat-first UX, workflow/code panels, Mermaid graph viewer, first-run provider selection, and Supabase prompt logging.
 
-This repo is separate from the [Execution Control Protocol (ECP)](https://github.com/GuillaumeCleme/executioncontrolprotocol) monorepo. ECP is consumed as npm packages (or linked locally during protocol development).
+This repo is separate from the [Execution Control Protocol (ECP)](https://github.com/executioncontrolprotocol/executioncontrolprotocol) monorepo. ECP is consumed as npm packages (or linked locally during protocol development).
 
 ## Architecture (app owns composition)
 
@@ -16,7 +16,7 @@ Provider and harness are independent switches (`resolveDemoSession`). Today, cho
 
 Ollama settings use the local **`ecp up`** daemon (default `http://127.0.0.1:3090`). Prefer `ecp up`, which opens this demo with `?token=` (and `?bridge=`) so pairing is automatic. The Ollama provider enables when `/health` reports `ollamaReachable`. Hosted HTTPS pages need **Chromium** (Private Network Access); local Vite works in any browser.
 
-See monorepo [AGENTS.md](https://github.com/GuillaumeCleme/executioncontrolprotocol/blob/main/AGENTS.md) for compile vs runtime vs app boundaries.
+See monorepo [AGENTS.md](https://github.com/executioncontrolprotocol/executioncontrolprotocol/blob/main/AGENTS.md) for compile vs runtime vs app boundaries.
 
 ## Prerequisites
 
@@ -37,7 +37,7 @@ For side-by-side development, clone both repos under the same parent directory:
 ```text
 your-workspace/
   executioncontrolprotocol/   # ECP monorepo (protocol + packages)
-  browser-demo/               # this app (GitHub: executioncontrolprotocol-browser-demo)
+  browser-demo/               # this app (GitHub: executioncontrolprotocol/browser-demo)
 ```
 
 Paths below assume `browser-demo` is a sibling of `executioncontrolprotocol`. Adjust if your folder names differ.
@@ -73,7 +73,7 @@ npm test
 npm run typecheck
 ```
 
-Harness evals (Ollama `gemma3:1b`) run from the [ECP monorepo](https://github.com/GuillaumeCleme/executioncontrolprotocol): `npm run eval:matrix`. The demo app uses the same **chat** multi-shot harness (`HARNESS_TASKS.CHAT`) as the matrix.
+Harness evals (Ollama `gemma3:1b`) run from the [ECP monorepo](https://github.com/executioncontrolprotocol/executioncontrolprotocol): `npm run eval:matrix`. The demo app uses the same **chat** multi-shot harness (`HARNESS_TASKS.CHAT`) as the matrix.
 
 ## Rebuild workspace from scratch (after large ECP changes)
 
@@ -265,7 +265,7 @@ Copy `.env.example` to `.env` and set `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUB
 
 ## Deploy (GitHub Pages)
 
-Live demo: `https://guillaumecleme.github.io/executioncontrolprotocol-browser-demo/`
+Live demo: `https://executioncontrolprotocol.github.io/browser-demo/`
 
 Deploys on push to **`main`** via [`.github/workflows/pages.yml`](.github/workflows/pages.yml).
 
@@ -279,7 +279,7 @@ Deploys on push to **`main`** via [`.github/workflows/pages.yml`](.github/workfl
 Local Pages build:
 
 ```sh
-GITHUB_PAGES=true GITHUB_REPOSITORY=GuillaumeCleme/executioncontrolprotocol-browser-demo npm run build:pages
+GITHUB_PAGES=true GITHUB_REPOSITORY=executioncontrolprotocol/browser-demo npm run build:pages
 ```
 
 Requires `@executioncontrolprotocol/*@^0.10.1` so browser `core/compile` exports `compileHarnessArtifactSource` (used by the coding harness).
@@ -292,5 +292,5 @@ Requires `@executioncontrolprotocol/*@^0.10.1` so browser `core/compile` exports
 
 ## Related repos
 
-- **ECP protocol:** https://github.com/GuillaumeCleme/executioncontrolprotocol
-- **This demo:** https://github.com/GuillaumeCleme/executioncontrolprotocol-browser-demo
+- **ECP protocol:** https://github.com/executioncontrolprotocol/executioncontrolprotocol
+- **This demo:** https://github.com/executioncontrolprotocol/browser-demo

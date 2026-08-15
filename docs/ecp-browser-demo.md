@@ -520,7 +520,7 @@ Build the browser demo app as a separate package. The browser app uses ECP but i
 Suggested package:
 
 ```txt
-executioncontrolprotocol-browser-demo (repo root)
+browser-demo (repo root)
 ```
 
 Suggested stack:
