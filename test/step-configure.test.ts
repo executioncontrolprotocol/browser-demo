@@ -4,6 +4,7 @@ import {
   findStepById,
   isLongTextParam,
   parseEditedLiteral,
+  rewriteStateRefPath,
   unboundPorts,
 } from "../src/lib/step-configure.js"
 import type { ReactFlowStepData } from "@executioncontrolprotocol/format-reactflow"
@@ -49,6 +50,13 @@ describe("step-configure helpers", () => {
       outputs: [],
     }
     expect(unboundPorts(step).map((p) => p.name)).toEqual(["system"])
+  })
+
+  it("rewrites state refs when renaming as keys", () => {
+    expect(rewriteStateRefPath("state.email.text", "email", "summary")).toBe("state.summary.text")
+    expect(rewriteStateRefPath("email.text", "email", "summary")).toBe("state.summary.text")
+    expect(rewriteStateRefPath("state.email", "email", "summary")).toBe("state.summary")
+    expect(rewriteStateRefPath("state.other.text", "email", "summary")).toBe("state.other.text")
   })
 
   it("parses edited literals by original type or typeLabel", () => {

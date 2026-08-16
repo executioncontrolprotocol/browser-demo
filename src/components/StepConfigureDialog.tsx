@@ -9,6 +9,7 @@ import {
   refPorts,
   unboundPorts,
   type ConfigEditorKind,
+  type StepConfigureSavePayload,
 } from "../lib/step-configure.js"
 
 /** Props for {@link StepConfigureDialog}. */
@@ -20,7 +21,7 @@ export interface StepConfigureDialogProps {
   busy?: boolean
   error?: string | null
   onClose: () => void
-  onSave: (values: Record<string, unknown>) => void | Promise<void>
+  onSave: (payload: StepConfigureSavePayload) => void | Promise<void>
 }
 
 function fieldControl(
@@ -82,7 +83,7 @@ function fieldControl(
   )
 }
 
-/** Full-screen dialog to edit literal step inputs and add unbound schema params. */
+/** Full-screen dialog to edit literal step inputs, `as` key, and add unbound schema params. */
 export function StepConfigureDialog({
   stepId,
   step,
@@ -104,7 +105,9 @@ export function StepConfigureDialog({
     }
     return next
   })
+  const [asKey, setAsKey] = useState(step.as ?? "")
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const [asError, setAsError] = useState<string | null>(null)
   const [pickerOpen, setPickerOpen] = useState(false)
 
   useEffect(() => {
@@ -115,7 +118,9 @@ export function StepConfigureDialog({
       next[port.name] = port.valueTitle ?? ""
     }
     setDrafts(next)
+    setAsKey(step.as ?? "")
     setFieldErrors({})
+    setAsError(null)
     setPickerOpen(false)
   }, [step, stepId])
 
@@ -133,8 +138,6 @@ export function StepConfigureDialog({
   }
 
   const removePort = (name: string) => {
-    const wasOriginalLiteral = initialLiterals.some((p) => p.name === name)
-    if (wasOriginalLiteral) return
     setActivePorts((prev) => prev.filter((p) => p.name !== name))
     setDrafts((prev) => {
       const next = { ...prev }
@@ -149,7 +152,7 @@ export function StepConfigureDialog({
   }
 
   const handleSave = () => {
-    const values: Record<string, unknown> = {}
+    const literals: Record<string, unknown> = {}
     const errors: Record<string, string> = {}
     for (const port of activePorts) {
       const text = drafts[port.name] ?? ""
@@ -159,11 +162,24 @@ export function StepConfigureDialog({
         errors[port.name] = parsed.error
         continue
       }
-      values[port.name] = parsed.value
+      literals[port.name] = parsed.value
     }
+
+    const trimmedAs = asKey.trim()
+    if (trimmedAs && !/^[A-Za-z_][A-Za-z0-9_]*$/.test(trimmedAs)) {
+      setAsError("Use a simple identifier (letters, numbers, underscore)")
+      setFieldErrors(errors)
+      return
+    }
+    setAsError(null)
+
+    const initialNames = new Set(initialLiterals.map((p) => p.name))
+    const activeNameSet = new Set(activePorts.map((p) => p.name))
+    const removedKeys = [...initialNames].filter((name) => !activeNameSet.has(name))
+
     setFieldErrors(errors)
     if (Object.keys(errors).length > 0) return
-    void onSave(values)
+    void onSave({ literals, removedKeys, asKey: trimmedAs })
   }
 
   return (
@@ -196,6 +212,26 @@ export function StepConfigureDialog({
         </div>
 
         <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-4">
+          <label className="block space-y-1.5">
+            <span className="font-mono text-label text-on-surface">
+              Store key <span className="text-outline">(as)</span>
+            </span>
+            <input
+              type="text"
+              className="w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-3 py-2 font-mono text-sm text-on-surface outline-none focus:border-outline"
+              value={asKey}
+              onChange={(e) => setAsKey(e.target.value)}
+              placeholder="e.g. email"
+              disabled={busy}
+            />
+            <span className="block text-[11px] text-on-surface-variant">
+              Commit output into workflow state under this key. Downstream refs use it (e.g.{" "}
+              <span className="font-mono">ref(&quot;{(asKey.trim() || "email") + ".text"}&quot;)</span>
+              ).
+            </span>
+            {asError ? <span className="block text-label text-error">{asError}</span> : null}
+          </label>
+
           {activePorts.length === 0 ? (
             <p className="text-body text-on-surface-variant">
               No literal inputs yet. Add a parameter from the capability schema below.
@@ -204,7 +240,6 @@ export function StepConfigureDialog({
             activePorts.map((port) => {
               const kind = editorKindForTypeLabel(port.typeLabel)
               const fieldError = fieldErrors[port.name]
-              const canRemove = !initialLiterals.some((p) => p.name === port.name)
               return (
                 <div key={port.id} className="space-y-1.5">
                   <div className="flex items-center justify-between gap-2">
@@ -212,16 +247,14 @@ export function StepConfigureDialog({
                       {port.name}
                       <span className="text-outline">:{port.typeLabel}</span>
                     </span>
-                    {canRemove ? (
-                      <button
-                        type="button"
-                        className="font-mono text-[11px] text-on-surface-variant hover:text-error"
-                        onClick={() => removePort(port.name)}
-                        disabled={busy}
-                      >
-                        Remove
-                      </button>
-                    ) : null}
+                    <button
+                      type="button"
+                      className="font-mono text-[11px] text-on-surface-variant hover:text-error"
+                      onClick={() => removePort(port.name)}
+                      disabled={busy}
+                    >
+                      Remove
+                    </button>
                   </div>
                   {fieldControl(
                     kind,
@@ -308,7 +341,7 @@ export function StepConfigureDialog({
             type="button"
             className="rounded-lg bg-primary px-4 py-2 font-mono text-label text-on-primary disabled:opacity-50"
             onClick={handleSave}
-            disabled={busy || activePorts.length === 0}
+            disabled={busy}
           >
             {busy ? "Saving…" : "Save"}
           </button>

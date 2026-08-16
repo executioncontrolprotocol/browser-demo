@@ -109,6 +109,25 @@ function ReactFlowCanvasInner({
     setEdges(toRfEdges(doc.edges))
   }, [doc, setNodes, setEdges])
 
+  const connectedByNode = useMemo(() => {
+    const targets = new Map<string, Set<string>>()
+    const sources = new Map<string, Set<string>>()
+    for (const edge of edges) {
+      if (edge.data && (edge.data as { kind?: string }).kind === "control") continue
+      if (edge.targetHandle) {
+        const set = targets.get(edge.target) ?? new Set<string>()
+        set.add(edge.targetHandle)
+        targets.set(edge.target, set)
+      }
+      if (edge.sourceHandle) {
+        const set = sources.get(edge.source) ?? new Set<string>()
+        set.add(edge.sourceHandle)
+        sources.set(edge.source, set)
+      }
+    }
+    return { targets, sources }
+  }, [edges])
+
   const decoratedNodes = useMemo(
     () =>
       nodes.map((node) => {
@@ -120,11 +139,13 @@ function ReactFlowCanvasInner({
           data: {
             ...(node.data as object),
             statusClass,
+            connectedTargetHandles: [...(connectedByNode.targets.get(node.id) ?? [])],
+            connectedSourceHandles: [...(connectedByNode.sources.get(node.id) ?? [])],
           },
           className: statusClass,
         }
       }),
-    [nodes, statuses, runActive, runBusy]
+    [nodes, statuses, runActive, runBusy, connectedByNode]
   )
 
   const decoratedEdges = useMemo(

@@ -113,6 +113,101 @@ export function unboundPorts(step: ReactFlowStepData): ReactFlowPort[] {
   return step.inputs.filter((p) => p.binding === undefined)
 }
 
+function isRefValue(value: unknown): value is { $ref: string } {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "$ref" in value &&
+    typeof (value as { $ref: unknown }).$ref === "string"
+  )
+}
+
+/** Rewrite `state.<fromAs>[...]` refs to `state.<toAs>[...]`. */
+export function rewriteStateRefPath(refPath: string, fromAs: string, toAs: string): string {
+  const normalized = refPath.startsWith("state.") ? refPath.slice("state.".length) : refPath
+  if (normalized === fromAs) return `state.${toAs}`
+  if (normalized.startsWith(`${fromAs}.`)) {
+    return `state.${toAs}.${normalized.slice(fromAs.length + 1)}`
+  }
+  return refPath.startsWith("state.") ? refPath : `state.${refPath}`
+}
+
+function rewriteRefsInValue(value: unknown, fromAs: string, toAs: string): unknown {
+  if (isRefValue(value)) {
+    return { ...value, $ref: rewriteStateRefPath(value.$ref, fromAs, toAs) }
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => rewriteRefsInValue(item, fromAs, toAs))
+  }
+  if (value !== null && typeof value === "object") {
+    const out: Record<string, unknown> = {}
+    for (const [key, nested] of Object.entries(value as Record<string, unknown>)) {
+      out[key] = rewriteRefsInValue(nested, fromAs, toAs)
+    }
+    return out
+  }
+  return value
+}
+
+/** Deep-clone step inputs with state refs rewritten for an `as` rename. */
+export function rewriteStepInputRefs(
+  input: Record<string, unknown> | undefined,
+  fromAs: string,
+  toAs: string
+): Record<string, unknown> | undefined {
+  if (!input) return input
+  return rewriteRefsInValue(input, fromAs, toAs) as Record<string, unknown>
+}
+
+/** Walk workflow steps and rewrite `$ref` paths after an `as` rename. */
+export function rewriteWorkflowAsRefs(
+  nodes: WorkflowNode[],
+  fromAs: string,
+  toAs: string
+): WorkflowNode[] {
+  return nodes.map((node) => {
+    if (isStepNode(node)) {
+      return {
+        ...node,
+        input: rewriteStepInputRefs(
+          node.input as Record<string, unknown> | undefined,
+          fromAs,
+          toAs
+        ) as StepNode["input"],
+      }
+    }
+    if (node.type === "parallel") {
+      return {
+        ...node,
+        branches: node.branches.map((branch) => rewriteWorkflowAsRefs(branch, fromAs, toAs)),
+      }
+    }
+    if (node.type === "branch") {
+      return {
+        ...node,
+        branches: node.branches.map((arm) => ({
+          ...arm,
+          steps: rewriteWorkflowAsRefs(arm.steps, fromAs, toAs),
+        })),
+      }
+    }
+    return {
+      ...node,
+      steps: rewriteWorkflowAsRefs(node.steps, fromAs, toAs),
+    }
+  })
+}
+
+/** Payload from the step configure dialog. */
+export interface StepConfigureSavePayload {
+  /** Literal parameter values currently active in the dialog. */
+  literals: Record<string, unknown>
+  /** Literal keys present before edit that the user removed. */
+  removedKeys: string[]
+  /** Commit key (`as`); empty string clears it. */
+  asKey: string
+}
+
 export type ParseLiteralResult =
   | { ok: true; value: unknown }
   | { ok: false; error: string }

@@ -21,7 +21,7 @@ import type {
   ReactFlowDocument,
   ReactFlowStepData,
 } from "@executioncontrolprotocol/format-reactflow"
-import { findStepById } from "./lib/step-configure.js"
+import { findStepById, rewriteWorkflowAsRefs, type StepConfigureSavePayload } from "./lib/step-configure.js"
 import { ChatPanel } from "./components/ChatPanel.js"
 import { ChromeInstallDialog } from "./components/ChromeInstallDialog.js"
 import { CodePanel } from "./components/CodePanel.js"
@@ -381,26 +381,66 @@ export function App() {
   }, [])
 
   const onSaveStepConfigure = useCallback(
-    async (values: Record<string, unknown>) => {
+    async (payload: StepConfigureSavePayload) => {
       const operational = ecpRef.current
       if (!operational || !manifest || !configureStepId) return
       setConfigureBusy(true)
       setConfigureError(null)
       try {
-        const shorthand: Record<string, unknown> = {}
-        for (const [param, value] of Object.entries(values)) {
-          shorthand[`steps[${configureStepId}].input.${param}`] = value
+        const step = findStepById(manifest.steps, configureStepId)
+        if (!step) {
+          setConfigureError("Step not found in workflow")
+          return
         }
-        const patched = await operational.patch(manifest).with(shorthand).process()
+        const previousAs = step.as
+        const previousInput = (step.input ?? {}) as Record<string, unknown>
+
+        const nextInput: Record<string, unknown> = { ...previousInput }
+        for (const key of payload.removedKeys) {
+          delete nextInput[key]
+        }
+        for (const [param, value] of Object.entries(payload.literals)) {
+          nextInput[param] = value
+        }
+
+        const nextStep = {
+          ...step,
+          input: nextInput as typeof step.input,
+        }
+        if (payload.asKey) {
+          nextStep.as = payload.asKey
+        } else {
+          delete nextStep.as
+        }
+
+        const patched = await operational
+          .patch(manifest)
+          .with([
+            {
+              path: `steps[${configureStepId}]`,
+              mode: "replace",
+              value: nextStep,
+            },
+          ])
+          .process()
         if (!patched.success || !patched.result) {
           const message =
             patched.diagnostics?.[0]?.message ??
             patched.validation?.errors?.[0]?.message ??
-            "Failed to patch step inputs"
+            "Failed to patch step"
           setConfigureError(message)
           return
         }
-        await syncFromManifestRef.current(patched.result as WorkflowManifest, {
+
+        let nextManifest = patched.result as WorkflowManifest
+        if (previousAs && payload.asKey && previousAs !== payload.asKey) {
+          nextManifest = {
+            ...nextManifest,
+            steps: rewriteWorkflowAsRefs(nextManifest.steps, previousAs, payload.asKey),
+          }
+        }
+
+        await syncFromManifestRef.current(nextManifest, {
           refreshFluent: true,
         })
         setConfigureStepId(null)
