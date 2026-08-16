@@ -514,12 +514,18 @@
   @keyframes ecp-rf-pulse {
     0%,
     100% {
-      box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-tertiary-fixed-dim) 55%, transparent);
+      box-shadow: 0 0 0 0 transparent;
       border-color: var(--color-tertiary-fixed-dim);
     }
     50% {
-      box-shadow: 0 0 12px 2px color-mix(in srgb, var(--color-tertiary-fixed-dim) 35%, transparent);
-      border-color: var(--color-tertiary);
+      box-shadow: 0 0 6px 0 color-mix(in srgb, var(--color-tertiary-fixed-dim) 40%, transparent);
+      border-color: color-mix(in srgb, var(--color-tertiary-fixed-dim) 75%, var(--color-on-surface));
+    }
+  }
+
+  @keyframes ecp-rf-edge-ants {
+    to {
+      stroke-dashoffset: -14;
     }
   }
 
@@ -528,13 +534,17 @@
     box-shadow: 0 0 10px color-mix(in srgb, var(--color-status-valid) 35%, transparent);
   }
 
-  .ecp-rf-node--incomplete,
-  .ecp-rf-node--failed {
-    animation: ecp-rf-pulse 1.4s ease-in-out infinite;
+  .ecp-rf-node--pending {
+    border-color: color-mix(in srgb, var(--color-outline) 70%, var(--color-outline-variant)) !important;
+  }
+
+  .ecp-rf-node--running {
+    animation: ecp-rf-pulse 1.8s ease-in-out infinite;
   }
 
   .ecp-rf-node--failed {
     border-color: var(--color-error) !important;
+    box-shadow: 0 0 8px color-mix(in srgb, var(--color-error) 30%, transparent);
   }
 
   /* Keep interactive controls inside nodes above the pan/drag layer. */
@@ -567,24 +577,24 @@
     border-color: var(--color-primary) !important;
   }
 
-  .react-flow__edge.ecp-rf-edge--incomplete path {
+  .react-flow__edge.ecp-rf-edge--idle path {
+    stroke: var(--color-tertiary-fixed-dim) !important;
+    stroke-dasharray: none !important;
+    animation: none !important;
+  }
+
+  .react-flow__edge.ecp-rf-edge--incomplete path,
+  .react-flow__edge.animated.ecp-rf-edge--incomplete path {
     stroke: var(--color-tertiary-fixed-dim) !important;
     stroke-width: 2.5;
-    animation: ecp-rf-edge-pulse 1.4s ease-in-out infinite;
+    stroke-dasharray: 6 4 !important;
+    animation: ecp-rf-edge-ants 0.45s linear infinite !important;
   }
 
   .react-flow__edge.ecp-rf-edge--completed path {
     stroke: var(--color-status-valid) !important;
-  }
-
-  @keyframes ecp-rf-edge-pulse {
-    0%,
-    100% {
-      stroke-opacity: 0.55;
-    }
-    50% {
-      stroke-opacity: 1;
-    }
+    stroke-dasharray: none !important;
+    animation: none !important;
   }
 
   .react-flow {
@@ -616,6 +626,18 @@
   .react-flow__controls.ecp-rf-controls .react-flow__controls-button:hover {
     background: var(--color-surface-container-high);
     fill: var(--color-on-surface);
+  }
+
+  .react-flow__controls.ecp-rf-controls .ecp-rf-controls-inspect {
+    color: var(--color-on-surface-variant);
+  }
+
+  .react-flow__controls.ecp-rf-controls .ecp-rf-controls-inspect:hover {
+    color: var(--color-on-surface);
+  }
+
+  .react-flow__controls.ecp-rf-controls .ecp-rf-controls-inspect:disabled {
+    opacity: 0.4;
   }
 
   .react-flow__minimap.ecp-rf-minimap {

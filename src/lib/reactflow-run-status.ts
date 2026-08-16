@@ -28,7 +28,8 @@ export function applyStepStatus(
 }
 
 /**
- * Derive edge visual status from endpoint step statuses during a run.
+ * Derive edge visual status from endpoint step statuses.
+ * Idle = solid blue; incomplete = in-flight ants; completed = source step done.
  * @category Demo
  */
 export function edgeRunStatus(
@@ -36,9 +37,12 @@ export function edgeRunStatus(
   targetStatus: ReactFlowStepStatus | undefined,
   runActive: boolean
 ): "idle" | "incomplete" | "completed" {
-  if (!runActive) return "idle"
-  if (sourceStatus === "completed" && targetStatus === "completed") return "completed"
-  return "incomplete"
+  void targetStatus
+  if (sourceStatus === "completed") return "completed"
+  if (runActive && (sourceStatus === "pending" || sourceStatus === "running")) {
+    return "incomplete"
+  }
+  return "idle"
 }
 
 /**
@@ -49,11 +53,10 @@ export function stepNodeStatusClass(
   status: ReactFlowStepStatus | undefined,
   runActive: boolean
 ): string {
-  if (!runActive && !status) return ""
   if (status === "completed") return "ecp-rf-node--completed"
   if (status === "failed") return "ecp-rf-node--failed"
-  if (status === "running" || status === "pending") return "ecp-rf-node--incomplete"
-  if (runActive) return "ecp-rf-node--incomplete"
+  if (status === "running") return "ecp-rf-node--running"
+  if (runActive && status === "pending") return "ecp-rf-node--pending"
   return ""
 }
 
@@ -69,5 +72,5 @@ export function edgeStatusClass(
   const kind = edgeRunStatus(sourceStatus, targetStatus, runActive)
   if (kind === "completed") return "ecp-rf-edge--completed"
   if (kind === "incomplete") return "ecp-rf-edge--incomplete"
-  return ""
+  return "ecp-rf-edge--idle"
 }

@@ -17,22 +17,25 @@ describe("reactflow-run-status", () => {
     expect(next).toEqual({ a: "completed" })
   })
 
-  it("marks edges incomplete until both ends complete", () => {
-    expect(edgeRunStatus("completed", "pending", true)).toBe("incomplete")
-    expect(edgeRunStatus("completed", "completed", true)).toBe("completed")
+  it("keeps edges idle until a run starts, then ants until source completes", () => {
     expect(edgeRunStatus(undefined, undefined, false)).toBe("idle")
+    expect(edgeRunStatus("pending", "pending", true)).toBe("incomplete")
+    expect(edgeRunStatus("running", "pending", true)).toBe("incomplete")
+    expect(edgeRunStatus("completed", "pending", true)).toBe("completed")
+    expect(edgeRunStatus("completed", "completed", false)).toBe("completed")
   })
 
   it("maps node status to CSS classes", () => {
     expect(stepNodeStatusClass("completed", true)).toBe("ecp-rf-node--completed")
-    expect(stepNodeStatusClass("running", true)).toBe("ecp-rf-node--incomplete")
-    expect(stepNodeStatusClass("pending", true)).toBe("ecp-rf-node--incomplete")
+    expect(stepNodeStatusClass("running", true)).toBe("ecp-rf-node--running")
+    expect(stepNodeStatusClass("pending", true)).toBe("ecp-rf-node--pending")
     expect(stepNodeStatusClass(undefined, false)).toBe("")
   })
 
   it("maps edge status to CSS classes", () => {
+    expect(edgeStatusClass(undefined, undefined, false)).toBe("ecp-rf-edge--idle")
     expect(edgeStatusClass("completed", "completed", true)).toBe("ecp-rf-edge--completed")
-    expect(edgeStatusClass("completed", "running", true)).toBe("ecp-rf-edge--incomplete")
-    expect(edgeStatusClass(undefined, undefined, false)).toBe("")
+    expect(edgeStatusClass("completed", "running", true)).toBe("ecp-rf-edge--completed")
+    expect(edgeStatusClass("pending", "pending", true)).toBe("ecp-rf-edge--incomplete")
   })
 })

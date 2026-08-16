@@ -40,19 +40,26 @@ function toRfNodes(nodes: ReactFlowNode[]): Node[] {
 }
 
 function toRfEdges(edges: ReactFlowEdge[]): Edge[] {
-  return edges.map((e) => ({
-    id: e.id,
-    source: e.source,
-    target: e.target,
-    sourceHandle: e.sourceHandle,
-    targetHandle: e.targetHandle,
-    data: e.data,
-    animated: e.data.kind === "data",
-    style:
-      e.data.kind === "control"
-        ? { stroke: "var(--color-outline-variant)", strokeWidth: 1, opacity: 0.45 }
-        : { stroke: "var(--color-primary)", strokeWidth: 2, opacity: 0.7 },
-  }))
+  return edges
+    .filter(
+      (e) =>
+        e.data.kind === "data" &&
+        typeof e.sourceHandle === "string" &&
+        e.sourceHandle.length > 0 &&
+        typeof e.targetHandle === "string" &&
+        e.targetHandle.length > 0
+    )
+    .map((e) => ({
+      id: e.id,
+      source: e.source,
+      target: e.target,
+      sourceHandle: e.sourceHandle,
+      targetHandle: e.targetHandle,
+      data: e.data,
+      animated: false,
+      className: "ecp-rf-edge--idle",
+      style: { stroke: "var(--color-tertiary-fixed-dim)", strokeWidth: 2, opacity: 0.9 },
+    }))
 }
 
 function parseDocument(source: string): ReactFlowDocument | null {
@@ -73,6 +80,8 @@ export interface ReactFlowCanvasProps {
   runBusy: boolean
   runOverlayOpen: boolean
   onCloseRunOverlay: () => void
+  /** Open the run/state inspect overlay without starting a run. */
+  onOpenRunOverlay: () => void
   onRun: () => void
   hasWorkflow: boolean
   /** Open configure dialog for a step with literal inputs. */
@@ -85,6 +94,7 @@ function ReactFlowCanvasInner({
   runBusy,
   runOverlayOpen,
   onCloseRunOverlay,
+  onOpenRunOverlay,
   onRun,
   hasWorkflow,
   onConfigureStep,
@@ -152,18 +162,20 @@ function ReactFlowCanvasInner({
     () =>
       edges.map((edge) => {
         const cls = edgeStatusClass(statuses[edge.source], statuses[edge.target], runActive || runBusy)
+        const incomplete = cls === "ecp-rf-edge--incomplete"
+        const completed = cls === "ecp-rf-edge--completed"
         return {
           ...edge,
           className: cls,
-          animated: cls === "ecp-rf-edge--incomplete" || Boolean(edge.animated),
+          animated: incomplete,
           style: {
-            ...edge.style,
-            ...(cls === "ecp-rf-edge--completed"
-              ? { stroke: "var(--color-status-valid)", opacity: 0.85 }
-              : {}),
-            ...(cls === "ecp-rf-edge--incomplete"
-              ? { stroke: "var(--color-tertiary-fixed-dim)", opacity: 0.95 }
-              : {}),
+            strokeWidth: 2,
+            opacity: 0.9,
+            ...(incomplete
+              ? { stroke: "var(--color-tertiary-fixed-dim)" }
+              : completed
+                ? { stroke: "var(--color-status-valid)" }
+                : { stroke: "var(--color-tertiary-fixed-dim)" }),
           },
         }
       }),
@@ -197,7 +209,19 @@ function ReactFlowCanvasInner({
               proOptions={{ hideAttribution: true }}
             >
               <Background gap={24} color="var(--color-surface-container-highest)" />
-              <Controls className="ecp-rf-controls" showInteractive={false} />
+              <Controls className="ecp-rf-controls" showInteractive={false}>
+                <button
+                  type="button"
+                  className="react-flow__controls-button ecp-rf-controls-inspect"
+                  title="Inspect state"
+                  aria-label="Inspect state"
+                  onClick={onOpenRunOverlay}
+                >
+                  <span className="material-symbols-outlined text-[16px] leading-none" aria-hidden>
+                    data_object
+                  </span>
+                </button>
+              </Controls>
               <MiniMap
                 className="ecp-rf-minimap"
                 bgColor="var(--color-surface-container-low)"
@@ -220,7 +244,7 @@ function ReactFlowCanvasInner({
         <div className="absolute inset-0 z-20 flex items-start justify-center overflow-auto bg-background/50 p-6 backdrop-blur-[2px]">
           <div className="flex w-full max-w-2xl flex-col rounded-xl border border-outline-variant bg-surface-container p-6">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="font-display text-headline text-on-surface">Run output</h2>
+              <h2 className="font-display text-headline text-on-surface">Workflow state</h2>
               <button
                 type="button"
                 className="material-symbols-outlined cursor-pointer text-on-surface-variant hover:text-on-surface"

@@ -652,12 +652,13 @@ export function App() {
     setRunBusy(true)
     setRunOutput("")
     layout.ensureWorkflowVisible()
-    setRunOverlayOpen(true)
     try {
       const result = await ecp.run(manifest)
       setRunOutput(JSON.stringify(result, null, 2))
+      setRunOverlayOpen(true)
     } catch (err) {
       setRunOutput(err instanceof Error ? err.message : String(err))
+      setRunOverlayOpen(true)
     } finally {
       setRunBusy(false)
     }
@@ -715,6 +716,7 @@ export function App() {
                 runBusy={runBusy}
                 runOverlayOpen={runOverlayOpen}
                 onCloseRunOverlay={() => setRunOverlayOpen(false)}
+                onOpenRunOverlay={() => setRunOverlayOpen(true)}
                 onRun={onRun}
                 hasWorkflow={hasWorkflow}
                 onConfigureStep={onConfigureStep}
