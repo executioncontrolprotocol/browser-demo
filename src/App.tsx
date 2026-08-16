@@ -28,7 +28,6 @@ import { CodePanel } from "./components/CodePanel.js"
 import { FirstRunModal } from "./components/FirstRunModal.js"
 import { VaultSetupModal } from "./components/VaultSetupModal.js"
 import { VaultUnlockModal } from "./components/VaultUnlockModal.js"
-import { MermaidCanvas } from "./components/MermaidCanvas.js"
 import { ReactFlowCanvas } from "./components/ReactFlowCanvas.js"
 import { StepConfigureDialog } from "./components/StepConfigureDialog.js"
 import { StatusFooter } from "./components/StatusFooter.js"
@@ -699,17 +698,6 @@ export function App() {
         {layout.workspaceVisible ? (
           <WorkspaceColumn visible widthClass={widthClass}>
             {layout.views.workflow ? (
-              <MermaidCanvas
-                mermaid={mermaid}
-                runOutput={runOutput}
-                runBusy={runBusy}
-                runOverlayOpen={runOverlayOpen}
-                onCloseRunOverlay={() => setRunOverlayOpen(false)}
-                onRun={onRun}
-                hasWorkflow={hasWorkflow}
-              />
-            ) : null}
-            {layout.views.flow ? (
               <ReactFlowCanvas
                 reactflowJson={reactflow}
                 runOutput={runOutput}

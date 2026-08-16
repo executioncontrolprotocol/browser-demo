@@ -185,9 +185,9 @@ function ReactFlowCanvasInner({
   return (
     <section
       className="node-canvas relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background"
-      id="flow-drawer"
+      id="graph-drawer"
     >
-      <PanelHeader icon="hub" label="React Flow" />
+      <PanelHeader icon="account_tree" label="Workflow Canvas" />
 
       <div
         className={`relative flex min-h-0 flex-1 flex-col ${runOverlayOpen ? "opacity-50" : ""}`}
@@ -233,8 +233,8 @@ function ReactFlowCanvasInner({
           </ReactFlowConfigureContext.Provider>
         ) : (
           <div className="flex h-full items-center justify-center p-canvas-padding">
-            <p className="max-w-md text-center font-body text-body text-on-surface-variant">
-              Generate a workflow via chat to see the React Flow graph here.
+            <p className="max-w-md text-center font-mono text-body text-on-surface-variant">
+              Generate a workflow via chat to see the graph here.
             </p>
           </div>
         )}

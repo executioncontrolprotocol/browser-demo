@@ -1,4 +1,5 @@
 import { FluentWorkflowEditor } from "./FluentWorkflowEditor.js"
+import { MermaidDiagramViewer } from "./MermaidDiagramViewer.js"
 import { MonacoCodeEditor } from "./MonacoCodeEditor.js"
 import { PanelHeader } from "./PanelHeader.js"
 import { ENVIRONMENT_EDITOR_PATH } from "../lib/environment-source.js"
@@ -49,13 +50,7 @@ export function CodePanel({
   onFluentChange,
 }: CodePanelProps) {
   const readOnlyValue =
-    formatTab === "json"
-      ? json
-      : formatTab === "toon"
-        ? toon
-        : formatTab === "mermaid"
-          ? mermaid
-          : ""
+    formatTab === "json" ? json : formatTab === "toon" ? toon : formatTab === "mermaid" ? mermaid : ""
 
   return (
     <div
@@ -122,10 +117,20 @@ export function CodePanel({
             onChange={onFluentChange}
             visible={formatTab === "fluent"}
           />
-          {formatTab !== "fluent" ? (
+          {formatTab === "json" || formatTab === "toon" ? (
             <pre className="absolute inset-0 overflow-auto whitespace-pre-wrap bg-surface-container-lowest p-4 font-mono text-label text-on-surface-variant">
               {readOnlyValue}
             </pre>
+          ) : null}
+          {formatTab === "mermaid" ? (
+            <div className="absolute inset-0 flex min-h-0 flex-col bg-surface-container-lowest">
+              <div className="flex min-h-0 flex-1 flex-col border-b border-outline-variant/60">
+                <MermaidDiagramViewer source={mermaid} />
+              </div>
+              <pre className="min-h-0 flex-1 overflow-auto whitespace-pre-wrap p-4 font-mono text-label text-on-surface-variant">
+                {mermaid}
+              </pre>
+            </div>
           ) : null}
         </div>
       </div>

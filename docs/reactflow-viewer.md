@@ -1,6 +1,8 @@
 # React Flow viewer
 
-The browser demo Flow panel follows the shared React Flow render contract documented in the core package:
+The browser demo **Workflow** canvas (`account_tree` nav) uses React Flow. Mermaid diagram + source live under Logic Source → Mermaid.
+
+Shared encode contract:
 
 [`REACTFLOW_RENDER.md`](../../executioncontrolprotocol/packages/extensions/format-reactflow/REACTFLOW_RENDER.md)
 

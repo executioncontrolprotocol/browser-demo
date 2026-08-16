@@ -10,7 +10,7 @@ import {
   type StepStatusMap,
 } from "../lib/reactflow-run-status.js"
 
-/** Subscribe to format-reactflow run progress for the Flow canvas. */
+/** Subscribe to format-reactflow run progress for the Workflow canvas. */
 export function useReactFlowRunProgress(stepIds: string[]) {
   const [statuses, setStatuses] = useState<StepStatusMap>({})
   const [runActive, setRunActive] = useState(false)

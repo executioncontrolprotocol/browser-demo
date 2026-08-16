@@ -36,20 +36,58 @@ export default defineConfig({
       "@executioncontrolprotocol/types",
       "@executioncontrolprotocol/chrome-ai",
     ],
-    alias: {
-      esbuild: "esbuild-wasm",
-      "@executioncontrolprotocol/core/compile": aliasPath(coreCompileBrowserEntry),
-      "node:fs/promises": aliasPath(stubDir, "node-fs-promises-stub.ts"),
-      "node:fs": aliasPath(stubDir, "node-fs-stub.ts"),
-      "node:path": aliasPath(stubDir, "node-path-stub.ts"),
-      "node:url": aliasPath(stubDir, "node-url-stub.ts"),
-      "node:os": aliasPath(stubDir, "node-empty.ts"),
-      "node:http": aliasPath(stubDir, "node-empty.ts"),
-      "node:child_process": aliasPath(stubDir, "node-empty.ts"),
-      "node:util": aliasPath(stubDir, "node-empty.ts"),
+    alias: [
+      // Exact bare specifier only — do not break `esbuild-wasm/esbuild.wasm?url` or ESM subpaths.
+      {
+        find: /^esbuild-wasm$/,
+        replacement: aliasPath(appRoot, "node_modules/esbuild-wasm/esm/browser.js"),
+      },
+      {
+        find: /^esbuild$/,
+        replacement: aliasPath(appRoot, "node_modules/esbuild-wasm/esm/browser.js"),
+      },
+      {
+        find: "@executioncontrolprotocol/core/compile",
+        replacement: aliasPath(coreCompileBrowserEntry),
+      },
+      {
+        find: "node:fs/promises",
+        replacement: aliasPath(stubDir, "node-fs-promises-stub.ts"),
+      },
+      {
+        find: "node:fs",
+        replacement: aliasPath(stubDir, "node-fs-stub.ts"),
+      },
+      {
+        find: "node:path",
+        replacement: aliasPath(stubDir, "node-path-stub.ts"),
+      },
+      {
+        find: "node:url",
+        replacement: aliasPath(stubDir, "node-url-stub.ts"),
+      },
+      {
+        find: "node:os",
+        replacement: aliasPath(stubDir, "node-empty.ts"),
+      },
+      {
+        find: "node:http",
+        replacement: aliasPath(stubDir, "node-empty.ts"),
+      },
+      {
+        find: "node:child_process",
+        replacement: aliasPath(stubDir, "node-empty.ts"),
+      },
+      {
+        find: "node:util",
+        replacement: aliasPath(stubDir, "node-empty.ts"),
+      },
       // Native Node only — image-sharp cannot run in the browser bundle.
-      sharp: aliasPath(stubDir, "sharp-stub.ts"),
-    },
+      {
+        find: "sharp",
+        replacement: aliasPath(stubDir, "sharp-stub.ts"),
+      },
+    ],
   },
   optimizeDeps: {
     // Prebundle CJS `@fal-ai/client` so named ESM imports work (real client, not a stub).
@@ -66,6 +104,8 @@ export default defineConfig({
       // Keep Vite `import.meta.glob` for harness prompt fixtures (esbuild prebundle strips it).
       "@executioncontrolprotocol/harnesses-browser-nano",
       "@executioncontrolprotocol/harnesses-browser-coding",
+      // Worker + wasm glue must not be prebundled (breaks initialize/transform).
+      "esbuild-wasm",
     ],
   },
 })

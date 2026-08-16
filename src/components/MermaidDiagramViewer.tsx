@@ -9,10 +9,30 @@ export interface MermaidDiagramViewerProps {
   emptyMessage?: string
 }
 
+function MermaidStatusMessage({
+  children,
+  tone = "muted",
+}: {
+  children: string
+  tone?: "muted" | "error"
+}) {
+  return (
+    <div className="flex h-full min-h-0 flex-1 items-center justify-center p-canvas-padding">
+      <p
+        className={`max-w-md text-center font-mono text-body ${
+          tone === "error" ? "text-error" : "text-on-surface-variant"
+        }`}
+      >
+        {children}
+      </p>
+    </div>
+  )
+}
+
 /** Render a Mermaid diagram (not raw source). */
 export function MermaidDiagramViewer({
   source,
-  emptyMessage = "Generate a workflow to see the graph.",
+  emptyMessage = "Generate a workflow via chat to see the graph here.",
 }: MermaidDiagramViewerProps) {
   const baseId = useId().replace(/:/g, "")
   const renderSeq = useRef(0)
@@ -47,19 +67,19 @@ export function MermaidDiagramViewer({
   }, [source, baseId])
 
   if (!source.trim() || source.includes("empty[No workflow]")) {
-    return <p className="text-body text-on-surface-variant">{emptyMessage}</p>
+    return <MermaidStatusMessage>{emptyMessage}</MermaidStatusMessage>
   }
 
   if (error) {
-    return <p className="text-body text-error">{error}</p>
+    return <MermaidStatusMessage tone="error">{error}</MermaidStatusMessage>
   }
 
   if (!svg) {
-    return <p className="text-body text-on-surface-variant">Rendering diagram...</p>
+    return <MermaidStatusMessage>Rendering diagram...</MermaidStatusMessage>
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="flex h-full min-h-0 flex-1 flex-col">
       <div className="min-h-0 flex-1 overflow-auto p-2" dangerouslySetInnerHTML={{ __html: svg }} />
     </div>
   )
