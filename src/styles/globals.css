@@ -406,4 +406,55 @@
       opacity: 1;
     }
   }
+
+  @keyframes ecp-rf-pulse {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-tertiary-fixed-dim) 55%, transparent);
+      border-color: var(--color-tertiary-fixed-dim);
+    }
+    50% {
+      box-shadow: 0 0 12px 2px color-mix(in srgb, var(--color-tertiary-fixed-dim) 35%, transparent);
+      border-color: var(--color-tertiary);
+    }
+  }
+
+  .ecp-rf-node--completed {
+    border-color: var(--color-status-valid) !important;
+    box-shadow: 0 0 10px color-mix(in srgb, var(--color-status-valid) 35%, transparent);
+  }
+
+  .ecp-rf-node--incomplete,
+  .ecp-rf-node--failed {
+    animation: ecp-rf-pulse 1.4s ease-in-out infinite;
+  }
+
+  .ecp-rf-node--failed {
+    border-color: var(--color-error) !important;
+  }
+
+  .react-flow__edge.ecp-rf-edge--incomplete path {
+    stroke: var(--color-tertiary-fixed-dim) !important;
+    stroke-width: 2.5;
+    animation: ecp-rf-edge-pulse 1.4s ease-in-out infinite;
+  }
+
+  .react-flow__edge.ecp-rf-edge--completed path {
+    stroke: var(--color-status-valid) !important;
+  }
+
+  @keyframes ecp-rf-edge-pulse {
+    0%,
+    100% {
+      stroke-opacity: 0.55;
+    }
+    50% {
+      stroke-opacity: 1;
+    }
+  }
+
+  .react-flow {
+    width: 100%;
+    height: 100%;
+  }
 }

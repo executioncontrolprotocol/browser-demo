@@ -22,13 +22,17 @@ export function useViewLayout() {
 
   const openWorkspace = useCallback(() => {
     setViews((current) =>
-      current.workflow || current.code ? current : viewStateAfterFirstWorkflow(current)
+      current.workflow || current.code || current.flow
+        ? current
+        : viewStateAfterFirstWorkflow(current)
     )
   }, [])
 
   const ensureWorkflowVisible = useCallback(() => {
     setViews((current) =>
-      current.workflow ? current : { ...current, workflow: true, code: false }
+      current.workflow || current.flow
+        ? current
+        : { ...current, workflow: true, flow: false, code: false }
     )
   }, [])
 

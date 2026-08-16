@@ -25,6 +25,7 @@ import { FirstRunModal } from "./components/FirstRunModal.js"
 import { VaultSetupModal } from "./components/VaultSetupModal.js"
 import { VaultUnlockModal } from "./components/VaultUnlockModal.js"
 import { MermaidCanvas } from "./components/MermaidCanvas.js"
+import { ReactFlowCanvas } from "./components/ReactFlowCanvas.js"
 import { StatusFooter } from "./components/StatusFooter.js"
 import { TopAppBar } from "./components/TopAppBar.js"
 import { WorkspaceColumn } from "./components/WorkspaceColumn.js"
@@ -136,6 +137,7 @@ export function App() {
   const [toon, setToon] = useState("")
   const [, setPatch] = useState("")
   const [mermaid, setMermaid] = useState(EMPTY_MERMAID)
+  const [reactflow, setReactflow] = useState("")
   const [prompt, setPrompt] = useState("")
   const [compileError, setCompileError] = useState<string | null>(null)
   const [runOutput, setRunOutput] = useState("")
@@ -296,6 +298,24 @@ export function App() {
       setJson(panels.json)
       setToon(panels.toon)
       setMermaid(panels.mermaid || EMPTY_MERMAID)
+      const panelsReactflow =
+        "reactflow" in panels && typeof (panels as { reactflow?: unknown }).reactflow === "string"
+          ? (panels as { reactflow: string }).reactflow
+          : ""
+      if (panelsReactflow) {
+        setReactflow(panelsReactflow)
+      } else {
+        try {
+          const encoded = await operational
+            .encode(nextManifest)
+            .uses("@executioncontrolprotocol/format-reactflow")
+            .with({ direction: "LR" })
+            .process()
+          setReactflow(encoded.success ? String(encoded.result ?? "") : "")
+        } catch {
+          setReactflow("")
+        }
+      }
       setPatch(panels.patch)
       const val = options.validation ?? (await operational.validate(nextManifest))
       setValidation(val)
@@ -561,6 +581,17 @@ export function App() {
             {layout.views.workflow ? (
               <MermaidCanvas
                 mermaid={mermaid}
+                runOutput={runOutput}
+                runBusy={runBusy}
+                runOverlayOpen={runOverlayOpen}
+                onCloseRunOverlay={() => setRunOverlayOpen(false)}
+                onRun={onRun}
+                hasWorkflow={hasWorkflow}
+              />
+            ) : null}
+            {layout.views.flow ? (
+              <ReactFlowCanvas
+                reactflowJson={reactflow}
                 runOutput={runOutput}
                 runBusy={runBusy}
                 runOverlayOpen={runOverlayOpen}

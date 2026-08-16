@@ -1,13 +1,15 @@
-/** Toggleable main view panel (chat, workflow graph, or code editor). */
-export type ViewPanel = "chat" | "workflow" | "code"
+/** Toggleable main view panel (chat, Mermaid workflow, React Flow, or code editor). */
+export type ViewPanel = "chat" | "workflow" | "flow" | "code"
 
 /** Boolean flags for which view panels are active. */
 export interface ViewLayoutState {
   /** Chat assistant column. */
   chat: boolean
-  /** Workflow graph column. */
+  /** Mermaid workflow graph column. */
   workflow: boolean
-  /** Code editor column (mutually exclusive with workflow). */
+  /** React Flow graph column. */
+  flow: boolean
+  /** Code editor column (mutually exclusive with workflow and flow). */
   code: boolean
 }
 

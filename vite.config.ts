@@ -56,6 +56,7 @@ export default defineConfig({
       "@executioncontrolprotocol/extension-fal",
       "@executioncontrolprotocol/extension-image-sharp",
       "@executioncontrolprotocol/format-mermaid",
+      "@executioncontrolprotocol/format-reactflow",
       "@executioncontrolprotocol/format-toon",
       // Keep Vite `import.meta.glob` for harness prompt fixtures (esbuild prebundle strips it).
       "@executioncontrolprotocol/harnesses-browser-nano",

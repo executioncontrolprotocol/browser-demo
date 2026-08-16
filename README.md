@@ -171,6 +171,7 @@ cd ../core && npm link
 cd ../policies && npm link
 cd ../extensions/format-eql && npm link
 cd ../extensions/format-mermaid && npm link
+cd ../extensions/format-reactflow && npm link
 cd ../extensions/format-toon && npm link
 cd ../extensions/chrome-ai && npm link
 cd ../extensions/openai && npm link
@@ -186,7 +187,8 @@ Consume linked packages in the demo:
 cd ../../browser-demo
 
 npm link @executioncontrolprotocol/types @executioncontrolprotocol/core @executioncontrolprotocol/policies \
-  @executioncontrolprotocol/format-eql @executioncontrolprotocol/format-mermaid @executioncontrolprotocol/format-toon \
+  @executioncontrolprotocol/format-eql @executioncontrolprotocol/format-mermaid @executioncontrolprotocol/format-reactflow \
+  @executioncontrolprotocol/format-toon \
   @executioncontrolprotocol/chrome-ai @executioncontrolprotocol/extension-openai @executioncontrolprotocol/claude \
   @executioncontrolprotocol/browser-secrets @executioncontrolprotocol/harnesses-browser-nano \
   @executioncontrolprotocol/browser

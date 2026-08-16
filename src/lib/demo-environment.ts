@@ -28,6 +28,7 @@ import { registerImageSharpExtension } from "@executioncontrolprotocol/extension
 import { registerFormatEqlExtension } from "@executioncontrolprotocol/format-eql"
 import { registerFormatToonExtension } from "@executioncontrolprotocol/format-toon"
 import { registerFormatMermaidExtension } from "@executioncontrolprotocol/format-mermaid"
+import { registerFormatReactflowExtension } from "@executioncontrolprotocol/format-reactflow"
 import "@executioncontrolprotocol/chrome-ai"
 import "@executioncontrolprotocol/extension-openai"
 import "@executioncontrolprotocol/claude"
@@ -37,6 +38,7 @@ import "@executioncontrolprotocol/extension-image-sharp"
 import "@executioncontrolprotocol/format-eql"
 import "@executioncontrolprotocol/format-toon"
 import "@executioncontrolprotocol/format-mermaid"
+import "@executioncontrolprotocol/format-reactflow"
 import { readOllamaSettings, type OllamaSettings } from "./ollama-settings.js"
 import {
   BRIDGE_OLLAMA_EXTENSION_ID,
@@ -76,11 +78,13 @@ export async function createDemoAppEnvironment(
   await registerFormatEqlExtension()
   await registerFormatToonExtension()
   await registerFormatMermaidExtension()
+  await registerFormatReactflowExtension()
 
   const env = createBrowserEnvironment("browser-demo-app")
   env.addExtensionBinding("@executioncontrolprotocol/format-eql", {})
   env.addExtensionBinding("@executioncontrolprotocol/format-toon", {})
   env.addExtensionBinding("@executioncontrolprotocol/format-mermaid", {})
+  env.addExtensionBinding("@executioncontrolprotocol/format-reactflow", {})
   env.addExtensionBinding("@executioncontrolprotocol/format-json", {})
   env.addExtensionBinding("@executioncontrolprotocol/chrome-ai", {})
   env.addExtensionBinding("@executioncontrolprotocol/ollama", {

@@ -51,6 +51,15 @@ export function TopAppBar({
             </button>
             <button
               type="button"
+              className={`view-nav-btn${views.flow ? " active-btn" : ""}`}
+              id="btn-view-flow"
+              title="React Flow"
+              onClick={() => onToggleView("flow")}
+            >
+              <span className="material-symbols-outlined">hub</span>
+            </button>
+            <button
+              type="button"
               className={`view-nav-btn${views.code ? " active-btn" : ""}`}
               id="btn-view-code"
               title="Code"
