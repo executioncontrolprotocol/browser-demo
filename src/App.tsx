@@ -17,6 +17,11 @@ import type {
 } from "@executioncontrolprotocol/types"
 import type { Ecp } from "@executioncontrolprotocol/core"
 import { compileWorkflowSource } from "@executioncontrolprotocol/core/browser"
+import type {
+  ReactFlowDocument,
+  ReactFlowStepData,
+} from "@executioncontrolprotocol/format-reactflow"
+import { findStepById } from "./lib/step-configure.js"
 import { ChatPanel } from "./components/ChatPanel.js"
 import { ChromeInstallDialog } from "./components/ChromeInstallDialog.js"
 import { CodePanel } from "./components/CodePanel.js"
@@ -25,6 +30,7 @@ import { VaultSetupModal } from "./components/VaultSetupModal.js"
 import { VaultUnlockModal } from "./components/VaultUnlockModal.js"
 import { MermaidCanvas } from "./components/MermaidCanvas.js"
 import { ReactFlowCanvas } from "./components/ReactFlowCanvas.js"
+import { StepConfigureDialog } from "./components/StepConfigureDialog.js"
 import { StatusFooter } from "./components/StatusFooter.js"
 import { TopAppBar } from "./components/TopAppBar.js"
 import { WorkspaceColumn } from "./components/WorkspaceColumn.js"
@@ -144,6 +150,9 @@ export function App() {
   const [runOutput, setRunOutput] = useState("")
   const [runBusy, setRunBusy] = useState(false)
   const [runOverlayOpen, setRunOverlayOpen] = useState(false)
+  const [configureStepId, setConfigureStepId] = useState<string | null>(null)
+  const [configureBusy, setConfigureBusy] = useState(false)
+  const [configureError, setConfigureError] = useState<string | null>(null)
   const [chatBusy, setChatBusy] = useState(false)
   const [conversationSummary, setConversationSummary] = useState<string | undefined>()
   const compileTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -348,6 +357,61 @@ export function App() {
   )
 
   syncFromManifestRef.current = syncFromManifest
+
+  const configureStepData = useMemo((): ReactFlowStepData | null => {
+    if (!configureStepId || !reactflow.trim()) return null
+    try {
+      const doc = JSON.parse(reactflow) as ReactFlowDocument
+      const node = doc.nodes.find((n) => n.id === configureStepId && n.type === "ecp-step")
+      return node ? (node.data as ReactFlowStepData) : null
+    } catch {
+      return null
+    }
+  }, [configureStepId, reactflow])
+
+  const configureOriginalInput = useMemo(() => {
+    if (!configureStepId || !manifest) return undefined
+    const step = findStepById(manifest.steps, configureStepId)
+    return step?.input as Record<string, unknown> | undefined
+  }, [configureStepId, manifest])
+
+  const onConfigureStep = useCallback((stepId: string) => {
+    setConfigureError(null)
+    setConfigureStepId(stepId)
+  }, [])
+
+  const onSaveStepConfigure = useCallback(
+    async (values: Record<string, unknown>) => {
+      const operational = ecpRef.current
+      if (!operational || !manifest || !configureStepId) return
+      setConfigureBusy(true)
+      setConfigureError(null)
+      try {
+        const shorthand: Record<string, unknown> = {}
+        for (const [param, value] of Object.entries(values)) {
+          shorthand[`steps[${configureStepId}].input.${param}`] = value
+        }
+        const patched = await operational.patch(manifest).with(shorthand).process()
+        if (!patched.success || !patched.result) {
+          const message =
+            patched.diagnostics?.[0]?.message ??
+            patched.validation?.errors?.[0]?.message ??
+            "Failed to patch step inputs"
+          setConfigureError(message)
+          return
+        }
+        await syncFromManifestRef.current(patched.result as WorkflowManifest, {
+          refreshFluent: true,
+        })
+        setConfigureStepId(null)
+      } catch (err) {
+        setConfigureError(err instanceof Error ? err.message : String(err))
+      } finally {
+        setConfigureBusy(false)
+      }
+    },
+    [manifest, configureStepId]
+  )
 
   const onProviderComplete = (mode: ProviderMode, nextOllama?: OllamaSettings) => {
     storeProviderMode(mode)
@@ -613,6 +677,7 @@ export function App() {
                 onCloseRunOverlay={() => setRunOverlayOpen(false)}
                 onRun={onRun}
                 hasWorkflow={hasWorkflow}
+                onConfigureStep={onConfigureStep}
               />
             ) : null}
             {layout.views.code ? (
@@ -700,6 +765,22 @@ export function App() {
             stopPolling()
             setShowProviderModal(true)
           }}
+        />
+      ) : null}
+
+      {configureStepId && configureStepData ? (
+        <StepConfigureDialog
+          stepId={configureStepId}
+          step={configureStepData}
+          originalInput={configureOriginalInput}
+          busy={configureBusy}
+          error={configureError}
+          onClose={() => {
+            if (configureBusy) return
+            setConfigureStepId(null)
+            setConfigureError(null)
+          }}
+          onSave={onSaveStepConfigure}
         />
       ) : null}
     </div>

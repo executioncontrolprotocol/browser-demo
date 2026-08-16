@@ -17,6 +17,7 @@ import type {
   ReactFlowNode,
 } from "@executioncontrolprotocol/format-reactflow"
 import { EcpStepNode } from "./EcpStepNode.js"
+import { ReactFlowConfigureContext } from "./reactflow-configure-context.js"
 import { PanelHeader } from "./PanelHeader.js"
 import { RunOutputPanel } from "./RunOutputPanel.js"
 import { useReactFlowRunProgress } from "../hooks/useReactFlowRunProgress.js"
@@ -74,6 +75,8 @@ export interface ReactFlowCanvasProps {
   onCloseRunOverlay: () => void
   onRun: () => void
   hasWorkflow: boolean
+  /** Open configure dialog for a step with literal inputs. */
+  onConfigureStep?: (stepId: string) => void
 }
 
 function ReactFlowCanvasInner({
@@ -84,6 +87,7 @@ function ReactFlowCanvasInner({
   onCloseRunOverlay,
   onRun,
   hasWorkflow,
+  onConfigureStep,
 }: ReactFlowCanvasProps) {
   const doc = useMemo(() => parseDocument(reactflowJson), [reactflowJson])
   const stepIds = useMemo(
@@ -113,7 +117,10 @@ function ReactFlowCanvasInner({
         const statusClass = stepNodeStatusClass(status, runActive || runBusy)
         return {
           ...node,
-          data: { ...(node.data as object), statusClass },
+          data: {
+            ...(node.data as object),
+            statusClass,
+          },
           className: statusClass,
         }
       }),
@@ -153,28 +160,32 @@ function ReactFlowCanvasInner({
         className={`relative flex min-h-0 flex-1 flex-col ${runOverlayOpen ? "opacity-50" : ""}`}
       >
         {hasWorkflow && doc ? (
-          <ReactFlow
-            nodes={decoratedNodes}
-            edges={decoratedEdges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            nodeTypes={nodeTypes}
-            fitView
-            nodesDraggable={false}
-            nodesConnectable={false}
-            elementsSelectable={false}
-            proOptions={{ hideAttribution: true }}
-          >
-            <Background gap={24} color="var(--color-surface-container-highest)" />
-            <Controls className="ecp-rf-controls" showInteractive={false} />
-            <MiniMap
-              className="ecp-rf-minimap"
-              bgColor="var(--color-surface-container-low)"
-              nodeStrokeColor="var(--color-outline)"
-              nodeColor="var(--color-surface-container-high)"
-              maskColor="color-mix(in srgb, var(--color-background) 72%, transparent)"
-            />
-          </ReactFlow>
+          <ReactFlowConfigureContext.Provider value={onConfigureStep}>
+            <ReactFlow
+              nodes={decoratedNodes}
+              edges={decoratedEdges}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              nodeTypes={nodeTypes}
+              fitView
+              nodesDraggable={false}
+              nodesConnectable={false}
+              elementsSelectable={false}
+              panOnDrag
+              zoomOnDoubleClick={false}
+              proOptions={{ hideAttribution: true }}
+            >
+              <Background gap={24} color="var(--color-surface-container-highest)" />
+              <Controls className="ecp-rf-controls" showInteractive={false} />
+              <MiniMap
+                className="ecp-rf-minimap"
+                bgColor="var(--color-surface-container-low)"
+                nodeStrokeColor="var(--color-outline)"
+                nodeColor="var(--color-surface-container-high)"
+                maskColor="color-mix(in srgb, var(--color-background) 72%, transparent)"
+              />
+            </ReactFlow>
+          </ReactFlowConfigureContext.Provider>
         ) : (
           <div className="flex h-full items-center justify-center p-canvas-padding">
             <p className="max-w-md text-center font-body text-body text-on-surface-variant">

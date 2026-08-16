@@ -1,0 +1,319 @@
+import { useEffect, useMemo, useState } from "react"
+import type { ReactFlowPort, ReactFlowStepData } from "@executioncontrolprotocol/format-reactflow"
+import {
+  defaultDraftForKind,
+  editorKindForTypeLabel,
+  isLongTextParam,
+  literalPorts,
+  parseEditedLiteral,
+  refPorts,
+  unboundPorts,
+  type ConfigEditorKind,
+} from "../lib/step-configure.js"
+
+/** Props for {@link StepConfigureDialog}. */
+export interface StepConfigureDialogProps {
+  stepId: string
+  step: ReactFlowStepData
+  /** Original `step.input` values for type coercion on save. */
+  originalInput: Record<string, unknown> | undefined
+  busy?: boolean
+  error?: string | null
+  onClose: () => void
+  onSave: (values: Record<string, unknown>) => void | Promise<void>
+}
+
+function fieldControl(
+  kind: ConfigEditorKind,
+  name: string,
+  value: string,
+  valueTitle: string | undefined,
+  busy: boolean,
+  onChange: (next: string) => void
+) {
+  if (kind === "boolean") {
+    const checked = value.trim().toLowerCase() === "true"
+    return (
+      <label className="flex items-center gap-2 font-mono text-sm text-on-surface">
+        <input
+          type="checkbox"
+          className="h-4 w-4 accent-primary"
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked ? "true" : "false")}
+          disabled={busy}
+        />
+        {checked ? "true" : "false"}
+      </label>
+    )
+  }
+
+  if (kind === "number") {
+    return (
+      <input
+        type="number"
+        className="w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-3 py-2 font-mono text-sm text-on-surface outline-none focus:border-outline"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={busy}
+      />
+    )
+  }
+
+  if (kind === "json" || isLongTextParam(name, valueTitle ?? value)) {
+    return (
+      <textarea
+        className="min-h-[9rem] w-full resize-y rounded-lg border border-outline-variant bg-surface-container-lowest px-3 py-2 font-mono text-sm text-on-surface outline-none focus:border-outline"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={busy}
+        spellCheck={kind !== "json"}
+      />
+    )
+  }
+
+  return (
+    <input
+      type="text"
+      className="w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-3 py-2 font-mono text-sm text-on-surface outline-none focus:border-outline"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      disabled={busy}
+    />
+  )
+}
+
+/** Full-screen dialog to edit literal step inputs and add unbound schema params. */
+export function StepConfigureDialog({
+  stepId,
+  step,
+  originalInput,
+  busy = false,
+  error = null,
+  onClose,
+  onSave,
+}: StepConfigureDialogProps) {
+  const initialLiterals = useMemo(() => literalPorts(step), [step])
+  const refs = useMemo(() => refPorts(step), [step])
+  const available = useMemo(() => unboundPorts(step), [step])
+
+  const [activePorts, setActivePorts] = useState<ReactFlowPort[]>(() => initialLiterals)
+  const [drafts, setDrafts] = useState<Record<string, string>>(() => {
+    const next: Record<string, string> = {}
+    for (const port of initialLiterals) {
+      next[port.name] = port.valueTitle ?? ""
+    }
+    return next
+  })
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const [pickerOpen, setPickerOpen] = useState(false)
+
+  useEffect(() => {
+    const nextLiterals = literalPorts(step)
+    setActivePorts(nextLiterals)
+    const next: Record<string, string> = {}
+    for (const port of nextLiterals) {
+      next[port.name] = port.valueTitle ?? ""
+    }
+    setDrafts(next)
+    setFieldErrors({})
+    setPickerOpen(false)
+  }, [step, stepId])
+
+  const activeNames = useMemo(() => new Set(activePorts.map((p) => p.name)), [activePorts])
+  const addable = useMemo(
+    () => available.filter((p) => !activeNames.has(p.name)),
+    [available, activeNames]
+  )
+
+  const addPort = (port: ReactFlowPort) => {
+    const kind = editorKindForTypeLabel(port.typeLabel)
+    setActivePorts((prev) => [...prev, port])
+    setDrafts((prev) => ({ ...prev, [port.name]: defaultDraftForKind(kind) }))
+    setPickerOpen(false)
+  }
+
+  const removePort = (name: string) => {
+    const wasOriginalLiteral = initialLiterals.some((p) => p.name === name)
+    if (wasOriginalLiteral) return
+    setActivePorts((prev) => prev.filter((p) => p.name !== name))
+    setDrafts((prev) => {
+      const next = { ...prev }
+      delete next[name]
+      return next
+    })
+    setFieldErrors((prev) => {
+      const next = { ...prev }
+      delete next[name]
+      return next
+    })
+  }
+
+  const handleSave = () => {
+    const values: Record<string, unknown> = {}
+    const errors: Record<string, string> = {}
+    for (const port of activePorts) {
+      const text = drafts[port.name] ?? ""
+      const original = originalInput?.[port.name]
+      const parsed = parseEditedLiteral(text, original, port.typeLabel)
+      if (!parsed.ok) {
+        errors[port.name] = parsed.error
+        continue
+      }
+      values[port.name] = parsed.value
+    }
+    setFieldErrors(errors)
+    if (Object.keys(errors).length > 0) return
+    void onSave(values)
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-stretch justify-center bg-black/70 p-4 sm:p-6"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="step-configure-title"
+    >
+      <div className="flex h-full w-[75vw] max-w-[75vw] flex-col overflow-hidden rounded-xl border border-outline-variant bg-surface-container">
+        <div className="flex items-start justify-between gap-4 border-b border-outline-variant px-5 py-4">
+          <div className="min-w-0">
+            <h2 id="step-configure-title" className="font-display text-headline text-on-surface">
+              Configure step
+            </h2>
+            <p className="mt-1 truncate font-mono text-label text-on-surface-variant">{step.label}</p>
+            {step.uses ? (
+              <p className="mt-0.5 break-all font-mono text-[11px] text-outline">{step.uses}</p>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            className="material-symbols-outlined cursor-pointer text-on-surface-variant hover:text-on-surface"
+            onClick={onClose}
+            aria-label="Close"
+            disabled={busy}
+          >
+            close
+          </button>
+        </div>
+
+        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-4">
+          {activePorts.length === 0 ? (
+            <p className="text-body text-on-surface-variant">
+              No literal inputs yet. Add a parameter from the capability schema below.
+            </p>
+          ) : (
+            activePorts.map((port) => {
+              const kind = editorKindForTypeLabel(port.typeLabel)
+              const fieldError = fieldErrors[port.name]
+              const canRemove = !initialLiterals.some((p) => p.name === port.name)
+              return (
+                <div key={port.id} className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-mono text-label text-on-surface">
+                      {port.name}
+                      <span className="text-outline">:{port.typeLabel}</span>
+                    </span>
+                    {canRemove ? (
+                      <button
+                        type="button"
+                        className="font-mono text-[11px] text-on-surface-variant hover:text-error"
+                        onClick={() => removePort(port.name)}
+                        disabled={busy}
+                      >
+                        Remove
+                      </button>
+                    ) : null}
+                  </div>
+                  {fieldControl(
+                    kind,
+                    port.name,
+                    drafts[port.name] ?? "",
+                    port.valueTitle,
+                    busy,
+                    (next) => setDrafts((prev) => ({ ...prev, [port.name]: next }))
+                  )}
+                  {fieldError ? <span className="block text-label text-error">{fieldError}</span> : null}
+                </div>
+              )
+            })
+          )}
+
+          <div className="relative border-t border-outline-variant/50 pt-4">
+            <button
+              type="button"
+              className="inline-flex items-center gap-1 rounded-lg border border-dashed border-outline-variant px-3 py-2 font-mono text-label text-on-surface-variant hover:border-outline hover:text-on-surface disabled:opacity-40"
+              onClick={() => setPickerOpen((open) => !open)}
+              disabled={busy || addable.length === 0}
+              title={addable.length === 0 ? "No unbound schema inputs left" : "Add parameter"}
+            >
+              <span className="material-symbols-outlined text-base" aria-hidden>
+                add
+              </span>
+              Add parameter
+            </button>
+
+            {pickerOpen && addable.length > 0 ? (
+              <ul className="absolute left-0 z-10 mt-2 max-h-56 min-w-[16rem] overflow-auto rounded-lg border border-outline-variant bg-surface-container-high py-1 shadow-lg">
+                {addable.map((port) => (
+                  <li key={port.id}>
+                    <button
+                      type="button"
+                      className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left font-mono text-[12px] text-on-surface hover:bg-surface-container"
+                      onClick={() => addPort(port)}
+                      disabled={busy}
+                    >
+                      <span>
+                        {port.name}
+                        <span className="text-outline">:{port.typeLabel}</span>
+                      </span>
+                      <span className="text-[10px] uppercase tracking-wide text-on-surface-variant">
+                        {editorKindForTypeLabel(port.typeLabel)}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+
+          {refs.length > 0 ? (
+            <div className="space-y-2 border-t border-outline-variant/50 pt-4">
+              <p className="font-mono text-label uppercase tracking-wide text-on-surface-variant">
+                Connected inputs
+              </p>
+              <ul className="space-y-1">
+                {refs.map((port) => (
+                  <li key={port.id} className="font-mono text-[12px] text-on-surface-variant">
+                    {port.name}
+                    <span className="text-outline">:{port.typeLabel}</span>
+                    <span className="text-tertiary-fixed-dim"> ← {port.refPath}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
+          {error ? <p className="text-body text-error">{error}</p> : null}
+        </div>
+
+        <div className="flex items-center justify-end gap-3 border-t border-outline-variant px-5 py-4">
+          <button
+            type="button"
+            className="rounded-lg border border-outline-variant px-4 py-2 font-mono text-label text-on-surface-variant hover:border-outline hover:text-on-surface"
+            onClick={onClose}
+            disabled={busy}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="rounded-lg bg-primary px-4 py-2 font-mono text-label text-on-primary disabled:opacity-50"
+            onClick={handleSave}
+            disabled={busy || activePorts.length === 0}
+          >
+            {busy ? "Saving…" : "Save"}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
