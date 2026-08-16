@@ -156,8 +156,8 @@ Demo-generated workflows may reference `@executioncontrolprotocol/chrome-ai.gene
 
 | Extension | Capability examples | Config | Browser run |
 | --------- | ------------------- | ------ | ----------- |
-| `@executioncontrolprotocol/fal` | `@executioncontrolprotocol/fal.generate` | `apiKey` via `browser("FAL_KEY")` in vault; step `input` requires FAL endpoint payload (`endpoint?`, `input`, `mode?`) | **Yes** — calls FAL from the browser |
-| `@executioncontrolprotocol/image-sharp` | `inspect`, `metadata`, `transform`, `resize`, `crop`, `convert`, `composite`, … | Extension binding `{}`; steps pass `image` (buffer/base64/path per schema) | **Describe/author only** — native `sharp` is not available in the browser bundle; execution fails at runtime until a Node host runs the same manifest |
+| `@executioncontrolprotocol/fal` | `@executioncontrolprotocol/fal.generate` | `apiKey` via `browser("FAL_KEY")` in vault; step `input` requires FAL endpoint payload (`endpoint?`, `input`, `mode?`) | **Yes** — real `@fal-ai/client` in the browser (Vite prebundles the CJS package; do not stub it) |
+| `@executioncontrolprotocol/image-sharp` | `inspect`, `metadata`, `transform`, `resize`, `crop`, `convert`, `composite`, … | Extension binding `{}`; steps pass `image` (buffer/base64/path per schema) | **Describe/author only** — native `sharp` is not available in the browser bundle (Vite stub); execution fails at runtime until a Node host runs the same manifest |
 
 Store `FAL_KEY` in the encrypted vault (Settings → encrypted API keys) alongside OpenAI and Claude keys. Harness authoring summaries include required vs optional fields from each capability schema so models can propose valid `WITH` blocks.
 

@@ -80,6 +80,24 @@ export function canContinueFirstRun(
   return false
 }
 
+/**
+ * Preferred provider radio when opening the first-run / settings modal.
+ * If the stored choice is Ollama but `ecp up` is down, fall back to Chrome AI
+ * so Continue is usable instead of stuck on a disabled Ollama option.
+ */
+export function preferredModalProviderMode(
+  stored: ProviderMode | null | undefined,
+  options: Pick<FirstRunContinueOptions, "chromeSupported" | "ollamaBridgeAvailable">
+): ProviderMode {
+  if (stored === "ollama" && !options.ollamaBridgeAvailable && options.chromeSupported) {
+    return "chrome-ai"
+  }
+  if (stored && isProviderModeSelectable(stored)) return stored
+  if (options.chromeSupported) return "chrome-ai"
+  if (options.ollamaBridgeAvailable) return "ollama"
+  return "chrome-ai"
+}
+
 /** Map provider mode to a harness-compatible generate capability id. */
 export function providerCapabilityId(mode: ProviderMode): string {
   return PROVIDER_CAPABILITY[mode]
@@ -122,4 +140,6 @@ export interface ChromeInstallSnapshot {
   loaded?: number
   total?: number
   error?: string
+  /** Soft guidance when download looks stuck (e.g. restart Chrome). */
+  hint?: string
 }

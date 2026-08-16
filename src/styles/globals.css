@@ -217,6 +217,8 @@
   }
 
   .status-footer {
+    position: relative;
+    z-index: 30;
     flex-shrink: 0;
     display: flex;
     align-items: center;
@@ -225,6 +227,7 @@
     padding: 0 1rem;
     border-top: 1px solid var(--color-outline-variant);
     background-color: var(--color-surface-container-low);
+    overflow: visible;
   }
 
   .footer-github-link {
@@ -365,6 +368,83 @@
     background-color: rgba(255, 180, 171, 0.2);
   }
 
+  .status-pill--warn {
+    color: var(--color-error);
+    background-color: rgba(255, 180, 171, 0.12);
+    border-color: rgba(255, 180, 171, 0.35);
+  }
+
+  .status-pill--has-popover {
+    cursor: help;
+  }
+
+  .status-pill-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .status-pill-popover {
+    position: absolute;
+    bottom: calc(100% + 0.5rem);
+    z-index: 40;
+    width: max-content;
+    max-width: min(280px, 70vw);
+    padding: 0.625rem 0.75rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--color-outline-variant);
+    background-color: var(--color-surface-container);
+    color: var(--color-on-surface-variant);
+    font-family: "Hanken Grotesk", system-ui, sans-serif;
+    font-size: 0.75rem;
+    font-weight: 400;
+    letter-spacing: 0.01em;
+    line-height: 1.35;
+    text-transform: none;
+    box-shadow:
+      0 0 12px rgba(250, 204, 21, 0.12),
+      0 8px 24px rgb(0 0 0 / 0.35);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(4px);
+    pointer-events: none;
+    transition:
+      opacity 0.15s ease,
+      transform 0.15s ease,
+      visibility 0.15s ease;
+  }
+
+  .status-pill-popover--end {
+    right: 0;
+  }
+
+  .status-pill-popover--start {
+    left: 0;
+  }
+
+  .status-pill-popover::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    border: 6px solid transparent;
+    border-top-color: var(--color-outline-variant);
+  }
+
+  .status-pill-popover--end::after {
+    right: 1rem;
+  }
+
+  .status-pill-popover--start::after {
+    left: 1rem;
+  }
+
+  .status-pill-wrap:hover .status-pill-popover,
+  .status-pill-wrap:focus-within .status-pill-popover {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+  }
+
   .status-pill-dot {
     width: 0.5rem;
     height: 0.5rem;
@@ -376,6 +456,30 @@
   .status-pill-dot--invalid {
     background-color: var(--color-error);
     box-shadow: 0 0 8px rgba(255, 180, 171, 0.4);
+  }
+
+  .status-pill-spinner {
+    width: 0.625rem;
+    height: 0.625rem;
+    border-radius: 9999px;
+    border: 1.5px solid var(--color-outline-variant);
+    border-top-color: var(--color-primary);
+    animation: status-pill-spin 0.7s linear infinite;
+  }
+
+  .status-pill-icon {
+    font-size: 12px;
+    line-height: 1;
+  }
+
+  .status-pill-meta {
+    opacity: 0.85;
+  }
+
+  @keyframes status-pill-spin {
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   /* Long capability ids / URLs must wrap; otherwise pre-wrap + overflow can stack lines. */

@@ -1,4 +1,10 @@
 import type { ChromeInstallSnapshot } from "../lib/provider-mode.js"
+import {
+  chromeInstallDetailMessage,
+  chromeInstallProgressPercent,
+  chromeInstallStatusLabel,
+  isChromeInstallStalledUi,
+} from "../lib/chrome-install-ui.js"
 
 /** Props for {@link ChromeInstallDialog}. */
 export interface ChromeInstallDialogProps {
@@ -7,18 +13,13 @@ export interface ChromeInstallDialogProps {
   onCancel: () => void
 }
 
-function progressPercent(state: ChromeInstallSnapshot): number | null {
-  if (state.loaded === undefined) return null
-  if (state.total && state.total > 0) {
-    return Math.min(100, Math.round((state.loaded / state.total) * 100))
-  }
-  return null
-}
-
 /** Blocking dialog while Chrome AI model downloads. */
 export function ChromeInstallDialog({ state, onContinueInBackground, onCancel }: ChromeInstallDialogProps) {
-  const percent = progressPercent(state)
+  const percent = chromeInstallProgressPercent(state)
   const isError = state.phase === "error"
+  const stalled = isChromeInstallStalledUi(state)
+  const statusLabel = chromeInstallStatusLabel(state)
+  const detail = chromeInstallDetailMessage(state)
 
   return (
     <div
@@ -27,7 +28,7 @@ export function ChromeInstallDialog({ state, onContinueInBackground, onCancel }:
       aria-modal="true"
       aria-labelledby="chrome-install-title"
     >
-      <div className="flex w-[min(440px,92vw)] flex-col gap-5 rounded-xl border border-outline-variant bg-surface-container p-6 glow-primary">
+      <div className="flex w-[min(440px,92vw)] flex-col gap-5 overflow-visible rounded-xl border border-outline-variant bg-surface-container p-6 glow-primary">
         <h2 id="chrome-install-title" className="font-display text-headline text-on-surface">
           Installing Chrome AI
         </h2>
@@ -38,19 +39,35 @@ export function ChromeInstallDialog({ state, onContinueInBackground, onCancel }:
         {isError ? (
           <p className="text-body text-error">{state.error ?? "Installation failed."}</p>
         ) : (
-          <div className="space-y-3">
-            <div className="flex items-center gap-3">
-              <span
-                className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-outline-variant border-t-primary"
-                aria-hidden
-              />
-              <span className="font-mono text-label text-on-surface-variant">
-                {state.phase === "loading"
-                  ? "Loading model into memory..."
-                  : state.phase === "checking"
-                    ? "Checking availability..."
-                    : "Downloading model..."}
-              </span>
+          <div className="space-y-3 overflow-visible">
+            <div className="status-pill-wrap">
+              <div
+                className="flex cursor-help items-center gap-3"
+                tabIndex={0}
+                aria-describedby="chrome-install-dialog-popover"
+              >
+                {stalled ? (
+                  <span className="material-symbols-outlined text-lg text-error" aria-hidden>
+                    warning
+                  </span>
+                ) : (
+                  <span
+                    className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-outline-variant border-t-primary"
+                    aria-hidden
+                  />
+                )}
+                <span className="font-mono text-label text-on-surface-variant">{statusLabel}</span>
+                {percent !== null ? (
+                  <span className="font-mono text-label text-on-surface">{percent}%</span>
+                ) : null}
+              </div>
+              <div
+                id="chrome-install-dialog-popover"
+                role="tooltip"
+                className="status-pill-popover status-pill-popover--start"
+              >
+                {detail}
+              </div>
             </div>
             {percent !== null ? (
               <div className="h-2 overflow-hidden rounded-full bg-surface-container-lowest">
@@ -63,13 +80,10 @@ export function ChromeInstallDialog({ state, onContinueInBackground, onCancel }:
                   aria-valuemax={100}
                 />
               </div>
-            ) : (
+            ) : !stalled ? (
               <div className="h-2 overflow-hidden rounded-full bg-surface-container-lowest">
                 <div className="h-full w-1/3 animate-pulse bg-primary/60" />
               </div>
-            )}
-            {percent !== null ? (
-              <p className="font-mono text-label text-on-surface-variant">{percent}%</p>
             ) : null}
           </div>
         )}

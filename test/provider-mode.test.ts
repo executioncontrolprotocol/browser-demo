@@ -2,6 +2,7 @@
 import {
   harnessCapabilityId,
   isProviderModeSelectable,
+  preferredModalProviderMode,
   providerCapabilityId,
   readStoredProviderMode,
   resolveDemoSession,
@@ -55,6 +56,35 @@ describe("resolveDemoSession", () => {
     expect(harnessCapabilityId("nano")).toBe(
       "@executioncontrolprotocol/harness-browser-nano.evaluate"
     )
+  })
+})
+
+describe("preferredModalProviderMode", () => {
+  it("falls back to chrome-ai when ollama is stored but bridge is down", () => {
+    expect(
+      preferredModalProviderMode("ollama", {
+        chromeSupported: true,
+        ollamaBridgeAvailable: false,
+      })
+    ).toBe("chrome-ai")
+  })
+
+  it("keeps ollama when the bridge is usable", () => {
+    expect(
+      preferredModalProviderMode("ollama", {
+        chromeSupported: true,
+        ollamaBridgeAvailable: true,
+      })
+    ).toBe("ollama")
+  })
+
+  it("keeps chrome-ai when stored", () => {
+    expect(
+      preferredModalProviderMode("chrome-ai", {
+        chromeSupported: true,
+        ollamaBridgeAvailable: false,
+      })
+    ).toBe("chrome-ai")
   })
 })
 

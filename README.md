@@ -16,6 +16,17 @@ Provider and harness are independent switches (`resolveDemoSession`). Today, cho
 
 Ollama settings use the local **`ecp up`** daemon (default `http://127.0.0.1:3090`). Prefer `ecp up`, which opens this demo with `?token=` (and `?bridge=`) so pairing is automatic. The Ollama provider enables when `/health` reports `ollamaReachable`. Hosted HTTPS pages need **Chromium** (Private Network Access); local Vite works in any browser.
 
+### Browser vendor extensions
+
+Prefer the real SDK whenever it can run in the browser:
+
+| Extension | Browser runtime | Notes |
+| --------- | --------------- | ----- |
+| `@executioncontrolprotocol/fal` | **Yes** — official `@fal-ai/client` | Configure `apiKey` via `browser("FAL_KEY")` (vault / secrets). Vite prebundles the CJS client (`optimizeDeps.include`). |
+| `@executioncontrolprotocol/image-sharp` | **Author only** | Native `sharp` cannot load in the browser; Vite aliases it to a stub that fails at step run. Execute the same manifest on Node. |
+
+Do not stub browser-capable HTTP clients. Stub only packages that are impossible in the browser (native addons) or Node builtins pulled in transitively (`node:fs`, …).
+
 See monorepo [AGENTS.md](https://github.com/executioncontrolprotocol/executioncontrolprotocol/blob/main/AGENTS.md) for compile vs runtime vs app boundaries.
 
 ## Prerequisites

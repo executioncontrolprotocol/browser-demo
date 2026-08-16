@@ -27,7 +27,7 @@
   },
   "dependencies": {
     "@executioncontrolprotocol/browser": "^0.10.1",
-    "@executioncontrolprotocol/chrome-ai": "^0.10.1",
+    "@executioncontrolprotocol/chrome-ai": "file:../executioncontrolprotocol/packages/extensions/chrome-ai",
     "@executioncontrolprotocol/claude": "^0.10.1",
     "@executioncontrolprotocol/core": "^0.10.1",
     "@executioncontrolprotocol/extension-fal": "^0.10.1",

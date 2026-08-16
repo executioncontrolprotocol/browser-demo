@@ -1,11 +1,18 @@
-import { useState } from "react"
 import type { ValidationResult } from "@executioncontrolprotocol/types"
+import { useState } from "react"
+import { shouldShowChromeInstallFooter } from "../lib/chrome-install-ui.js"
 import { GITHUB_REPO_URL } from "../lib/external-links.js"
+import type { ChromeInstallSnapshot, ChromeInstallUi } from "../lib/provider-mode.js"
+import { ChromeInstallStatusPill } from "./ChromeInstallStatusPill.js"
 import { ValidationView } from "./ValidationView.js"
 
 /** Props for {@link StatusFooter}. */
 export interface StatusFooterProps {
   validation: ValidationResult | null
+  /** Chrome AI install surface (`toast` = show compact status in the footer). */
+  chromeInstallUi?: ChromeInstallUi
+  /** Chrome AI install snapshot for footer status. */
+  chromeInstallState?: ChromeInstallSnapshot
 }
 
 /** GitHub mark icon for footer link. */
@@ -25,16 +32,23 @@ function GitHubIcon() {
 }
 
 /** Persistent status bar with validation pill and GitHub link. */
-export function StatusFooter({ validation }: StatusFooterProps) {
+export function StatusFooter({
+  validation,
+  chromeInstallUi = "idle",
+  chromeInstallState,
+}: StatusFooterProps) {
   const [showValidation, setShowValidation] = useState(false)
   const isValid = validation?.valid ?? true
   const hasResult = validation !== null
+  const showChromeInstall =
+    chromeInstallState !== undefined &&
+    shouldShowChromeInstallFooter(chromeInstallUi, chromeInstallState)
 
   return (
     <>
       <footer className="status-footer w-full" id="status-footer">
-        <div className="flex w-full items-center justify-between">
-          <div className="flex items-center">
+        <div className="flex w-full items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2">
             {hasResult && !isValid ? (
               <button
                 type="button"
@@ -52,15 +66,24 @@ export function StatusFooter({ validation }: StatusFooterProps) {
               </div>
             )}
           </div>
-          <a
-            href={GITHUB_REPO_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="footer-github-link text-on-surface-variant hover:text-on-surface"
-            aria-label="GitHub repository"
-          >
-            <GitHubIcon />
-          </a>
+          <div className="flex shrink-0 items-center gap-2">
+            {showChromeInstall ? (
+              <ChromeInstallStatusPill
+                state={chromeInstallState}
+                popoverAlign="end"
+                popoverId="chrome-install-footer-popover"
+              />
+            ) : null}
+            <a
+              href={GITHUB_REPO_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="footer-github-link text-on-surface-variant hover:text-on-surface"
+              aria-label="GitHub repository"
+            >
+              <GitHubIcon />
+            </a>
+          </div>
         </div>
       </footer>
 

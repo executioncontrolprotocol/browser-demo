@@ -1,6 +1,6 @@
 import { useState } from "react"
 import type { ProviderMode } from "../lib/provider-mode.js"
-import { canContinueFirstRun } from "../lib/provider-mode.js"
+import { canContinueFirstRun, preferredModalProviderMode } from "../lib/provider-mode.js"
 import type { OllamaSettings } from "../lib/ollama-settings.js"
 import type { BridgeSettings } from "../lib/ecp-bridge.js"
 import { ProviderApiKeyFields } from "./ProviderApiKeyFields.js"
@@ -47,7 +47,9 @@ export function FirstRunModal({
   bridgeSettings,
   onBridgeSettingsChange,
 }: FirstRunModalProps) {
-  const [mode, setMode] = useState<ProviderMode>(initialMode)
+  const [mode, setMode] = useState<ProviderMode>(() =>
+    preferredModalProviderMode(initialMode, { chromeSupported, ollamaBridgeAvailable })
+  )
   const [ollamaReady, setOllamaReady] = useState(false)
 
   const canContinue = canContinueFirstRun(mode, {
@@ -90,7 +92,9 @@ export function FirstRunModal({
 
         <div className="modal-panel-scroll flex flex-col gap-4">
           <p className="text-body text-on-surface-variant">
-            You can close this dialog and explore with the guided assistant while Chrome AI downloads.
+            {ollamaBridgeAvailable
+              ? "Chrome requires a click to start the Gemini Nano download. Choose a provider and click Continue, or close this dialog to explore without a provider."
+              : "Local Ollama (`ecp up`) is not reachable. Chrome AI is selected so you can continue, or start `ecp up` and switch back to Ollama."}
           </p>
           <div className="space-y-2">
             <label className="flex cursor-pointer items-center gap-2 text-body">

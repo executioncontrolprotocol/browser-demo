@@ -34,6 +34,7 @@ export default defineConfig({
     dedupe: [
       "@executioncontrolprotocol/core",
       "@executioncontrolprotocol/types",
+      "@executioncontrolprotocol/chrome-ai",
     ],
     alias: {
       esbuild: "esbuild-wasm",
@@ -46,13 +47,17 @@ export default defineConfig({
       "node:http": aliasPath(stubDir, "node-empty.ts"),
       "node:child_process": aliasPath(stubDir, "node-empty.ts"),
       "node:util": aliasPath(stubDir, "node-empty.ts"),
+      // Native Node only — image-sharp cannot run in the browser bundle.
       sharp: aliasPath(stubDir, "sharp-stub.ts"),
     },
   },
   optimizeDeps: {
+    // Prebundle CJS `@fal-ai/client` so named ESM imports work (real client, not a stub).
+    include: ["@fal-ai/client"],
     exclude: [
       "@executioncontrolprotocol/core",
       "@executioncontrolprotocol/browser",
+      "@executioncontrolprotocol/chrome-ai",
       "@executioncontrolprotocol/extension-fal",
       "@executioncontrolprotocol/extension-image-sharp",
       "@executioncontrolprotocol/format-mermaid",

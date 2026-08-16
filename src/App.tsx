@@ -19,7 +19,6 @@ import type { Ecp } from "@executioncontrolprotocol/core"
 import { compileWorkflowSource } from "@executioncontrolprotocol/core/browser"
 import { ChatPanel } from "./components/ChatPanel.js"
 import { ChromeInstallDialog } from "./components/ChromeInstallDialog.js"
-import { ChromeInstallToast } from "./components/ChromeInstallToast.js"
 import { CodePanel } from "./components/CodePanel.js"
 import { FirstRunModal } from "./components/FirstRunModal.js"
 import { VaultSetupModal } from "./components/VaultSetupModal.js"
@@ -31,6 +30,7 @@ import { TopAppBar } from "./components/TopAppBar.js"
 import { WorkspaceColumn } from "./components/WorkspaceColumn.js"
 import { useChatHistory } from "./hooks/useChatHistory.js"
 import { useChromeModelInstall } from "./hooks/useChromeModelInstall.js"
+import { readAvailability } from "@executioncontrolprotocol/chrome-ai"
 import { useViewLayout } from "./hooks/useViewLayout.js"
 import { installEsbuildWasmUrl } from "./lib/esbuild-wasm-bootstrap.js"
 import { createDemoAppEnvironment } from "./lib/demo-environment.js"
@@ -57,6 +57,7 @@ import {
 import { columnWidthClass } from "./lib/view-layout.js"
 import {
   harnessCapabilityId,
+  preferredModalProviderMode,
   providerCapabilityId,
   readStoredProviderMode,
   resolveDemoSession,
@@ -200,17 +201,15 @@ export function App() {
   const chromeInstall = useChromeModelInstall(() => {
     void upgradeToChromeAi()
   })
-  const { installState: chromeInstallState, startInstall, stopPolling } = chromeInstall
+  const { installState: chromeInstallState, startInstall, startPolling, stopPolling } =
+    chromeInstall
 
-  const beginChromeInstall = useCallback(
-    async (surface: "dialog" | "toast") => {
-      if (!ecp) return
-      setChromeInstallUi(surface)
-      setShowProviderModal(false)
-      await startInstall(ecp)
-    },
-    [ecp, startInstall]
-  )
+  const beginChromeInstall = useCallback((surface: "dialog" | "toast") => {
+    // create() must run before any other work so user activation survives.
+    startInstall()
+    setChromeInstallUi(surface)
+    setShowProviderModal(false)
+  }, [startInstall])
 
   const bootstrapAfterVault = useCallback(async () => {
     if (ecpBootstrapped.current) return
@@ -227,34 +226,53 @@ export function App() {
     const bridgeDetect = await refreshBridgeDetect()
     const bridgeOk = isOllamaBridgeUsable(bridgeDetect)
 
-    const avail = await operational.invoke("@executioncontrolprotocol/chrome-ai.checkAvailability").with({}).process()
-    const result =
-      avail.success && typeof avail.result === "object" && avail.result !== null
-        ? (avail.result as { available: boolean; supported?: boolean; status?: string })
-        : { available: false, supported: false }
-
-    const supported = result.supported ?? result.status !== "unsupported"
-    const ready = Boolean(result.available)
+    const result = await readAvailability()
+    const supported = result.supported
+    const ready = result.available
     setChromeSupported(supported)
     setChromeReady(ready)
 
     const stored = readStoredProviderMode()
+    const modalMode = preferredModalProviderMode(stored, {
+      chromeSupported: supported,
+      ollamaBridgeAvailable: bridgeOk,
+    })
+
+    // Ollama saved but ecp up is down — open provider picker on a usable fallback.
     if (stored === "ollama" && !bridgeOk) {
+      setProviderMode(modalMode)
       setShowProviderModal(true)
-      setChatStatus("Ollama bridge unavailable — run ecp up or choose another provider.")
-    } else if (stored) {
+      setChatStatus("Ollama bridge unavailable — run ecp up or continue with Chrome AI.")
+      // Resume an in-flight Nano download without requiring another click first.
+      if (supported && result.status === "downloading") {
+        setChromeInstallUi("toast")
+        startPolling()
+        setChatStatus("Chrome AI model download already in progress…")
+      }
+      return
+    }
+
+    if (stored) {
       setProviderMode(stored)
       setAssistantMode("authoring")
       const resolved = resolveDemoSession(stored)
       setChatStatus(`Ready (${stored} / ${resolved.harness}).`)
-      if (stored === "chrome-ai" && supported && !ready) {
-        setChromeInstallUi("toast")
-        await startInstall(operational)
+      // Do not call LanguageModel.create() here — Chrome requires a user gesture
+      // to start Gemini Nano download; auto-start hangs with no progress.
+      if (stored === "chrome-ai" && supported && result.status === "downloading") {
+        setChromeInstallUi("dialog")
+        startPolling()
+        setChatStatus("Chrome AI model download in progress…")
+      } else if (stored === "chrome-ai" && supported && !ready) {
+        setShowProviderModal(true)
+        setChatStatus("Chrome AI needs a one-click download. Click Continue to start.")
       }
-    } else {
-      setShowProviderModal(true)
+      return
     }
-  }, [setChatStatus, startInstall, refreshBridgeDetect])
+
+    setProviderMode(modalMode)
+    setShowProviderModal(true)
+  }, [setChatStatus, refreshBridgeDetect, startPolling])
 
   useEffect(() => {
     installEsbuildWasmUrl()
@@ -359,11 +377,12 @@ export function App() {
   }
 
   const onChromeInstallFromModal = () => {
+    // First line after the Continue click — preserve user activation for create().
+    beginChromeInstall("dialog")
     setAssistantMode("guided")
     setProviderMode("chrome-ai")
     setGuidedWelcome()
     setChatStatus("Installing Chrome AI...")
-    void beginChromeInstall("dialog")
   }
 
   const runChat = async (userRequest: string) => {
@@ -542,10 +561,6 @@ export function App() {
 
   const chatBlocked = (showProviderModal && chromeInstallUi === "dialog") || vaultGate === "locked"
   const hasWorkflow = manifest !== null
-  const showInstallToast =
-    chromeInstallUi === "toast" &&
-    chromeInstallState.phase !== "ready" &&
-    chromeInstallState.phase !== "idle"
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background">
@@ -620,7 +635,11 @@ export function App() {
         ) : null}
       </main>
 
-      <StatusFooter validation={validation} />
+      <StatusFooter
+        validation={validation}
+        chromeInstallUi={chromeInstallUi}
+        chromeInstallState={chromeInstallState}
+      />
 
       {showProviderModal ? (
         <FirstRunModal
@@ -683,8 +702,6 @@ export function App() {
           }}
         />
       ) : null}
-
-      <ChromeInstallToast state={chromeInstallState} visible={showInstallToast} />
     </div>
   )
 }
