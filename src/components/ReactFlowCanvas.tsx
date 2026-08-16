@@ -16,7 +16,6 @@ import type {
   ReactFlowEdge,
   ReactFlowNode,
 } from "@executioncontrolprotocol/format-reactflow"
-import { EcpGroupNode } from "./EcpGroupNode.js"
 import { EcpStepNode } from "./EcpStepNode.js"
 import { PanelHeader } from "./PanelHeader.js"
 import { RunOutputPanel } from "./RunOutputPanel.js"
@@ -25,19 +24,18 @@ import { edgeStatusClass, stepNodeStatusClass } from "../lib/reactflow-run-statu
 
 const nodeTypes = {
   "ecp-step": EcpStepNode,
-  "ecp-group": EcpGroupNode,
 }
 
 function toRfNodes(nodes: ReactFlowNode[]): Node[] {
-  return nodes.map((n) => ({
-    id: n.id,
-    type: n.type,
-    position: n.position,
-    data: { ...n.data } as Record<string, unknown>,
-    parentId: n.parentId,
-    style: n.style,
-    extent: n.parentId ? ("parent" as const) : undefined,
-  }))
+  return nodes
+    .filter((n) => n.type === "ecp-step")
+    .map((n) => ({
+      id: n.id,
+      type: n.type,
+      position: n.position,
+      data: { ...n.data } as Record<string, unknown>,
+      style: n.style?.width !== undefined ? { width: n.style.width } : undefined,
+    }))
 }
 
 function toRfEdges(edges: ReactFlowEdge[]): Edge[] {
@@ -168,11 +166,13 @@ function ReactFlowCanvasInner({
             proOptions={{ hideAttribution: true }}
           >
             <Background gap={24} color="var(--color-surface-container-highest)" />
-            <Controls showInteractive={false} />
+            <Controls className="ecp-rf-controls" showInteractive={false} />
             <MiniMap
-              nodeStrokeColor="var(--color-outline-variant)"
-              nodeColor="var(--color-surface-container)"
-              maskColor="rgba(11, 19, 38, 0.7)"
+              className="ecp-rf-minimap"
+              bgColor="var(--color-surface-container-low)"
+              nodeStrokeColor="var(--color-outline)"
+              nodeColor="var(--color-surface-container-high)"
+              maskColor="color-mix(in srgb, var(--color-background) 72%, transparent)"
             />
           </ReactFlow>
         ) : (

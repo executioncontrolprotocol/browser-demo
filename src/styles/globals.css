@@ -561,4 +561,42 @@
     width: 100%;
     height: 100%;
   }
+
+  .react-flow__controls.ecp-rf-controls {
+    overflow: hidden;
+    border: 1px solid var(--color-outline-variant);
+    border-radius: 0.5rem;
+    box-shadow: none;
+    background: var(--color-surface-container);
+  }
+
+  .react-flow__controls.ecp-rf-controls .react-flow__controls-button {
+    width: 1.75rem;
+    height: 1.75rem;
+    border: none;
+    border-bottom: 1px solid var(--color-outline-variant);
+    background: var(--color-surface-container);
+    fill: var(--color-on-surface-variant);
+  }
+
+  .react-flow__controls.ecp-rf-controls .react-flow__controls-button:last-child {
+    border-bottom: none;
+  }
+
+  .react-flow__controls.ecp-rf-controls .react-flow__controls-button:hover {
+    background: var(--color-surface-container-high);
+    fill: var(--color-on-surface);
+  }
+
+  .react-flow__minimap.ecp-rf-minimap {
+    overflow: hidden;
+    border: 1px solid var(--color-outline-variant);
+    border-radius: 0.5rem;
+    box-shadow: none;
+    background: var(--color-surface-container-low) !important;
+  }
+
+  .react-flow__minimap.ecp-rf-minimap svg {
+    background: var(--color-surface-container-low);
+  }
 }
