@@ -525,7 +525,8 @@
 
   @keyframes ecp-rf-edge-ants {
     to {
-      stroke-dashoffset: -14;
+      /* Must equal dash + gap (6 + 4) for a seamless loop — mismatches flicker. */
+      stroke-dashoffset: -10;
     }
   }
 
@@ -583,12 +584,11 @@
     animation: none !important;
   }
 
-  .react-flow__edge.ecp-rf-edge--incomplete path,
-  .react-flow__edge.animated.ecp-rf-edge--incomplete path {
+  .react-flow__edge.ecp-rf-edge--incomplete path.react-flow__edge-path {
     stroke: var(--color-tertiary-fixed-dim) !important;
     stroke-width: 2.5;
     stroke-dasharray: 6 4 !important;
-    animation: ecp-rf-edge-ants 0.45s linear infinite !important;
+    animation: ecp-rf-edge-ants 1.4s linear infinite !important;
   }
 
   .react-flow__edge.ecp-rf-edge--completed path {
@@ -629,11 +629,18 @@
   }
 
   .react-flow__controls.ecp-rf-controls .ecp-rf-controls-inspect {
-    color: var(--color-on-surface-variant);
+    /* Inherit Controls button `color` (#f8f8f8 dark) so Material icon matches SVG zoom icons. */
+    color: inherit;
+  }
+
+  .react-flow__controls.ecp-rf-controls .ecp-rf-controls-inspect-icon {
+    font-size: 16px;
+    line-height: 1;
+    font-variation-settings: "FILL" 0, "wght" 300, "GRAD" 0, "opsz" 20;
   }
 
   .react-flow__controls.ecp-rf-controls .ecp-rf-controls-inspect:hover {
-    color: var(--color-on-surface);
+    color: inherit;
   }
 
   .react-flow__controls.ecp-rf-controls .ecp-rf-controls-inspect:disabled {

@@ -167,7 +167,8 @@ function ReactFlowCanvasInner({
         return {
           ...edge,
           className: cls,
-          animated: incomplete,
+          // CSS class drives ants — RF `animated` uses a different dash period and flickers.
+          animated: false,
           style: {
             strokeWidth: 2,
             opacity: 0.9,
@@ -217,7 +218,10 @@ function ReactFlowCanvasInner({
                   aria-label="Inspect state"
                   onClick={onOpenRunOverlay}
                 >
-                  <span className="material-symbols-outlined text-[16px] leading-none" aria-hidden>
+                  <span
+                    className="material-symbols-outlined ecp-rf-controls-inspect-icon"
+                    aria-hidden
+                  >
                     data_object
                   </span>
                 </button>
