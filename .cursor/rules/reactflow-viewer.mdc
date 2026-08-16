@@ -1,0 +1,22 @@
+---
+description: Browser demo React Flow canvas UX (ports, edges, run, configure)
+globs: src/components/{ReactFlowCanvas,EcpStepNode,StepConfigureDialog}.tsx,src/lib/{reactflow-run-status,step-configure}.ts,src/hooks/useReactFlowRunProgress.ts,src/styles/globals.css
+alwaysApply: false
+---
+
+# React Flow viewer (browser demo)
+
+Canonical decisions: sibling monorepo
+`executioncontrolprotocol/packages/extensions/format-reactflow/REACTFLOW_RENDER.md`
+(or local copy under that package path).
+
+## Must follow
+
+- Render only `ecp-step` nodes; ignore group wrappers if present in JSON.
+- Draw only data edges with both `sourceHandle` and `targetHandle`.
+- Every schema port gets a handle: hollow if unconnected, solid if connected.
+- Idle routes: solid cyan matching input handles (`--color-tertiary-fixed-dim`).
+- During run: marching ants on in-flight edges; green when source step completed.
+- Node pulse: soft, low-spread shadow on **running** only; keep a clear green completed glow.
+- Do not open the state modal on Run click — open when the run finishes; keep **Inspect state** in the zoom/fit Controls.
+- Configure dialog: removable literals after save, add unbound Zod params, editable `as` with ref rewrite; save via `ecp.patch` + `syncFromManifest`.
