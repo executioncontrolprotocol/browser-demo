@@ -70,8 +70,10 @@ Open the URL Vite prints (default `http://localhost:5173`).
 ```sh
 npm run build
 npm test
-npm run typecheck
+npm run lint
 ```
+
+(`npm run lint` runs `typecheck`; Husky pre-commit runs secretlint then lint.)
 
 Harness evals (Ollama `gemma3:1b`) run from the [ECP monorepo](https://github.com/executioncontrolprotocol/executioncontrolprotocol): `npm run eval:matrix`. The demo app uses the same **chat** multi-shot harness (`HARNESS_TASKS.CHAT`) as the matrix.
 

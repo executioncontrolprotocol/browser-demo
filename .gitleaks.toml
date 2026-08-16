@@ -1,0 +1,22 @@
+# Shared allowlist for gitleaks (CI history scan). Keep placeholders short and obvious.
+title = "ECP"
+
+[allowlist]
+description = "Test fixtures, docs placeholders, and generated lockfiles"
+paths = [
+  '''package-lock\.json$''',
+  '''(^|/)node_modules/''',
+  '''(^|/)dist/''',
+  '''(^|/)coverage/''',
+]
+regexes = [
+  '''sk-test''',
+  '''sk-secret''',
+  '''sk-browser''',
+  '''sk-live''',
+  '''sk-\.\.\.''',
+  '''sk-ant-\.\.\.''',
+  '''test-key''',
+  '''YOUR_API_KEY''',
+  '''changeme''',
+]

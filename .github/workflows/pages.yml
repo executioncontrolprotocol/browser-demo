@@ -19,12 +19,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          path: browser-demo
+      - uses: actions/checkout@v4
+        with:
+          repository: executioncontrolprotocol/executioncontrolprotocol
+          path: executioncontrolprotocol
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
+          cache-dependency-path: |
+            browser-demo/package-lock.json
+            executioncontrolprotocol/package-lock.json
+      - name: Build ECP format-reactflow (file: dependency)
+        working-directory: executioncontrolprotocol
+        run: |
+          npm ci
+          npm run build -w @executioncontrolprotocol/types
+          npm run build -w @executioncontrolprotocol/core
+          npm run build -w @executioncontrolprotocol/format-reactflow
+      - working-directory: browser-demo
+        run: npm ci
       - name: Build for GitHub Pages
+        working-directory: browser-demo
         env:
           GITHUB_PAGES: "true"
           GITHUB_REPOSITORY: ${{ github.repository }}
@@ -33,7 +51,7 @@ jobs:
         run: npm run build:pages
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: browser-demo/dist
 
   deploy:
     runs-on: ubuntu-latest
