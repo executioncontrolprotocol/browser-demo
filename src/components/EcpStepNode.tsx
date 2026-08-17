@@ -1,6 +1,7 @@
 import { useContext, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react"
-import { Handle, Position, type NodeProps } from "@xyflow/react"
-import type { ReactFlowStepData } from "@executioncontrolprotocol/format-reactflow"
+import { Handle, Position, useConnection, type NodeProps } from "@xyflow/react"
+import type { ReactFlowPort, ReactFlowStepData } from "@executioncontrolprotocol/format-reactflow"
+import { portsAreCompatible } from "../lib/step-connect.js"
 import { ReactFlowConfigureContext } from "./reactflow-configure-context.js"
 
 /** Props data for {@link EcpStepNode}. */
@@ -17,16 +18,29 @@ function stopCanvasGesture(e: ReactPointerEvent | ReactMouseEvent): void {
   e.stopPropagation()
 }
 
-function handleClass(kind: "input" | "output", connected: boolean): string {
+function handleClass(
+  kind: "input" | "output",
+  connected: boolean,
+  incompatible: boolean
+): string {
   const base = "ecp-rf-handle !h-2.5 !w-2.5 !border-[1.5px]"
+  const strike = incompatible ? " ecp-rf-handle--incompatible" : ""
   if (connected) {
     return kind === "input"
-      ? `${base} ecp-rf-handle--connected ecp-rf-handle--input`
-      : `${base} ecp-rf-handle--connected ecp-rf-handle--output`
+      ? `${base} ecp-rf-handle--connected ecp-rf-handle--input${strike}`
+      : `${base} ecp-rf-handle--connected ecp-rf-handle--output${strike}`
   }
   return kind === "input"
-    ? `${base} ecp-rf-handle--idle ecp-rf-handle--input`
-    : `${base} ecp-rf-handle--idle ecp-rf-handle--output`
+    ? `${base} ecp-rf-handle--idle ecp-rf-handle--input${strike}`
+    : `${base} ecp-rf-handle--idle ecp-rf-handle--output${strike}`
+}
+
+function findPort(
+  ports: ReactFlowPort[] | undefined,
+  handleId: string | null | undefined
+): ReactFlowPort | undefined {
+  if (!handleId || !ports) return undefined
+  return ports.find((p) => p.id === handleId)
 }
 
 /** Custom React Flow node with Zod-backed ports; all schema ports show handles. */
@@ -37,6 +51,19 @@ export function EcpStepNode({ id, data }: NodeProps) {
   const showConfigure = Boolean(onConfigureStep)
   const connectedTargets = new Set(step.connectedTargetHandles ?? [])
   const connectedSources = new Set(step.connectedSourceHandles ?? [])
+
+  const connection = useConnection()
+  const dragFromOutput =
+    connection.inProgress && connection.fromHandle?.type === "source"
+      ? {
+          nodeId: connection.fromNode.id,
+          handleId: connection.fromHandle.id,
+          port: findPort(
+            (connection.fromNode.data as unknown as EcpStepNodeData | undefined)?.outputs,
+            connection.fromHandle.id
+          ),
+        }
+      : null
 
   return (
     <div
@@ -76,14 +103,25 @@ export function EcpStepNode({ id, data }: NodeProps) {
       <div className="flex flex-col gap-1">
         {step.inputs.map((port) => {
           const connected = port.binding === "ref" || connectedTargets.has(port.id)
+          const incompatible =
+            dragFromOutput !== null &&
+            dragFromOutput.nodeId !== id &&
+            dragFromOutput.port !== undefined &&
+            !portsAreCompatible(dragFromOutput.port, port)
+          const connectable = !incompatible
           return (
-            <div key={`in-${port.id}`} className="relative flex min-w-0 items-center gap-1 pl-2">
+            <div
+              key={`in-${port.id}`}
+              className={`relative flex min-w-0 items-center gap-1 pl-2${
+                incompatible ? " ecp-rf-port--incompatible" : ""
+              }`}
+            >
               <Handle
                 type="target"
                 position={Position.Left}
                 id={port.id}
-                className={handleClass("input", connected)}
-                isConnectable
+                className={handleClass("input", connected, incompatible)}
+                isConnectable={connectable}
               />
               <span className="min-w-0 truncate font-mono text-[10px] text-on-surface-variant">
                 {port.name}
@@ -119,7 +157,7 @@ export function EcpStepNode({ id, data }: NodeProps) {
                 type="source"
                 position={Position.Right}
                 id={port.id}
-                className={handleClass("output", connected)}
+                className={handleClass("output", connected, false)}
                 isConnectable
               />
             </div>

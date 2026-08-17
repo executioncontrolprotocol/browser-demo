@@ -21,6 +21,7 @@ Canonical decisions: sibling monorepo
 - Do not open the state modal on Run click — open when the run finishes; keep **Inspect state** in the zoom/fit Controls.
 - Configure dialog: removable literals after save, add unbound Zod params, editable `as` with ref rewrite; save via `ecp.patch` + `syncFromManifest`.
 - Canvas connect: output→input writes `$ref` into target `step.input` (Fluent `ref(...)`); delete edge removes that key; same patch + sync path. Do not treat RF edges as source of truth—re-encode after patch. Source must have `as`; replace literal silently on connect.
+- Connect type compatibility (demo-local): match `portTypeKind` from `valueSchema`/`typeLabel` (`number`≡`integer`; `unknown` pairs with anything). During output drag, grey + cross incompatible inputs (`ecp-rf-port--incompatible` / `ecp-rf-handle--incompatible`); `isValidConnection` + `isConnectable` reject them.
 - Map editors from port **`valueSchema`** (demo-local); fall back to `typeLabel`. Never put widget names in the encode document.
   - short `string` → text input; long (`prompt`/`system`/… or length/`\n`) → textarea
   - `object`/`array`/unknown → Monaco JSON; `number` → number input; `boolean` → toggle

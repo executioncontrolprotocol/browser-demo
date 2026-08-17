@@ -578,6 +578,31 @@
     border-color: var(--color-primary) !important;
   }
 
+  .ecp-rf-port--incompatible {
+    opacity: 0.4;
+  }
+
+  /* Handles stay absolutely positioned (RF default). Do not set position:relative —
+     that pulls the handle into the flex row and shifts the label. */
+  .react-flow__handle.ecp-rf-handle--incompatible {
+    opacity: 1;
+    border-color: var(--color-outline) !important;
+    background: transparent !important;
+    overflow: visible;
+  }
+
+  .react-flow__handle.ecp-rf-handle--incompatible::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 100%;
+    height: 1.5px;
+    background: var(--color-outline);
+    transform: translate(-50%, -50%) rotate(-45deg);
+    pointer-events: none;
+  }
+
   .react-flow__edge.ecp-rf-edge--idle path {
     stroke: var(--color-tertiary-fixed-dim) !important;
     stroke-dasharray: none !important;

@@ -1,7 +1,17 @@
 import type { StepNode } from "@executioncontrolprotocol/types"
+import { normalizeTypeLabel } from "./step-configure.js"
 
 /** Whole-step output handle id used when the `$ref` has no field path. */
 export const OUTPUT_HANDLE_ID = "output"
+
+/** Normalized port kinds used for connect compatibility (demo-local). */
+export type PortTypeKind = "string" | "number" | "boolean" | "object" | "array" | "unknown"
+
+/** Minimal port shape for type compatibility checks. */
+export interface PortTypeSource {
+  typeLabel?: string
+  valueSchema?: Record<string, unknown>
+}
 
 /** Result of building a `$ref` path from a source handle. */
 export type BuildStateRefResult =
@@ -12,6 +22,52 @@ export type BuildStateRefResult =
 export type PortConnectionResult =
   | { ok: true; refPath: string; paramName: string }
   | { ok: false; error: string }
+
+function kindFromSchemaType(type: unknown): PortTypeKind | undefined {
+  if (type === "string") return "string"
+  if (type === "number" || type === "integer") return "number"
+  if (type === "boolean") return "boolean"
+  if (type === "object") return "object"
+  if (type === "array") return "array"
+  if (type === "null") return "unknown"
+  return undefined
+}
+
+function kindFromTypeLabel(typeLabel: string | undefined): PortTypeKind {
+  const base = normalizeTypeLabel(typeLabel ?? "")
+  if (!base || base === "unknown") return "unknown"
+  if (base === "string") return "string"
+  if (base === "number" || base === "int" || base === "integer" || base === "float") return "number"
+  if (base === "boolean" || base === "bool") return "boolean"
+  if (base === "object" || base === "record" || base === "json") return "object"
+  if (base === "array") return "array"
+  return "unknown"
+}
+
+/**
+ * Normalize a port's `valueSchema` / `typeLabel` to a connect compatibility kind.
+ */
+export function portTypeKind(port: PortTypeSource): PortTypeKind {
+  const schema = port.valueSchema
+  if (schema && Object.keys(schema).length > 0) {
+    const fromType = kindFromSchemaType(schema.type)
+    if (fromType) return fromType
+    // Constraints without a type (e.g. bare enum) — treat as string for wiring.
+    if (schema.type === undefined && Array.isArray(schema.enum)) return "string"
+    return "unknown"
+  }
+  return kindFromTypeLabel(port.typeLabel)
+}
+
+/**
+ * Whether an output port may wire to an input port (same kind, or either unknown).
+ */
+export function portsAreCompatible(source: PortTypeSource, target: PortTypeSource): boolean {
+  const a = portTypeKind(source)
+  const b = portTypeKind(target)
+  if (a === "unknown" || b === "unknown") return true
+  return a === b
+}
 
 /**
  * Build a manifest `$ref` path from a source store key and React Flow source handle.

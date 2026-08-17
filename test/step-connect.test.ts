@@ -4,6 +4,8 @@ import {
   OUTPUT_HANDLE_ID,
   applyPortConnection,
   buildStateRefFromConnection,
+  portTypeKind,
+  portsAreCompatible,
   removePortBinding,
   resolvePortConnection,
 } from "../src/lib/step-connect.js"
@@ -80,5 +82,41 @@ describe("step-connect helpers", () => {
       "text"
     )
     expect(afterAll.input).toBeUndefined()
+  })
+
+  it("maps valueSchema and typeLabel to port type kinds", () => {
+    expect(portTypeKind({ valueSchema: { type: "string" } })).toBe("string")
+    expect(portTypeKind({ valueSchema: { type: "integer" } })).toBe("number")
+    expect(portTypeKind({ valueSchema: { type: "number" } })).toBe("number")
+    expect(portTypeKind({ valueSchema: { type: "boolean" } })).toBe("boolean")
+    expect(portTypeKind({ valueSchema: { type: "object" } })).toBe("object")
+    expect(portTypeKind({ valueSchema: { type: "array" } })).toBe("array")
+    expect(portTypeKind({ valueSchema: {} })).toBe("unknown")
+    expect(portTypeKind({ typeLabel: "string!" })).toBe("string")
+    expect(portTypeKind({ typeLabel: "unknown" })).toBe("unknown")
+    expect(portTypeKind({})).toBe("unknown")
+  })
+
+  it("allows compatible kinds and rejects cross-kind pairs", () => {
+    expect(
+      portsAreCompatible(
+        { valueSchema: { type: "string" } },
+        { valueSchema: { type: "string", enum: ["a", "b"] } }
+      )
+    ).toBe(true)
+    expect(
+      portsAreCompatible(
+        { valueSchema: { type: "number" } },
+        { valueSchema: { type: "integer" } }
+      )
+    ).toBe(true)
+    expect(
+      portsAreCompatible({ valueSchema: { type: "string" } }, { valueSchema: { type: "number" } })
+    ).toBe(false)
+    expect(
+      portsAreCompatible({ valueSchema: { type: "object" } }, { valueSchema: { type: "array" } })
+    ).toBe(false)
+    expect(portsAreCompatible({ valueSchema: {} }, { valueSchema: { type: "string" } })).toBe(true)
+    expect(portsAreCompatible({ typeLabel: "unknown" }, { typeLabel: "number" })).toBe(true)
   })
 })

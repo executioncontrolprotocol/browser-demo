@@ -23,6 +23,7 @@ import { PanelHeader } from "./PanelHeader.js"
 import { RunOutputPanel } from "./RunOutputPanel.js"
 import { useReactFlowRunProgress } from "../hooks/useReactFlowRunProgress.js"
 import { edgeStatusClass, stepNodeStatusClass } from "../lib/reactflow-run-status.js"
+import { portsAreCompatible } from "../lib/step-connect.js"
 
 const nodeTypes = {
   "ecp-step": EcpStepNode,
@@ -147,11 +148,16 @@ function ReactFlowCanvasInner({
       const targetNode = nodes.find((n) => n.id === target)
       if (!sourceNode || !targetNode) return false
 
-      const sourceData = sourceNode.data as { outputs?: Array<{ id: string }> }
-      const targetData = targetNode.data as { inputs?: Array<{ id: string }> }
-      const isOutput = (sourceData.outputs ?? []).some((p) => p.id === sourceHandle)
-      const isInput = (targetData.inputs ?? []).some((p) => p.id === targetHandle)
-      return isOutput && isInput
+      const sourceData = sourceNode.data as {
+        outputs?: Array<{ id: string; typeLabel?: string; valueSchema?: Record<string, unknown> }>
+      }
+      const targetData = targetNode.data as {
+        inputs?: Array<{ id: string; typeLabel?: string; valueSchema?: Record<string, unknown> }>
+      }
+      const sourcePort = (sourceData.outputs ?? []).find((p) => p.id === sourceHandle)
+      const targetPort = (targetData.inputs ?? []).find((p) => p.id === targetHandle)
+      if (!sourcePort || !targetPort) return false
+      return portsAreCompatible(sourcePort, targetPort)
     },
     [nodes]
   )
