@@ -101,6 +101,7 @@ export interface ReactFlowCanvasProps {
     targetStepId: string
     sourceHandle: string
     targetHandle: string
+    valueSchema?: Record<string, unknown>
   }) => void | Promise<void>
   /** Delete a data edge: remove that input binding from the target step. */
   onDisconnectPorts?: (connection: {
@@ -178,14 +179,20 @@ function ReactFlowCanvasInner({
       const sourceHandle = connection.sourceHandle
       const targetHandle = connection.targetHandle
       if (!connection.source || !connection.target || !sourceHandle || !targetHandle) return
+      const sourceNode = nodes.find((n) => n.id === connection.source)
+      const sourceData = sourceNode?.data as
+        | { outputs?: Array<{ id: string; valueSchema?: Record<string, unknown> }> }
+        | undefined
+      const sourcePort = (sourceData?.outputs ?? []).find((p) => p.id === sourceHandle)
       void onConnectPorts({
         sourceStepId: connection.source,
         targetStepId: connection.target,
         sourceHandle,
         targetHandle,
+        valueSchema: sourcePort?.valueSchema,
       })
     },
-    [onConnectPorts, isValidConnection]
+    [onConnectPorts, isValidConnection, nodes]
   )
 
   const handleEdgesDelete = useCallback(

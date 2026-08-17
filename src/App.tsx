@@ -36,8 +36,10 @@ import {
   applyReturnsConnection,
   ioFieldsFromSchema,
   renameAcceptsProperty,
+  renameReturnsProperty,
   removeReturnsProperty,
   schemaFromIoFields,
+  workflowIoPatchOps,
   withWorkflowIoSchema,
   workflowContract,
 } from "./lib/workflow-io.js"
@@ -450,32 +452,23 @@ export function App() {
   )
 
   const patchWorkflowMeta = useCallback(
-    async (nextManifest: WorkflowManifest) => {
+    async (nextManifest: WorkflowManifest): Promise<string | null> => {
       const operational = ecpRef.current
-      if (!operational || !manifest) return false
-      const ops: Array<{ path: string; mode: "replace"; value: unknown }> = [
-        {
-          path: "workflow",
-          mode: "replace",
-          value: nextManifest.workflow,
-        },
-      ]
-      if (JSON.stringify(nextManifest.steps) !== JSON.stringify(manifest.steps)) {
-        ops.push({ path: "steps", mode: "replace", value: nextManifest.steps })
-      }
+      if (!operational || !manifest) return "Environment is not ready"
+      const ops = workflowIoPatchOps(manifest, nextManifest)
+      if (ops.length === 0) return null
       const patched = await operational.patch(manifest).with(ops).process()
       if (!patched.success || !patched.result) {
-        const message =
+        return (
           patched.diagnostics?.[0]?.message ??
           patched.validation?.errors?.[0]?.message ??
           "Failed to patch workflow"
-        setChatStatus(message)
-        return false
+        )
       }
       await syncFromManifestRef.current(patched.result as WorkflowManifest, {
         refreshFluent: true,
       })
-      return true
+      return null
     },
     [manifest]
   )
@@ -486,6 +479,7 @@ export function App() {
       targetStepId: string
       sourceHandle: string
       targetHandle: string
+      valueSchema?: Record<string, unknown>
     }) => {
       if (!manifest) return
 
@@ -504,10 +498,12 @@ export function App() {
           applyReturnsConnection(
             workflowContract(manifest).returns,
             sourceAs,
-            connection.targetHandle
+            connection.targetHandle,
+            connection.valueSchema
           )
         )
-        await patchWorkflowMeta(next)
+        const error = await patchWorkflowMeta(next)
+        if (error) setChatStatus(error)
         return
       }
 
@@ -551,7 +547,8 @@ export function App() {
           "returns",
           removeReturnsProperty(workflowContract(manifest).returns, connection.targetHandle)
         )
-        await patchWorkflowMeta(next)
+        const error = await patchWorkflowMeta(next)
+        if (error) setChatStatus(error)
         return
       }
       const target = findStepById(manifest.steps, connection.targetStepId)
@@ -653,9 +650,18 @@ export function App() {
           for (const rename of payload.renames) {
             next = renameAcceptsProperty(next, rename.from, rename.to)
           }
+        } else {
+          for (const rename of payload.renames) {
+            next = renameReturnsProperty(next, rename.from, rename.to)
+          }
         }
-        const ok = await patchWorkflowMeta(next)
-        if (ok) setConfigureStepId(null)
+        const error = await patchWorkflowMeta(next)
+        if (error) {
+          setConfigureError(error)
+          setChatStatus(error)
+          return
+        }
+        setConfigureStepId(null)
       } catch (err) {
         setConfigureError(err instanceof Error ? err.message : String(err))
       } finally {
