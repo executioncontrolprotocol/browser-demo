@@ -3,8 +3,8 @@ import type { StepNode, WorkflowNode } from "@executioncontrolprotocol/types"
 
 const LONG_TEXT_PARAM_NAMES = new Set(["prompt", "system", "instructions", "query", "text"])
 
-/** UI editor kind inferred from an EQL-ish type label. */
-export type ConfigEditorKind = "string" | "number" | "boolean" | "json"
+/** UI editor kind inferred from valueSchema / typeLabel (demo-local; not part of encode). */
+export type ConfigEditorKind = "string" | "number" | "boolean" | "enum" | "json"
 
 function isStepNode(node: WorkflowNode): node is StepNode {
   return !node.type || node.type === "step"
@@ -67,8 +67,68 @@ export function editorKindForTypeLabel(typeLabel: string): ConfigEditorKind {
   return "string"
 }
 
+/** Extract enum option list from a JSON Schema hint when present. */
+export function enumOptionsFromValueSchema(
+  valueSchema: Record<string, unknown> | undefined
+): Array<string | number | boolean> | undefined {
+  if (!valueSchema || !Array.isArray(valueSchema.enum) || valueSchema.enum.length === 0) {
+    return undefined
+  }
+  const options = valueSchema.enum.filter(
+    (v): v is string | number | boolean =>
+      typeof v === "string" || typeof v === "number" || typeof v === "boolean"
+  )
+  return options.length > 0 ? options : undefined
+}
+
+/**
+ * Prefer portable `valueSchema` (primitives + constraints); fall back to `typeLabel`.
+ * Demo-local mapping — other UIs may choose different widgets for the same schema.
+ */
+export function editorKindForPort(port: {
+  typeLabel: string
+  valueSchema?: Record<string, unknown>
+}): ConfigEditorKind {
+  return editorKindForValueSchema(port.valueSchema, port.typeLabel)
+}
+
+/**
+ * Map a JSON Schema value hint to a demo editor kind.
+ * `string` + `enum` → `"enum"` (rendered as `<select>` in the dialog).
+ */
+export function editorKindForValueSchema(
+  valueSchema: Record<string, unknown> | undefined,
+  typeLabelFallback?: string
+): ConfigEditorKind {
+  if (valueSchema) {
+    const options = enumOptionsFromValueSchema(valueSchema)
+    if (options) {
+      const schemaType = valueSchema.type
+      if (
+        schemaType === undefined ||
+        schemaType === "string" ||
+        schemaType === "number" ||
+        schemaType === "integer" ||
+        schemaType === "boolean"
+      ) {
+        return "enum"
+      }
+    }
+    const t = valueSchema.type
+    if (t === "number" || t === "integer") return "number"
+    if (t === "boolean") return "boolean"
+    if (t === "object" || t === "array") return "json"
+    if (t === "string" || t === "null") return "string"
+    if (Object.keys(valueSchema).length === 0) return "json"
+  }
+  return editorKindForTypeLabel(typeLabelFallback ?? "string")
+}
+
 /** Default draft / typed value when adding a new unbound parameter. */
-export function defaultDraftForKind(kind: ConfigEditorKind): string {
+export function defaultDraftForKind(
+  kind: ConfigEditorKind,
+  enumOptions?: Array<string | number | boolean>
+): string {
   switch (kind) {
     case "number":
       return "0"
@@ -76,13 +136,18 @@ export function defaultDraftForKind(kind: ConfigEditorKind): string {
       return "false"
     case "json":
       return "{}"
+    case "enum":
+      return enumOptions && enumOptions.length > 0 ? String(enumOptions[0]) : ""
     case "string":
     default:
       return ""
   }
 }
 
-export function defaultTypedValueForKind(kind: ConfigEditorKind): unknown {
+export function defaultTypedValueForKind(
+  kind: ConfigEditorKind,
+  enumOptions?: Array<string | number | boolean>
+): unknown {
   switch (kind) {
     case "number":
       return 0
@@ -90,6 +155,8 @@ export function defaultTypedValueForKind(kind: ConfigEditorKind): unknown {
       return false
     case "json":
       return {}
+    case "enum":
+      return enumOptions && enumOptions.length > 0 ? enumOptions[0] : ""
     case "string":
     default:
       return ""
@@ -212,15 +279,34 @@ export type ParseLiteralResult =
   | { ok: true; value: unknown }
   | { ok: false; error: string }
 
+function coerceEnumDraft(
+  text: string,
+  options: Array<string | number | boolean>
+): ParseLiteralResult {
+  const match = options.find((opt) => String(opt) === text)
+  if (match === undefined) {
+    return { ok: false, error: `Expected one of: ${options.map(String).join(", ")}` }
+  }
+  return { ok: true, value: match }
+}
+
 /**
  * Coerce configure-dialog text back to a typed literal.
- * Uses `original` when present; otherwise `typeLabel` for newly added fields.
+ * Uses `original` when present; otherwise port `valueSchema` / `typeLabel` for newly added fields.
  */
 export function parseEditedLiteral(
   text: string,
   original: unknown,
-  typeLabel?: string
+  typeLabel?: string,
+  valueSchema?: Record<string, unknown>
 ): ParseLiteralResult {
+  const kind = editorKindForValueSchema(valueSchema, typeLabel ?? "string")
+  const enumOptions = enumOptionsFromValueSchema(valueSchema)
+
+  if (kind === "enum" && enumOptions) {
+    return coerceEnumDraft(text, enumOptions)
+  }
+
   if (original !== undefined) {
     if (typeof original === "string") {
       return { ok: true, value: text }
@@ -257,7 +343,6 @@ export function parseEditedLiteral(
     return { ok: true, value: text }
   }
 
-  const kind = editorKindForTypeLabel(typeLabel ?? "string")
   switch (kind) {
     case "number": {
       const trimmed = text.trim()
@@ -280,6 +365,7 @@ export function parseEditedLiteral(
       }
     }
     case "string":
+    case "enum":
     default:
       return { ok: true, value: text }
   }

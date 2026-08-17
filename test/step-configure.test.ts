@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest"
 import {
+  editorKindForPort,
   editorKindForTypeLabel,
+  editorKindForValueSchema,
+  enumOptionsFromValueSchema,
   findStepById,
   isLongTextParam,
   parseEditedLiteral,
@@ -39,6 +42,25 @@ describe("step-configure helpers", () => {
     expect(editorKindForTypeLabel("unknown")).toBe("json")
   })
 
+  it("maps valueSchema string+enum to enum editor kind", () => {
+    expect(
+      editorKindForValueSchema({ type: "string", enum: ["fast", "slow"] })
+    ).toBe("enum")
+    expect(enumOptionsFromValueSchema({ type: "string", enum: ["fast", "slow"] })).toEqual([
+      "fast",
+      "slow",
+    ])
+    expect(editorKindForValueSchema({ type: "string" })).toBe("string")
+    expect(editorKindForValueSchema({ type: "number" })).toBe("number")
+    expect(
+      editorKindForPort({
+        typeLabel: "string!",
+        valueSchema: { type: "string", enum: ["a", "b"] },
+      })
+    ).toBe("enum")
+    expect(editorKindForPort({ typeLabel: "number" })).toBe("number")
+  })
+
   it("lists unbound schema ports", () => {
     const step: ReactFlowStepData = {
       label: "Gen",
@@ -68,5 +90,14 @@ describe("step-configure helpers", () => {
     expect(parseEditedLiteral("3.5", undefined, "number")).toEqual({ ok: true, value: 3.5 })
     expect(parseEditedLiteral("true", undefined, "boolean!")).toEqual({ ok: true, value: true })
     expect(parseEditedLiteral('{"x":1}', undefined, "object")).toEqual({ ok: true, value: { x: 1 } })
+  })
+
+  it("parses enum drafts against valueSchema options", () => {
+    const schema = { type: "string", enum: ["fast", "slow"] }
+    expect(parseEditedLiteral("slow", undefined, "string", schema)).toEqual({
+      ok: true,
+      value: "slow",
+    })
+    expect(parseEditedLiteral("nope", undefined, "string", schema).ok).toBe(false)
   })
 })

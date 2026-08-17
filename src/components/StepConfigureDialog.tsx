@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react"
 import type { ReactFlowPort, ReactFlowStepData } from "@executioncontrolprotocol/format-reactflow"
 import {
   defaultDraftForKind,
-  editorKindForTypeLabel,
+  editorKindForPort,
+  enumOptionsFromValueSchema,
   isLongTextParam,
   literalPorts,
   parseEditedLiteral,
@@ -30,8 +31,26 @@ function fieldControl(
   value: string,
   valueTitle: string | undefined,
   busy: boolean,
-  onChange: (next: string) => void
+  onChange: (next: string) => void,
+  enumOptions?: Array<string | number | boolean>
 ) {
+  if (kind === "enum" && enumOptions && enumOptions.length > 0) {
+    return (
+      <select
+        className="w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-3 py-2 font-mono text-sm text-on-surface outline-none focus:border-outline"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={busy}
+      >
+        {enumOptions.map((opt) => (
+          <option key={String(opt)} value={String(opt)}>
+            {String(opt)}
+          </option>
+        ))}
+      </select>
+    )
+  }
+
   if (kind === "boolean") {
     const checked = value.trim().toLowerCase() === "true"
     return (
@@ -131,9 +150,10 @@ export function StepConfigureDialog({
   )
 
   const addPort = (port: ReactFlowPort) => {
-    const kind = editorKindForTypeLabel(port.typeLabel)
+    const kind = editorKindForPort(port)
+    const options = enumOptionsFromValueSchema(port.valueSchema)
     setActivePorts((prev) => [...prev, port])
-    setDrafts((prev) => ({ ...prev, [port.name]: defaultDraftForKind(kind) }))
+    setDrafts((prev) => ({ ...prev, [port.name]: defaultDraftForKind(kind, options) }))
     setPickerOpen(false)
   }
 
@@ -157,7 +177,7 @@ export function StepConfigureDialog({
     for (const port of activePorts) {
       const text = drafts[port.name] ?? ""
       const original = originalInput?.[port.name]
-      const parsed = parseEditedLiteral(text, original, port.typeLabel)
+      const parsed = parseEditedLiteral(text, original, port.typeLabel, port.valueSchema)
       if (!parsed.ok) {
         errors[port.name] = parsed.error
         continue
@@ -238,7 +258,8 @@ export function StepConfigureDialog({
             </p>
           ) : (
             activePorts.map((port) => {
-              const kind = editorKindForTypeLabel(port.typeLabel)
+              const kind = editorKindForPort(port)
+              const options = enumOptionsFromValueSchema(port.valueSchema)
               const fieldError = fieldErrors[port.name]
               return (
                 <div key={port.id} className="space-y-1.5">
@@ -262,7 +283,8 @@ export function StepConfigureDialog({
                     drafts[port.name] ?? "",
                     port.valueTitle,
                     busy,
-                    (next) => setDrafts((prev) => ({ ...prev, [port.name]: next }))
+                    (next) => setDrafts((prev) => ({ ...prev, [port.name]: next })),
+                    options
                   )}
                   {fieldError ? <span className="block text-label text-error">{fieldError}</span> : null}
                 </div>
@@ -299,7 +321,7 @@ export function StepConfigureDialog({
                         <span className="text-outline">:{port.typeLabel}</span>
                       </span>
                       <span className="text-[10px] uppercase tracking-wide text-on-surface-variant">
-                        {editorKindForTypeLabel(port.typeLabel)}
+                        {editorKindForPort(port)}
                       </span>
                     </button>
                   </li>
