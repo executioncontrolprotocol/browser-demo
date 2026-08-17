@@ -20,10 +20,27 @@ import type { Ecp } from "@executioncontrolprotocol/core"
 import { compileWorkflowSource } from "@executioncontrolprotocol/core/browser"
 import type {
   ReactFlowDocument,
+  ReactFlowIoData,
   ReactFlowStepData,
 } from "@executioncontrolprotocol/format-reactflow"
 import { findStepById, rewriteWorkflowAsRefs, type StepConfigureSavePayload } from "./lib/step-configure.js"
-import { applyPortConnection, removePortBinding, resolvePortConnection } from "./lib/step-connect.js"
+import {
+  OUTPUT_HANDLE_ID,
+  applyPortConnection,
+  removePortBinding,
+  resolvePortConnection,
+} from "./lib/step-connect.js"
+import {
+  WORKFLOW_ACCEPTS_NODE_ID,
+  WORKFLOW_RETURNS_NODE_ID,
+  applyReturnsConnection,
+  ioFieldsFromSchema,
+  renameAcceptsProperty,
+  removeReturnsProperty,
+  schemaFromIoFields,
+  withWorkflowIoSchema,
+  workflowContract,
+} from "./lib/workflow-io.js"
 import { ChatPanel } from "./components/ChatPanel.js"
 import { ChromeInstallDialog } from "./components/ChromeInstallDialog.js"
 import { CodePanel } from "./components/CodePanel.js"
@@ -32,6 +49,7 @@ import { VaultSetupModal } from "./components/VaultSetupModal.js"
 import { VaultUnlockModal } from "./components/VaultUnlockModal.js"
 import { ReactFlowCanvas } from "./components/ReactFlowCanvas.js"
 import { StepConfigureDialog } from "./components/StepConfigureDialog.js"
+import { IoConfigureDialog, type IoConfigureSavePayload } from "./components/IoConfigureDialog.js"
 import { StatusFooter } from "./components/StatusFooter.js"
 import { TopAppBar } from "./components/TopAppBar.js"
 import { WorkspaceColumn } from "./components/WorkspaceColumn.js"
@@ -149,6 +167,7 @@ export function App() {
   const [prompt, setPrompt] = useState("")
   const [compileError, setCompileError] = useState<string | null>(null)
   const [runOutput, setRunOutput] = useState("")
+  const [runPublicOutput, setRunPublicOutput] = useState("")
   const [runBusy, setRunBusy] = useState(false)
   const [runOverlayOpen, setRunOverlayOpen] = useState(false)
   const [configureStepId, setConfigureStepId] = useState<string | null>(null)
@@ -370,6 +389,25 @@ export function App() {
     }
   }, [configureStepId, reactflow])
 
+  const configureIoData = useMemo((): ReactFlowIoData | null => {
+    if (!configureStepId || !reactflow.trim()) return null
+    try {
+      const doc = JSON.parse(reactflow) as ReactFlowDocument
+      const node = doc.nodes.find((n) => n.id === configureStepId && n.type === "ecp-io")
+      return node ? (node.data as ReactFlowIoData) : null
+    } catch {
+      return null
+    }
+  }, [configureStepId, reactflow])
+
+  const configureIoFields = useMemo(() => {
+    if (!manifest || !configureIoData) return []
+    const contract = workflowContract(manifest)
+    return ioFieldsFromSchema(
+      configureIoData.kind === "accepts" ? contract.accepts : contract.returns
+    )
+  }, [manifest, configureIoData])
+
   const configureOriginalInput = useMemo(() => {
     if (!configureStepId || !manifest) return undefined
     const step = findStepById(manifest.steps, configureStepId)
@@ -411,6 +449,37 @@ export function App() {
     [manifest]
   )
 
+  const patchWorkflowMeta = useCallback(
+    async (nextManifest: WorkflowManifest) => {
+      const operational = ecpRef.current
+      if (!operational || !manifest) return false
+      const ops: Array<{ path: string; mode: "replace"; value: unknown }> = [
+        {
+          path: "workflow",
+          mode: "replace",
+          value: nextManifest.workflow,
+        },
+      ]
+      if (JSON.stringify(nextManifest.steps) !== JSON.stringify(manifest.steps)) {
+        ops.push({ path: "steps", mode: "replace", value: nextManifest.steps })
+      }
+      const patched = await operational.patch(manifest).with(ops).process()
+      if (!patched.success || !patched.result) {
+        const message =
+          patched.diagnostics?.[0]?.message ??
+          patched.validation?.errors?.[0]?.message ??
+          "Failed to patch workflow"
+        setChatStatus(message)
+        return false
+      }
+      await syncFromManifestRef.current(patched.result as WorkflowManifest, {
+        refreshFluent: true,
+      })
+      return true
+    },
+    [manifest]
+  )
+
   const onConnectPorts = useCallback(
     async (connection: {
       sourceStepId: string
@@ -419,16 +488,47 @@ export function App() {
       targetHandle: string
     }) => {
       if (!manifest) return
-      const source = findStepById(manifest.steps, connection.sourceStepId)
+
+      if (connection.targetStepId === WORKFLOW_RETURNS_NODE_ID) {
+        const sourceAs =
+          connection.sourceStepId === WORKFLOW_ACCEPTS_NODE_ID
+            ? connection.sourceHandle
+            : findStepById(manifest.steps, connection.sourceStepId)?.as
+        if (!sourceAs) {
+          setChatStatus("Set a store key (as) on the source step before connecting.")
+          return
+        }
+        const next = withWorkflowIoSchema(
+          manifest,
+          "returns",
+          applyReturnsConnection(
+            workflowContract(manifest).returns,
+            sourceAs,
+            connection.targetHandle
+          )
+        )
+        await patchWorkflowMeta(next)
+        return
+      }
+
       const target = findStepById(manifest.steps, connection.targetStepId)
-      if (!source || !target) {
+      if (!target) {
         setChatStatus("Step not found in workflow")
         return
       }
 
+      const sourceAs =
+        connection.sourceStepId === WORKFLOW_ACCEPTS_NODE_ID
+          ? connection.sourceHandle
+          : findStepById(manifest.steps, connection.sourceStepId)?.as
+      const sourceHandle =
+        connection.sourceStepId === WORKFLOW_ACCEPTS_NODE_ID
+          ? OUTPUT_HANDLE_ID
+          : connection.sourceHandle
+
       const resolved = resolvePortConnection({
-        sourceAs: source.as,
-        sourceHandle: connection.sourceHandle,
+        sourceAs,
+        sourceHandle,
         targetHandle: connection.targetHandle,
       })
       if (!resolved.ok) {
@@ -439,12 +539,21 @@ export function App() {
       const nextStep = applyPortConnection(target, resolved.paramName, resolved.refPath)
       await patchTargetStep(connection.targetStepId, nextStep)
     },
-    [manifest, patchTargetStep]
+    [manifest, patchTargetStep, patchWorkflowMeta]
   )
 
   const onDisconnectPorts = useCallback(
     async (connection: { targetStepId: string; targetHandle: string }) => {
       if (!manifest) return
+      if (connection.targetStepId === WORKFLOW_RETURNS_NODE_ID) {
+        const next = withWorkflowIoSchema(
+          manifest,
+          "returns",
+          removeReturnsProperty(workflowContract(manifest).returns, connection.targetHandle)
+        )
+        await patchWorkflowMeta(next)
+        return
+      }
       const target = findStepById(manifest.steps, connection.targetStepId)
       if (!target) {
         setChatStatus("Step not found in workflow")
@@ -453,7 +562,7 @@ export function App() {
       const nextStep = removePortBinding(target, connection.targetHandle)
       await patchTargetStep(connection.targetStepId, nextStep)
     },
-    [manifest, patchTargetStep]
+    [manifest, patchTargetStep, patchWorkflowMeta]
   )
 
   const onSaveStepConfigure = useCallback(
@@ -527,6 +636,33 @@ export function App() {
       }
     },
     [manifest, configureStepId]
+  )
+
+  const onSaveIoConfigure = useCallback(
+    async (payload: IoConfigureSavePayload) => {
+      if (!manifest) return
+      setConfigureBusy(true)
+      setConfigureError(null)
+      try {
+        let next = withWorkflowIoSchema(
+          manifest,
+          payload.kind,
+          schemaFromIoFields(payload.fields)
+        )
+        if (payload.kind === "accepts") {
+          for (const rename of payload.renames) {
+            next = renameAcceptsProperty(next, rename.from, rename.to)
+          }
+        }
+        const ok = await patchWorkflowMeta(next)
+        if (ok) setConfigureStepId(null)
+      } catch (err) {
+        setConfigureError(err instanceof Error ? err.message : String(err))
+      } finally {
+        setConfigureBusy(false)
+      }
+    },
+    [manifest, patchWorkflowMeta]
   )
 
   const onProviderComplete = (mode: ProviderMode, nextOllama?: OllamaSettings) => {
@@ -723,14 +859,17 @@ export function App() {
     [layout]
   )
 
-  const onRun = async () => {
+  const onRun = async (input?: Record<string, unknown>) => {
     if (!ecp || !manifest) return
     setRunBusy(true)
     setRunOutput("")
+    setRunPublicOutput("")
     layout.ensureWorkflowVisible()
     try {
-      const result = await ecp.run(manifest)
+      const result = await ecp.run(manifest, input ? { input } : undefined)
       setRunOutput(JSON.stringify(result, null, 2))
+      const output = (result as { output?: Record<string, unknown> }).output
+      setRunPublicOutput(output ? JSON.stringify(output, null, 2) : "")
       setRunOverlayOpen(true)
     } catch (err) {
       setRunOutput(err instanceof Error ? err.message : String(err))
@@ -738,6 +877,16 @@ export function App() {
     } finally {
       setRunBusy(false)
     }
+  }
+
+  const onExecute = () => {
+    if (!manifest) return
+    const accepts = workflowContract(manifest).accepts
+    if (ioFieldsFromSchema(accepts).length > 0) {
+      setRunOverlayOpen(true)
+      return
+    }
+    void onRun()
   }
 
   const chatBlocked = (showProviderModal && chromeInstallUi === "dialog") || vaultGate === "locked"
@@ -748,7 +897,7 @@ export function App() {
       <TopAppBar
         views={layout.views}
         onToggleView={layout.toggleView}
-        onExecute={() => void onRun()}
+        onExecute={onExecute}
         executeDisabled={!ecp || !hasWorkflow}
         executeBusy={runBusy}
         onSettings={() => setShowProviderModal(true)}
@@ -784,6 +933,8 @@ export function App() {
                 onOpenRunOverlay={() => setRunOverlayOpen(true)}
                 onRun={onRun}
                 hasWorkflow={hasWorkflow}
+                acceptsSchema={manifest ? workflowContract(manifest).accepts : undefined}
+                runPublicOutput={runPublicOutput || undefined}
                 onConfigureStep={onConfigureStep}
                 onConnectPorts={onConnectPorts}
                 onDisconnectPorts={onDisconnectPorts}
@@ -874,6 +1025,22 @@ export function App() {
             stopPolling()
             setShowProviderModal(true)
           }}
+        />
+      ) : null}
+
+      {configureStepId && configureIoData ? (
+        <IoConfigureDialog
+          kind={configureIoData.kind}
+          data={configureIoData}
+          fields={configureIoFields}
+          busy={configureBusy}
+          error={configureError}
+          onClose={() => {
+            if (configureBusy) return
+            setConfigureStepId(null)
+            setConfigureError(null)
+          }}
+          onSave={onSaveIoConfigure}
         />
       ) : null}
 

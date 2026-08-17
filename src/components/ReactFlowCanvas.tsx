@@ -18,20 +18,23 @@ import type {
   ReactFlowNode,
 } from "@executioncontrolprotocol/format-reactflow"
 import { EcpStepNode } from "./EcpStepNode.js"
+import { EcpIoNode } from "./EcpIoNode.js"
 import { ReactFlowConfigureContext } from "./reactflow-configure-context.js"
 import { PanelHeader } from "./PanelHeader.js"
 import { RunOutputPanel } from "./RunOutputPanel.js"
 import { useReactFlowRunProgress } from "../hooks/useReactFlowRunProgress.js"
 import { edgeStatusClass, stepNodeStatusClass } from "../lib/reactflow-run-status.js"
 import { portsAreCompatible } from "../lib/step-connect.js"
+import { ensureReturnsNode } from "../lib/workflow-io.js"
 
 const nodeTypes = {
   "ecp-step": EcpStepNode,
+  "ecp-io": EcpIoNode,
 }
 
 function toRfNodes(nodes: ReactFlowNode[]): Node[] {
   return nodes
-    .filter((n) => n.type === "ecp-step")
+    .filter((n) => n.type === "ecp-step" || n.type === "ecp-io")
     .map((n) => ({
       id: n.id,
       type: n.type,
@@ -69,7 +72,7 @@ function parseDocument(source: string): ReactFlowDocument | null {
   try {
     const parsed = JSON.parse(source) as ReactFlowDocument
     if (!parsed || !Array.isArray(parsed.nodes) || !Array.isArray(parsed.edges)) return null
-    return parsed
+    return ensureReturnsNode(parsed)
   } catch {
     return null
   }
@@ -84,8 +87,12 @@ export interface ReactFlowCanvasProps {
   onCloseRunOverlay: () => void
   /** Open the run/state inspect overlay without starting a run. */
   onOpenRunOverlay: () => void
-  onRun: () => void
+  onRun: (input?: Record<string, unknown>) => void
   hasWorkflow: boolean
+  /** JSON Schema object for `workflow.accepts` (run form). */
+  acceptsSchema?: Record<string, unknown>
+  /** Last public `result.output` JSON when `returns` is set. */
+  runPublicOutput?: string
   /** Open configure dialog for a step with literal inputs. */
   onConfigureStep?: (stepId: string) => void
   /** Draw output→input: write `$ref` into the target step (manifest + Fluent sync). */
@@ -111,6 +118,8 @@ function ReactFlowCanvasInner({
   onOpenRunOverlay,
   onRun,
   hasWorkflow,
+  acceptsSchema,
+  runPublicOutput,
   onConfigureStep,
   onConnectPorts,
   onDisconnectPorts,
@@ -215,7 +224,20 @@ function ReactFlowCanvasInner({
   const decoratedNodes = useMemo(
     () =>
       nodes.map((node) => {
-        if (node.type !== "ecp-step") return node
+        if (node.type !== "ecp-step" && node.type !== "ecp-io") return node
+        const connected = {
+          connectedTargetHandles: [...(connectedByNode.targets.get(node.id) ?? [])],
+          connectedSourceHandles: [...(connectedByNode.sources.get(node.id) ?? [])],
+        }
+        if (node.type === "ecp-io") {
+          return {
+            ...node,
+            data: {
+              ...(node.data as object),
+              ...connected,
+            },
+          }
+        }
         const status = statuses[node.id]
         const statusClass = stepNodeStatusClass(status, runActive || runBusy)
         return {
@@ -223,8 +245,7 @@ function ReactFlowCanvasInner({
           data: {
             ...(node.data as object),
             statusClass,
-            connectedTargetHandles: [...(connectedByNode.targets.get(node.id) ?? [])],
-            connectedSourceHandles: [...(connectedByNode.sources.get(node.id) ?? [])],
+            ...connected,
           },
           className: statusClass,
         }
@@ -341,6 +362,8 @@ function ReactFlowCanvasInner({
               runBusy={runBusy}
               onRun={onRun}
               hasWorkflow={hasWorkflow}
+              acceptsSchema={acceptsSchema}
+              runPublicOutput={runPublicOutput}
             />
           </div>
         </div>

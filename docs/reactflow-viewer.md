@@ -10,13 +10,18 @@ Shared encode contract:
 
 Summary for demo UI work:
 
-- Flat action nodes; property-level `$ref` edges only
+- Flat action nodes plus projected **Inputs** / **Outputs** (`ecp-io`) from `workflow.accepts` / `workflow.returns` — not dummy capabilities
+- Property-level `$ref` edges only; Inputs `state.<key>` refs; Outputs edges from a matching step `.as()`
 - Hollow vs solid handles; idle cyan routes; ants while running; green when source completed
 - **Write-back (both paths → `ecp.patch` + `syncFromManifest`):**
-  - **Configure** edits literals / adds unbound params / `as` → `.with({ … })` JSON values
+  - **Configure** on a step edits literals / adds unbound params / `as` → `.with({ … })` JSON values
+  - **Configure** on Inputs / Outputs patches `workflow.accepts` / `workflow.returns` (not `steps[id]`)
   - **Connect** output→input draws a route → `input[param] = { $ref }` → Fluent `ref("…")`; delete edge removes that binding
-  - Source step must have a store key (`as`) before connect; connecting over a literal replaces it
+  - Connect from Inputs uses the property name as the store key (`ref("prompt")`)
+  - Connect to Outputs aligns `returns` property names with the source `.as()` (rename if they differ)
+  - Source step must have a store key (`as`) before connect (Inputs properties already are keys); connecting over a literal replaces it
   - **Type compatibility:** only matching port kinds (`valueSchema` / `typeLabel`) can connect; `unknown` is permissive. While dragging an output, incompatible inputs are greyed with a crossed handle and rejected
+- Run form is generated from `accepts`; Inspect shows `result.output` when `returns` is set
 - Configure + Inspect state; patch write-back keeps Fluent and Flow in sync
 - **Opinionated type mapping** (demo-local; encode stays UI-neutral — no widget names in `format-reactflow`). Prefer port `valueSchema`; fall back to `typeLabel`. Other apps may map the same document differently:
 

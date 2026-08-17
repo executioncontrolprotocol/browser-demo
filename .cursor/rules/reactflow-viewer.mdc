@@ -1,6 +1,6 @@
 ---
 description: Browser demo React Flow canvas UX (ports, edges, run, configure)
-globs: src/components/{ReactFlowCanvas,EcpStepNode,StepConfigureDialog}.tsx,src/lib/{reactflow-run-status,step-configure,step-connect}.ts,src/hooks/useReactFlowRunProgress.ts,src/styles/globals.css
+globs: src/components/{ReactFlowCanvas,EcpStepNode,EcpIoNode,StepConfigureDialog,IoConfigureDialog,RunOutputPanel}.tsx,src/lib/{reactflow-run-status,step-configure,step-connect,workflow-io}.ts,src/hooks/useReactFlowRunProgress.ts,src/styles/globals.css
 alwaysApply: false
 ---
 
@@ -12,16 +12,18 @@ Canonical decisions: sibling monorepo
 
 ## Must follow
 
-- Render only `ecp-step` nodes; ignore group wrappers if present in JSON.
+- Render `ecp-step` and projected `ecp-io` nodes (Inputs always; Outputs when `returns` is set, plus a demo empty Outputs node so the first parameter can be added). Ignore group wrappers.
 - Draw only data edges with both `sourceHandle` and `targetHandle`.
-- Every schema port gets a handle: hollow if unconnected, solid if connected.
+- Every schema port gets a handle: hollow if unconnected, solid if connected. Outputs handles are target-only.
 - Idle routes: solid cyan matching input handles (`--color-tertiary-fixed-dim`).
 - During run: marching ants on in-flight edges; green when source step completed.
 - Node pulse: soft, low-spread shadow on **running** only; keep a clear green completed glow.
-- Do not open the state modal on Run click — open when the run finishes; keep **Inspect state** in the zoom/fit Controls.
-- Configure dialog: removable literals after save, add unbound Zod params, editable `as` with ref rewrite; save via `ecp.patch` + `syncFromManifest`.
-- Canvas connect: output→input writes `$ref` into target `step.input` (Fluent `ref(...)`); delete edge removes that key; same patch + sync path. Do not treat RF edges as source of truth—re-encode after patch. Source must have `as`; replace literal silently on connect.
+- Do not open the state modal on Run click — open when the run finishes (or when `accepts` needs a form); keep **Inspect state** in the zoom/fit Controls.
+- Configure dialog (steps): removable literals after save, add unbound Zod params, editable `as` with ref rewrite; save via `ecp.patch` + `syncFromManifest`.
+- Configure dialog (I/O): patch `workflow.accepts` / `workflow.returns`, not `steps[id]`. Add/remove/rename schema properties. Renaming an accepts key rewrites `state.<old>` refs.
+- Canvas connect: output→input writes `$ref` into target `step.input` (Fluent `ref(...)`); Inputs source uses the property name (`ref("prompt")`). Delete edge removes that key. Connect to Outputs patches `returns` so the property name matches source `.as()`. Same patch + sync path. Do not treat RF edges as source of truth—re-encode after patch.
 - Connect type compatibility (demo-local): match `portTypeKind` from `valueSchema`/`typeLabel` (`number`≡`integer`; `unknown` pairs with anything). During output drag, grey + cross incompatible inputs (`ecp-rf-port--incompatible` / `ecp-rf-handle--incompatible`); `isValidConnection` + `isConnectable` reject them.
+- Run form widgets from `accepts` (same `valueSchema` mapping as configure). Inspect shows `result.output` when `returns` is set.
 - Map editors from port **`valueSchema`** (demo-local); fall back to `typeLabel`. Never put widget names in the encode document.
   - short `string` → text input; long (`prompt`/`system`/… or length/`\n`) → textarea
   - `object`/`array`/unknown → Monaco JSON; `number` → number input; `boolean` → toggle

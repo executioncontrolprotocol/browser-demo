@@ -1,17 +1,15 @@
 import { useEffect, useMemo, useState } from "react"
 import type { ReactFlowPort, ReactFlowStepData } from "@executioncontrolprotocol/format-reactflow"
-import { MonacoCodeEditor } from "./MonacoCodeEditor.js"
+import { ConfigPortControl } from "./ConfigFieldControl.js"
 import {
   defaultDraftForKind,
   editorKindForPort,
   optionsForPort,
   parseEditedLiteral,
-  parseMultiselectDraft,
-  toggleMultiselectDraft,
+  draftForPort,
   literalPorts,
   refPorts,
   unboundPorts,
-  type ConfigEditorKind,
   type StepConfigureSavePayload,
 } from "../lib/step-configure.js"
 
@@ -25,184 +23,6 @@ export interface StepConfigureDialogProps {
   error?: string | null
   onClose: () => void
   onSave: (payload: StepConfigureSavePayload) => void | Promise<void>
-}
-
-function BooleanToggle({
-  value,
-  busy,
-  onChange,
-}: {
-  value: string
-  busy: boolean
-  onChange: (next: string) => void
-}) {
-  const checked = value.trim().toLowerCase() === "true"
-  return (
-    <label className="inline-flex cursor-pointer items-center gap-3 font-mono text-sm text-on-surface">
-      <span className="relative inline-flex h-6 w-11 shrink-0 items-center">
-        <input
-          type="checkbox"
-          className="peer sr-only"
-          checked={checked}
-          onChange={(e) => onChange(e.target.checked ? "true" : "false")}
-          disabled={busy}
-        />
-        <span className="absolute inset-0 rounded-full border border-outline-variant bg-surface-container-high transition-colors peer-checked:border-primary peer-checked:bg-primary peer-focus-visible:ring-2 peer-focus-visible:ring-primary/40 peer-disabled:opacity-50" />
-        <span className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-on-surface shadow transition-transform peer-checked:translate-x-5 peer-checked:bg-on-primary" />
-      </span>
-      {checked ? "true" : "false"}
-    </label>
-  )
-}
-
-function fieldControl(
-  kind: ConfigEditorKind,
-  stepId: string,
-  name: string,
-  value: string,
-  busy: boolean,
-  onChange: (next: string) => void,
-  enumOptions?: Array<string | number | boolean>
-) {
-  if ((kind === "enum" || kind === "enum-radio") && enumOptions && enumOptions.length > 0) {
-    if (kind === "enum-radio") {
-      return (
-        <div className="flex flex-col gap-2" role="radiogroup" aria-label={name}>
-          {enumOptions.map((opt) => {
-            const key = String(opt)
-            return (
-              <label
-                key={key}
-                className="flex cursor-pointer items-center gap-2 font-mono text-sm text-on-surface"
-              >
-                <input
-                  type="radio"
-                  className="h-4 w-4 accent-primary"
-                  name={`ecp-enum-${stepId}-${name}`}
-                  value={key}
-                  checked={value === key}
-                  onChange={() => onChange(key)}
-                  disabled={busy}
-                />
-                {key}
-              </label>
-            )
-          })}
-        </div>
-      )
-    }
-
-    return (
-      <select
-        className="w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-3 py-2 font-mono text-sm text-on-surface outline-none focus:border-outline"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        disabled={busy}
-      >
-        {enumOptions.map((opt) => (
-          <option key={String(opt)} value={String(opt)}>
-            {String(opt)}
-          </option>
-        ))}
-      </select>
-    )
-  }
-
-  if (kind === "multiselect" && enumOptions && enumOptions.length > 0) {
-    const selected = new Set(parseMultiselectDraft(value))
-    return (
-      <div className="flex flex-col gap-2" role="group" aria-label={name}>
-        {enumOptions.map((opt) => {
-          const key = String(opt)
-          return (
-            <label
-              key={key}
-              className="flex cursor-pointer items-center gap-2 font-mono text-sm text-on-surface"
-            >
-              <input
-                type="checkbox"
-                className="h-4 w-4 accent-primary"
-                checked={selected.has(key)}
-                onChange={(e) => onChange(toggleMultiselectDraft(value, opt, e.target.checked))}
-                disabled={busy}
-              />
-              {key}
-            </label>
-          )
-        })}
-      </div>
-    )
-  }
-
-  if (kind === "boolean") {
-    return <BooleanToggle value={value} busy={busy} onChange={onChange} />
-  }
-
-  if (kind === "number") {
-    return (
-      <input
-        type="number"
-        className="w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-3 py-2 font-mono text-sm text-on-surface outline-none focus:border-outline"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        disabled={busy}
-      />
-    )
-  }
-
-  if (kind === "json") {
-    return (
-      <div className="h-[180px] overflow-hidden rounded-lg border border-outline-variant bg-surface-container-lowest">
-        <MonacoCodeEditor
-          path={`file:///ecp-configure/${stepId}/${name}.json`}
-          language="json"
-          value={value}
-          onChange={(next) => onChange(next ?? "")}
-          readOnly={busy}
-        />
-      </div>
-    )
-  }
-
-  if (kind === "longtext") {
-    return (
-      <textarea
-        className="min-h-[9rem] w-full resize-y rounded-lg border border-outline-variant bg-surface-container-lowest px-3 py-2 font-mono text-sm text-on-surface outline-none focus:border-outline"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        disabled={busy}
-        spellCheck
-      />
-    )
-  }
-
-  return (
-    <input
-      type="text"
-      className="w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-3 py-2 font-mono text-sm text-on-surface outline-none focus:border-outline"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      disabled={busy}
-    />
-  )
-}
-
-function draftForPort(port: ReactFlowPort, original: unknown): string {
-  if (port.valueTitle !== undefined) return port.valueTitle
-  const kind = editorKindForPort(port)
-  if (kind === "multiselect" && Array.isArray(original)) {
-    return JSON.stringify(original)
-  }
-  if (original !== undefined && original !== null && typeof original === "object") {
-    try {
-      return JSON.stringify(original, null, 2)
-    } catch {
-      return String(original)
-    }
-  }
-  if (typeof original === "boolean" || typeof original === "number") return String(original)
-  if (typeof original === "string") return original
-  return defaultDraftForKind(kind, optionsForPort(port))
 }
 
 /** Full-screen dialog to edit literal step inputs, `as` key, and add unbound schema params. */
@@ -361,8 +181,6 @@ export function StepConfigureDialog({
             </p>
           ) : (
             activePorts.map((port) => {
-              const kind = editorKindForPort(port)
-              const options = optionsForPort(port)
               const fieldError = fieldErrors[port.name]
               return (
                 <div key={port.id} className="space-y-1.5">
@@ -380,15 +198,13 @@ export function StepConfigureDialog({
                       Remove
                     </button>
                   </div>
-                  {fieldControl(
-                    kind,
-                    stepId,
-                    port.name,
-                    drafts[port.name] ?? "",
-                    busy,
-                    (next) => setDrafts((prev) => ({ ...prev, [port.name]: next })),
-                    options
-                  )}
+                  <ConfigPortControl
+                    fieldId={stepId}
+                    port={port}
+                    value={drafts[port.name] ?? ""}
+                    busy={busy}
+                    onChange={(next) => setDrafts((prev) => ({ ...prev, [port.name]: next }))}
+                  />
                   {fieldError ? <span className="block text-label text-error">{fieldError}</span> : null}
                 </div>
               )

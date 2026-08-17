@@ -368,6 +368,24 @@ export interface StepConfigureSavePayload {
   asKey: string
 }
 
+export function draftForPort(port: ReactFlowPort, original: unknown): string {
+  if (port.valueTitle !== undefined) return port.valueTitle
+  const kind = editorKindForPort(port)
+  if (kind === "multiselect" && Array.isArray(original)) {
+    return JSON.stringify(original)
+  }
+  if (original !== undefined && original !== null && typeof original === "object") {
+    try {
+      return JSON.stringify(original, null, 2)
+    } catch {
+      return String(original)
+    }
+  }
+  if (typeof original === "boolean" || typeof original === "number") return String(original)
+  if (typeof original === "string") return original
+  return defaultDraftForKind(kind, optionsForPort(port))
+}
+
 export type ParseLiteralResult =
   | { ok: true; value: unknown }
   | { ok: false; error: string }

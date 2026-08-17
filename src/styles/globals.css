@@ -548,6 +548,10 @@
     box-shadow: 0 0 8px color-mix(in srgb, var(--color-error) 30%, transparent);
   }
 
+  .ecp-rf-node--io {
+    border-style: dashed;
+  }
+
   /* Keep interactive controls inside nodes above the pan/drag layer. */
   .react-flow__node .nodrag {
     pointer-events: all;
