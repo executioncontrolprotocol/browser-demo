@@ -12,6 +12,7 @@ import {
 import type {
   EnvironmentDescriptor,
   HarnessInvokeResult,
+  StepNode,
   ValidationResult,
   WorkflowManifest,
 } from "@executioncontrolprotocol/types"
@@ -22,6 +23,7 @@ import type {
   ReactFlowStepData,
 } from "@executioncontrolprotocol/format-reactflow"
 import { findStepById, rewriteWorkflowAsRefs, type StepConfigureSavePayload } from "./lib/step-configure.js"
+import { applyPortConnection, removePortBinding, resolvePortConnection } from "./lib/step-connect.js"
 import { ChatPanel } from "./components/ChatPanel.js"
 import { ChromeInstallDialog } from "./components/ChromeInstallDialog.js"
 import { CodePanel } from "./components/CodePanel.js"
@@ -379,6 +381,81 @@ export function App() {
     setConfigureStepId(stepId)
   }, [])
 
+  const patchTargetStep = useCallback(
+    async (targetStepId: string, nextStep: StepNode) => {
+      const operational = ecpRef.current
+      if (!operational || !manifest) return false
+      const patched = await operational
+        .patch(manifest)
+        .with([
+          {
+            path: `steps[${targetStepId}]`,
+            mode: "replace",
+            value: nextStep,
+          },
+        ])
+        .process()
+      if (!patched.success || !patched.result) {
+        const message =
+          patched.diagnostics?.[0]?.message ??
+          patched.validation?.errors?.[0]?.message ??
+          "Failed to patch step"
+        setChatStatus(message)
+        return false
+      }
+      await syncFromManifestRef.current(patched.result as WorkflowManifest, {
+        refreshFluent: true,
+      })
+      return true
+    },
+    [manifest]
+  )
+
+  const onConnectPorts = useCallback(
+    async (connection: {
+      sourceStepId: string
+      targetStepId: string
+      sourceHandle: string
+      targetHandle: string
+    }) => {
+      if (!manifest) return
+      const source = findStepById(manifest.steps, connection.sourceStepId)
+      const target = findStepById(manifest.steps, connection.targetStepId)
+      if (!source || !target) {
+        setChatStatus("Step not found in workflow")
+        return
+      }
+
+      const resolved = resolvePortConnection({
+        sourceAs: source.as,
+        sourceHandle: connection.sourceHandle,
+        targetHandle: connection.targetHandle,
+      })
+      if (!resolved.ok) {
+        setChatStatus(resolved.error)
+        return
+      }
+
+      const nextStep = applyPortConnection(target, resolved.paramName, resolved.refPath)
+      await patchTargetStep(connection.targetStepId, nextStep)
+    },
+    [manifest, patchTargetStep]
+  )
+
+  const onDisconnectPorts = useCallback(
+    async (connection: { targetStepId: string; targetHandle: string }) => {
+      if (!manifest) return
+      const target = findStepById(manifest.steps, connection.targetStepId)
+      if (!target) {
+        setChatStatus("Step not found in workflow")
+        return
+      }
+      const nextStep = removePortBinding(target, connection.targetHandle)
+      await patchTargetStep(connection.targetStepId, nextStep)
+    },
+    [manifest, patchTargetStep]
+  )
+
   const onSaveStepConfigure = useCallback(
     async (payload: StepConfigureSavePayload) => {
       const operational = ecpRef.current
@@ -708,6 +785,8 @@ export function App() {
                 onRun={onRun}
                 hasWorkflow={hasWorkflow}
                 onConfigureStep={onConfigureStep}
+                onConnectPorts={onConnectPorts}
+                onDisconnectPorts={onDisconnectPorts}
               />
             ) : null}
             {layout.views.code ? (

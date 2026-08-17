@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react"
+import { useCallback, useEffect, useMemo } from "react"
 import {
   Background,
   Controls,
@@ -7,6 +7,7 @@ import {
   ReactFlowProvider,
   useEdgesState,
   useNodesState,
+  type Connection,
   type Edge,
   type Node,
 } from "@xyflow/react"
@@ -86,6 +87,18 @@ export interface ReactFlowCanvasProps {
   hasWorkflow: boolean
   /** Open configure dialog for a step with literal inputs. */
   onConfigureStep?: (stepId: string) => void
+  /** Draw output→input: write `$ref` into the target step (manifest + Fluent sync). */
+  onConnectPorts?: (connection: {
+    sourceStepId: string
+    targetStepId: string
+    sourceHandle: string
+    targetHandle: string
+  }) => void | Promise<void>
+  /** Delete a data edge: remove that input binding from the target step. */
+  onDisconnectPorts?: (connection: {
+    targetStepId: string
+    targetHandle: string
+  }) => void | Promise<void>
 }
 
 function ReactFlowCanvasInner({
@@ -98,6 +111,8 @@ function ReactFlowCanvasInner({
   onRun,
   hasWorkflow,
   onConfigureStep,
+  onConnectPorts,
+  onDisconnectPorts,
 }: ReactFlowCanvasProps) {
   const doc = useMemo(() => parseDocument(reactflowJson), [reactflowJson])
   const stepIds = useMemo(
@@ -118,6 +133,59 @@ function ReactFlowCanvasInner({
     setNodes(toRfNodes(doc.nodes))
     setEdges(toRfEdges(doc.edges))
   }, [doc, setNodes, setEdges])
+
+  const isValidConnection = useCallback(
+    (connection: Connection | Edge) => {
+      const source = connection.source
+      const target = connection.target
+      if (!source || !target || source === target) return false
+      const sourceHandle = connection.sourceHandle
+      const targetHandle = connection.targetHandle
+      if (!sourceHandle || !targetHandle) return false
+
+      const sourceNode = nodes.find((n) => n.id === source)
+      const targetNode = nodes.find((n) => n.id === target)
+      if (!sourceNode || !targetNode) return false
+
+      const sourceData = sourceNode.data as { outputs?: Array<{ id: string }> }
+      const targetData = targetNode.data as { inputs?: Array<{ id: string }> }
+      const isOutput = (sourceData.outputs ?? []).some((p) => p.id === sourceHandle)
+      const isInput = (targetData.inputs ?? []).some((p) => p.id === targetHandle)
+      return isOutput && isInput
+    },
+    [nodes]
+  )
+
+  const handleConnect = useCallback(
+    (connection: Connection) => {
+      if (!onConnectPorts) return
+      if (!isValidConnection(connection)) return
+      const sourceHandle = connection.sourceHandle
+      const targetHandle = connection.targetHandle
+      if (!connection.source || !connection.target || !sourceHandle || !targetHandle) return
+      void onConnectPorts({
+        sourceStepId: connection.source,
+        targetStepId: connection.target,
+        sourceHandle,
+        targetHandle,
+      })
+    },
+    [onConnectPorts, isValidConnection]
+  )
+
+  const handleEdgesDelete = useCallback(
+    (deleted: Edge[]) => {
+      if (!onDisconnectPorts) return
+      for (const edge of deleted) {
+        if (!edge.target || !edge.targetHandle) continue
+        void onDisconnectPorts({
+          targetStepId: edge.target,
+          targetHandle: edge.targetHandle,
+        })
+      }
+    },
+    [onDisconnectPorts]
+  )
 
   const connectedByNode = useMemo(() => {
     const targets = new Map<string, Set<string>>()
@@ -200,11 +268,15 @@ function ReactFlowCanvasInner({
               edges={decoratedEdges}
               onNodesChange={onNodesChange}
               onEdgesChange={onEdgesChange}
+              onConnect={handleConnect}
+              onEdgesDelete={handleEdgesDelete}
+              isValidConnection={isValidConnection}
+              onBeforeDelete={async ({ nodes: deleteNodes }) => deleteNodes.length === 0}
               nodeTypes={nodeTypes}
               fitView
               nodesDraggable={false}
-              nodesConnectable={false}
-              elementsSelectable={false}
+              nodesConnectable
+              elementsSelectable
               panOnDrag
               zoomOnDoubleClick={false}
               proOptions={{ hideAttribution: true }}

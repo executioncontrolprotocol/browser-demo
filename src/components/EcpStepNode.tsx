@@ -83,7 +83,7 @@ export function EcpStepNode({ id, data }: NodeProps) {
                 position={Position.Left}
                 id={port.id}
                 className={handleClass("input", connected)}
-                isConnectable={false}
+                isConnectable
               />
               <span className="min-w-0 truncate font-mono text-[10px] text-on-surface-variant">
                 {port.name}
@@ -120,7 +120,7 @@ export function EcpStepNode({ id, data }: NodeProps) {
                 position={Position.Right}
                 id={port.id}
                 className={handleClass("output", connected)}
-                isConnectable={false}
+                isConnectable
               />
             </div>
           )
