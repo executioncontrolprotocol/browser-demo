@@ -61,6 +61,19 @@ describe("step-connect helpers", () => {
     })
   })
 
+  it("replaces an existing $ref when dropping onto an occupied input", () => {
+    const step: StepNode = {
+      id: "reply",
+      uses: "@x/reply",
+      input: { text: { $ref: "state.old.text" }, keep: 1 },
+    }
+    const next = applyPortConnection(step, "text", "state.summary.text")
+    expect(next.input).toEqual({
+      text: { $ref: "state.summary.text" },
+      keep: 1,
+    })
+  })
+
   it("normalizes ref paths without state. prefix", () => {
     const step: StepNode = { id: "r", uses: "@x/y", input: {} }
     expect(applyPortConnection(step, "prompt", "summary.text").input).toEqual({
@@ -82,6 +95,11 @@ describe("step-connect helpers", () => {
       "text"
     )
     expect(afterAll.input).toBeUndefined()
+  })
+
+  it("leaves the step unchanged when removing an unknown input", () => {
+    const step: StepNode = { id: "r", uses: "@x/y", input: { text: "a" } }
+    expect(removePortBinding(step, "missing")).toEqual(step)
   })
 
   it("maps valueSchema and typeLabel to port type kinds", () => {

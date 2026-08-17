@@ -91,14 +91,14 @@ export function EcpIoNode({ id, data }: NodeProps) {
 
       <div className="flex flex-col gap-1">
         {io.inputs.map((port) => {
-          const connected = connectedTargets.has(port.id)
+          const placeholder = port.id === RETURNS_PLACEHOLDER_HANDLE
+          const connected = !placeholder && (port.binding === "ref" || connectedTargets.has(port.id))
           const incompatible =
             dragFromOutput !== null &&
             dragFromOutput.nodeId !== id &&
             dragFromOutput.port !== undefined &&
             !portsAreCompatible(dragFromOutput.port, port)
           const connectable = !incompatible
-          const placeholder = port.id === RETURNS_PLACEHOLDER_HANDLE
           return (
             <div
               key={`in-${port.id}`}
@@ -119,6 +119,12 @@ export function EcpIoNode({ id, data }: NodeProps) {
                   <span className="text-outline">:{port.typeLabel}</span>
                 )}
                 {port.required ? <span className="text-primary">!</span> : null}
+                {!placeholder && port.binding === "ref" && port.refPath ? (
+                  <span className="text-tertiary-fixed-dim" title={port.refPath}>
+                    {" "}
+                    ← {port.refPath}
+                  </span>
+                ) : null}
               </span>
             </div>
           )

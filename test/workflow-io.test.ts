@@ -46,6 +46,19 @@ describe("workflow-io helpers", () => {
     expect(Object.keys((next.properties as object) ?? {})).toEqual(["brief"])
   })
 
+  it("replaces an occupied returns handle and drops the previous key", () => {
+    const returns = applyReturnsConnection(undefined, "echo", RETURNS_PLACEHOLDER_HANDLE)
+    const next = applyReturnsConnection(returns, "brief", "echo")
+    expect(Object.keys(next.properties as object)).toEqual(["brief"])
+    expect((next.properties as Record<string, unknown>).echo).toBeUndefined()
+  })
+
+  it("adds a new returns key when dropping on the placeholder", () => {
+    const returns = applyReturnsConnection(undefined, "echo", RETURNS_PLACEHOLDER_HANDLE)
+    const next = applyReturnsConnection(returns, "brief", RETURNS_PLACEHOLDER_HANDLE)
+    expect(Object.keys(next.properties as object).sort()).toEqual(["brief", "echo"])
+  })
+
   it("adds a returns property from the placeholder handle", () => {
     const next = applyReturnsConnection(undefined, "brief", RETURNS_PLACEHOLDER_HANDLE)
     expect(next).toMatchObject({

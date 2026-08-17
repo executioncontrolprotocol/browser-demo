@@ -1,6 +1,6 @@
 ---
 description: Browser demo React Flow canvas UX (ports, edges, run, configure)
-globs: src/components/{ReactFlowCanvas,EcpStepNode,EcpIoNode,StepConfigureDialog,IoConfigureDialog,RunOutputPanel}.tsx,src/lib/{reactflow-run-status,step-configure,step-connect,workflow-io}.ts,src/hooks/useReactFlowRunProgress.ts,src/styles/globals.css
+globs: src/components/{ReactFlowCanvas,EcpStepNode,EcpIoNode,EcpDataEdge,StepConfigureDialog,IoConfigureDialog,RunOutputPanel}.tsx,src/lib/{reactflow-run-status,step-configure,step-connect,workflow-io,edge-menu}.ts,src/hooks/useReactFlowRunProgress.ts,src/styles/globals.css
 alwaysApply: false
 ---
 
@@ -21,8 +21,9 @@ Canonical decisions: sibling monorepo
 - Do not open the state modal on Run click — open when the run finishes (or when `accepts` needs a form); keep **Inspect state** in the zoom/fit Controls.
 - Configure dialog (steps): removable literals after save, add unbound Zod params, editable `as` with ref rewrite; save via `ecp.patch` + `syncFromManifest`.
 - Configure dialog (I/O): patch `workflow.accepts` / `workflow.returns`, not `steps[id]`. Add/remove/rename schema properties. Renaming an accepts key rewrites `state.<old>` refs.
-- Canvas connect: output→input writes `$ref` into target `step.input` (Fluent `ref(...)`); Inputs source uses the property name (`ref("prompt")`). Delete edge removes that key. Connect to Outputs patches `returns` so the property name matches source `.as()`. Same patch + sync path. Do not treat RF edges as source of truth—re-encode after patch.
-- Connect type compatibility (demo-local): match `portTypeKind` from `valueSchema`/`typeLabel` (`number`≡`integer`; `unknown` pairs with anything). During output drag, grey + cross incompatible inputs (`ecp-rf-port--incompatible` / `ecp-rf-handle--incompatible`); `isValidConnection` + `isConnectable` reject them.
+- Canvas connect: output→input writes `$ref` into target `step.input` (Fluent `ref(...)`); Inputs source uses the property name (`ref("prompt")`). Dropping onto an occupied handle **replaces** the previous connection. Click a route to select it; the mid-path ellipsis (or right-click) opens **Delete connection**. Backspace/Delete also removes that binding — never delete step nodes from the canvas. Connect to Outputs patches `returns` so the property name matches source `.as()`. Same patch + sync path. Do not treat RF edges as source of truth—re-encode after patch.
+- Outputs ports with a source show `← {refPath}` like step inputs. Skip that label on the `+` placeholder.
+- Connect type compatibility (demo-local): match `portTypeKind` from `valueSchema`/`typeLabel` (`number`≡`integer`; `unknown` pairs with anything). During output drag, grey + cross incompatible inputs (`ecp-rf-port--incompatible` / `ecp-rf-handle--incompatible`); `isValidConnection` + `isConnectable` reject them. Do not reject a second connection just because the target handle is already connected.
 - Run form widgets from `accepts` (same `valueSchema` mapping as configure). Inspect shows `result.output` when `returns` is set.
 - Map editors from port **`valueSchema`** (demo-local); fall back to `typeLabel`. Never put widget names in the encode document.
   - short `string` → text input; long (`prompt`/`system`/… or length/`\n`) → textarea

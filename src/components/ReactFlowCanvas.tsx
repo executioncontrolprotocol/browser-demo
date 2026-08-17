@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react"
 import {
   Background,
   Controls,
@@ -19,17 +19,29 @@ import type {
 } from "@executioncontrolprotocol/format-reactflow"
 import { EcpStepNode } from "./EcpStepNode.js"
 import { EcpIoNode } from "./EcpIoNode.js"
+import { EcpDataEdge } from "./EcpDataEdge.js"
 import { ReactFlowConfigureContext } from "./reactflow-configure-context.js"
+import {
+  ReactFlowEdgeMenuContext,
+  type EdgeMenuTarget,
+} from "./reactflow-edge-menu-context.js"
 import { PanelHeader } from "./PanelHeader.js"
 import { RunOutputPanel } from "./RunOutputPanel.js"
 import { useReactFlowRunProgress } from "../hooks/useReactFlowRunProgress.js"
 import { edgeStatusClass, stepNodeStatusClass } from "../lib/reactflow-run-status.js"
+import { edgeMenuPosition } from "../lib/edge-menu.js"
 import { portsAreCompatible } from "../lib/step-connect.js"
 import { ensureReturnsNode } from "../lib/workflow-io.js"
+
+const EDGE_INTERACTION_WIDTH = 24
 
 const nodeTypes = {
   "ecp-step": EcpStepNode,
   "ecp-io": EcpIoNode,
+}
+
+const edgeTypes = {
+  "ecp-data": EcpDataEdge,
 }
 
 function toRfNodes(nodes: ReactFlowNode[]): Node[] {
@@ -40,6 +52,7 @@ function toRfNodes(nodes: ReactFlowNode[]): Node[] {
       type: n.type,
       position: n.position,
       data: { ...n.data } as Record<string, unknown>,
+      deletable: false,
       style: n.style?.width !== undefined ? { width: n.style.width } : undefined,
     }))
 }
@@ -60,8 +73,10 @@ function toRfEdges(edges: ReactFlowEdge[]): Edge[] {
       target: e.target,
       sourceHandle: e.sourceHandle,
       targetHandle: e.targetHandle,
+      type: "ecp-data",
       data: e.data,
       animated: false,
+      interactionWidth: EDGE_INTERACTION_WIDTH,
       className: "ecp-rf-edge--idle",
       style: { stroke: "var(--color-tertiary-fixed-dim)", strokeWidth: 2, opacity: 0.9 },
     }))
@@ -134,6 +149,15 @@ function ReactFlowCanvasInner({
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
+  const [edgeMenu, setEdgeMenu] = useState<{
+    x: number
+    y: number
+    targetStepId: string
+    targetHandle: string
+    edgeId: string
+  } | null>(null)
+  const canvasRef = useRef<HTMLDivElement>(null)
+  const edgeMenuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!doc) {
@@ -205,9 +229,89 @@ function ReactFlowCanvasInner({
           targetHandle: edge.targetHandle,
         })
       }
+      setEdgeMenu(null)
     },
     [onDisconnectPorts]
   )
+
+  const handleBeforeDelete = useCallback(
+    async ({ edges: deleteEdges }: { nodes: Node[]; edges: Edge[] }) => {
+      if (deleteEdges.length === 0) return false
+      return { nodes: [] as Node[], edges: deleteEdges }
+    },
+    []
+  )
+
+  const closeEdgeMenu = useCallback(() => setEdgeMenu(null), [])
+
+  const handleOpenEdgeMenu = useCallback(
+    (event: ReactMouseEvent, edge: EdgeMenuTarget) => {
+      event.preventDefault()
+      if (edgeMenu?.edgeId === edge.id) {
+        setEdgeMenu(null)
+        return
+      }
+      const canvas = canvasRef.current?.getBoundingClientRect()
+      const controlEl = event.currentTarget instanceof HTMLElement ? event.currentTarget : undefined
+      const fromControl = Boolean(controlEl?.classList.contains("ecp-rf-edge-menu-btn"))
+      const control = fromControl && controlEl ? controlEl.getBoundingClientRect() : undefined
+      const { x, y } = edgeMenuPosition({
+        clientX: event.clientX,
+        clientY: event.clientY,
+        canvas,
+        control,
+      })
+      setEdges((current) => current.map((item) => ({ ...item, selected: item.id === edge.id })))
+      setEdgeMenu({
+        x,
+        y,
+        targetStepId: edge.target,
+        targetHandle: edge.targetHandle,
+        edgeId: edge.id,
+      })
+    },
+    [edgeMenu, setEdges]
+  )
+
+  const handleEdgeContextMenu = useCallback(
+    (event: ReactMouseEvent, edge: Edge) => {
+      const targetHandle = edge.targetHandle
+      if (!edge.target || !targetHandle) return
+      handleOpenEdgeMenu(event, { id: edge.id, target: edge.target, targetHandle })
+    },
+    [handleOpenEdgeMenu]
+  )
+
+  const handleDeleteMenuConnection = useCallback(() => {
+    if (!edgeMenu || !onDisconnectPorts) {
+      setEdgeMenu(null)
+      return
+    }
+    void onDisconnectPorts({
+      targetStepId: edgeMenu.targetStepId,
+      targetHandle: edgeMenu.targetHandle,
+    })
+    setEdgeMenu(null)
+  }, [edgeMenu, onDisconnectPorts])
+
+  useEffect(() => {
+    if (!edgeMenu) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setEdgeMenu(null)
+    }
+    const onPointer = (event: PointerEvent) => {
+      const menu = edgeMenuRef.current
+      if (menu && menu.contains(event.target as globalThis.Node)) return
+      if ((event.target as Element | null)?.closest?.(".ecp-rf-edge-menu-btn")) return
+      setEdgeMenu(null)
+    }
+    window.addEventListener("keydown", onKey)
+    window.addEventListener("pointerdown", onPointer)
+    return () => {
+      window.removeEventListener("keydown", onKey)
+      window.removeEventListener("pointerdown", onPointer)
+    }
+  }, [edgeMenu])
 
   const connectedByNode = useMemo(() => {
     const targets = new Map<string, Set<string>>()
@@ -268,9 +372,10 @@ function ReactFlowCanvasInner({
         const completed = cls === "ecp-rf-edge--completed"
         return {
           ...edge,
-          className: cls,
+          className: `${cls}${edge.selected ? " ecp-rf-edge--selected" : ""}`,
           // CSS class drives ants — RF `animated` uses a different dash period and flickers.
           animated: false,
+          interactionWidth: EDGE_INTERACTION_WIDTH,
           style: {
             strokeWidth: 2,
             opacity: 0.9,
@@ -293,10 +398,12 @@ function ReactFlowCanvasInner({
       <PanelHeader icon="account_tree" label="Workflow Canvas" />
 
       <div
+        ref={canvasRef}
         className={`relative flex min-h-0 flex-1 flex-col ${runOverlayOpen ? "opacity-50" : ""}`}
       >
         {hasWorkflow && doc ? (
           <ReactFlowConfigureContext.Provider value={onConfigureStep}>
+            <ReactFlowEdgeMenuContext.Provider value={handleOpenEdgeMenu}>
             <ReactFlow
               nodes={decoratedNodes}
               edges={decoratedEdges}
@@ -304,9 +411,15 @@ function ReactFlowCanvasInner({
               onEdgesChange={onEdgesChange}
               onConnect={handleConnect}
               onEdgesDelete={handleEdgesDelete}
+              onBeforeDelete={handleBeforeDelete}
+              onEdgeContextMenu={handleEdgeContextMenu}
+              onPaneClick={closeEdgeMenu}
+              onNodeClick={closeEdgeMenu}
               isValidConnection={isValidConnection}
-              onBeforeDelete={async ({ nodes: deleteNodes }) => deleteNodes.length === 0}
+              defaultEdgeOptions={{ type: "ecp-data", interactionWidth: EDGE_INTERACTION_WIDTH }}
+              deleteKeyCode={["Backspace", "Delete"]}
               nodeTypes={nodeTypes}
+              edgeTypes={edgeTypes}
               fitView
               nodesDraggable={false}
               nodesConnectable
@@ -340,6 +453,25 @@ function ReactFlowCanvasInner({
                 maskColor="color-mix(in srgb, var(--color-background) 72%, transparent)"
               />
             </ReactFlow>
+            {edgeMenu ? (
+              <div
+                ref={edgeMenuRef}
+                className="absolute z-30 min-w-[10rem] rounded-md border border-outline-variant bg-surface-container-high py-1 shadow-md"
+                style={{ left: edgeMenu.x, top: edgeMenu.y }}
+                role="menu"
+                onPointerDown={(event) => event.stopPropagation()}
+              >
+                <button
+                  type="button"
+                  className="w-full cursor-pointer px-3 py-1.5 text-left font-mono text-[11px] text-on-surface hover:bg-surface-container-highest"
+                  role="menuitem"
+                  onClick={handleDeleteMenuConnection}
+                >
+                  Delete connection
+                </button>
+              </div>
+            ) : null}
+            </ReactFlowEdgeMenuContext.Provider>
           </ReactFlowConfigureContext.Provider>
         ) : (
           <div className="flex h-full items-center justify-center p-canvas-padding">
