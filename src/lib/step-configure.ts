@@ -3,8 +3,21 @@ import type { StepNode, WorkflowNode } from "@executioncontrolprotocol/types"
 
 const LONG_TEXT_PARAM_NAMES = new Set(["prompt", "system", "instructions", "query", "text"])
 
-/** UI editor kind inferred from valueSchema / typeLabel (demo-local; not part of encode). */
-export type ConfigEditorKind = "string" | "number" | "boolean" | "enum" | "json"
+/** Options at or below this count use radios; more use a select. */
+export const ENUM_RADIO_MAX_OPTIONS = 4
+
+/**
+ * UI editor kind inferred from valueSchema / typeLabel (demo-local; not part of encode).
+ */
+export type ConfigEditorKind =
+  | "string"
+  | "longtext"
+  | "number"
+  | "boolean"
+  | "enum"
+  | "enum-radio"
+  | "multiselect"
+  | "json"
 
 function isStepNode(node: WorkflowNode): node is StepNode {
   return !node.type || node.type === "step"
@@ -36,7 +49,7 @@ export function findStepById(nodes: WorkflowNode[], stepId: string): StepNode | 
   return undefined
 }
 
-/** Prefer textarea for long string params. */
+/** Prefer long text for known prompt-like params or large / multiline values. */
 export function isLongTextParam(name: string, valueTitle: string | undefined): boolean {
   if (LONG_TEXT_PARAM_NAMES.has(name)) return true
   return (valueTitle?.length ?? 0) > 80 || (valueTitle?.includes("\n") ?? false)
@@ -67,6 +80,14 @@ export function editorKindForTypeLabel(typeLabel: string): ConfigEditorKind {
   return "string"
 }
 
+function filterEnumOptions(values: unknown[]): Array<string | number | boolean> | undefined {
+  const options = values.filter(
+    (v): v is string | number | boolean =>
+      typeof v === "string" || typeof v === "number" || typeof v === "boolean"
+  )
+  return options.length > 0 ? options : undefined
+}
+
 /** Extract enum option list from a JSON Schema hint when present. */
 export function enumOptionsFromValueSchema(
   valueSchema: Record<string, unknown> | undefined
@@ -74,11 +95,19 @@ export function enumOptionsFromValueSchema(
   if (!valueSchema || !Array.isArray(valueSchema.enum) || valueSchema.enum.length === 0) {
     return undefined
   }
-  const options = valueSchema.enum.filter(
-    (v): v is string | number | boolean =>
-      typeof v === "string" || typeof v === "number" || typeof v === "boolean"
-  )
-  return options.length > 0 ? options : undefined
+  return filterEnumOptions(valueSchema.enum)
+}
+
+/**
+ * Options for multi-select: `type: "array"` with `items.enum` (or items as schema with enum).
+ */
+export function multiSelectOptionsFromValueSchema(
+  valueSchema: Record<string, unknown> | undefined
+): Array<string | number | boolean> | undefined {
+  if (!valueSchema || valueSchema.type !== "array") return undefined
+  const items = valueSchema.items
+  if (items === null || typeof items !== "object" || Array.isArray(items)) return undefined
+  return enumOptionsFromValueSchema(items as Record<string, unknown>)
 }
 
 /**
@@ -86,21 +115,27 @@ export function enumOptionsFromValueSchema(
  * Demo-local mapping — other UIs may choose different widgets for the same schema.
  */
 export function editorKindForPort(port: {
+  name: string
   typeLabel: string
   valueSchema?: Record<string, unknown>
+  valueTitle?: string
 }): ConfigEditorKind {
-  return editorKindForValueSchema(port.valueSchema, port.typeLabel)
+  return editorKindForValueSchema(port.valueSchema, port.typeLabel, port.name, port.valueTitle)
 }
 
 /**
  * Map a JSON Schema value hint to a demo editor kind.
- * `string` + `enum` → `"enum"` (rendered as `<select>` in the dialog).
  */
 export function editorKindForValueSchema(
   valueSchema: Record<string, unknown> | undefined,
-  typeLabelFallback?: string
+  typeLabelFallback?: string,
+  fieldName?: string,
+  valueTitle?: string
 ): ConfigEditorKind {
   if (valueSchema) {
+    const multi = multiSelectOptionsFromValueSchema(valueSchema)
+    if (multi) return "multiselect"
+
     const options = enumOptionsFromValueSchema(valueSchema)
     if (options) {
       const schemaType = valueSchema.type
@@ -111,17 +146,36 @@ export function editorKindForValueSchema(
         schemaType === "integer" ||
         schemaType === "boolean"
       ) {
-        return "enum"
+        return options.length <= ENUM_RADIO_MAX_OPTIONS ? "enum-radio" : "enum"
       }
     }
+
     const t = valueSchema.type
     if (t === "number" || t === "integer") return "number"
     if (t === "boolean") return "boolean"
     if (t === "object" || t === "array") return "json"
-    if (t === "string" || t === "null") return "string"
+    if (t === "string" || t === "null") {
+      if (fieldName && isLongTextParam(fieldName, valueTitle)) return "longtext"
+      return "string"
+    }
     if (Object.keys(valueSchema).length === 0) return "json"
   }
-  return editorKindForTypeLabel(typeLabelFallback ?? "string")
+
+  const fromLabel = editorKindForTypeLabel(typeLabelFallback ?? "string")
+  if (fromLabel === "string" && fieldName && isLongTextParam(fieldName, valueTitle)) {
+    return "longtext"
+  }
+  return fromLabel
+}
+
+/** Resolve option list for enum / radio / multiselect kinds. */
+export function optionsForPort(port: {
+  valueSchema?: Record<string, unknown>
+}): Array<string | number | boolean> | undefined {
+  return (
+    multiSelectOptionsFromValueSchema(port.valueSchema) ??
+    enumOptionsFromValueSchema(port.valueSchema)
+  )
 }
 
 /** Default draft / typed value when adding a new unbound parameter. */
@@ -136,8 +190,12 @@ export function defaultDraftForKind(
       return "false"
     case "json":
       return "{}"
+    case "multiselect":
+      return "[]"
     case "enum":
+    case "enum-radio":
       return enumOptions && enumOptions.length > 0 ? String(enumOptions[0]) : ""
+    case "longtext":
     case "string":
     default:
       return ""
@@ -155,12 +213,47 @@ export function defaultTypedValueForKind(
       return false
     case "json":
       return {}
+    case "multiselect":
+      return []
     case "enum":
+    case "enum-radio":
       return enumOptions && enumOptions.length > 0 ? enumOptions[0] : ""
+    case "longtext":
     case "string":
     default:
       return ""
   }
+}
+
+/** Parse a multiselect draft JSON array into selected option strings. */
+export function parseMultiselectDraft(text: string): string[] {
+  const trimmed = text.trim()
+  if (!trimmed) return []
+  try {
+    const parsed = JSON.parse(trimmed) as unknown
+    if (!Array.isArray(parsed)) return []
+    return parsed.map((v) => String(v))
+  } catch {
+    return []
+  }
+}
+
+/** Serialize selected multiselect values as a JSON array draft. */
+export function formatMultiselectDraft(selected: Array<string | number | boolean>): string {
+  return JSON.stringify(selected)
+}
+
+/** Toggle one option in a multiselect draft string. */
+export function toggleMultiselectDraft(
+  text: string,
+  option: string | number | boolean,
+  checked: boolean
+): string {
+  const current = parseMultiselectDraft(text)
+  const key = String(option)
+  const without = current.filter((v) => v !== key)
+  const next = checked ? [...without, key] : without
+  return formatMultiselectDraft(next)
 }
 
 /** Literal input ports that can be edited in the configure dialog. */
@@ -290,6 +383,31 @@ function coerceEnumDraft(
   return { ok: true, value: match }
 }
 
+function coerceMultiselectDraft(
+  text: string,
+  options: Array<string | number | boolean>
+): ParseLiteralResult {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(text.trim() || "[]")
+  } catch {
+    return { ok: false, error: "Expected a JSON array" }
+  }
+  if (!Array.isArray(parsed)) return { ok: false, error: "Expected a JSON array" }
+
+  const allowed = new Set(options.map(String))
+  const values: Array<string | number | boolean> = []
+  for (const item of parsed) {
+    const key = String(item)
+    if (!allowed.has(key)) {
+      return { ok: false, error: `Unexpected value: ${key}` }
+    }
+    const match = options.find((opt) => String(opt) === key)
+    if (match !== undefined) values.push(match)
+  }
+  return { ok: true, value: values }
+}
+
 /**
  * Coerce configure-dialog text back to a typed literal.
  * Uses `original` when present; otherwise port `valueSchema` / `typeLabel` for newly added fields.
@@ -298,15 +416,26 @@ export function parseEditedLiteral(
   text: string,
   original: unknown,
   typeLabel?: string,
-  valueSchema?: Record<string, unknown>
+  valueSchema?: Record<string, unknown>,
+  fieldName?: string
 ): ParseLiteralResult {
-  const kind = editorKindForValueSchema(valueSchema, typeLabel ?? "string")
-  const enumOptions = enumOptionsFromValueSchema(valueSchema)
+  const kind = editorKindForValueSchema(
+    valueSchema,
+    typeLabel ?? "string",
+    fieldName,
+    typeof original === "string" ? original : undefined
+  )
+  const enumOptions =
+    multiSelectOptionsFromValueSchema(valueSchema) ?? enumOptionsFromValueSchema(valueSchema)
 
-  if (kind === "enum" && enumOptions) {
+  if ((kind === "enum" || kind === "enum-radio") && enumOptions) {
     return coerceEnumDraft(text, enumOptions)
   }
+  if (kind === "multiselect" && enumOptions) {
+    return coerceMultiselectDraft(text, enumOptions)
+  }
 
+  // Prefer the existing literal's runtime type when editing a bound value.
   if (original !== undefined) {
     if (typeof original === "string") {
       return { ok: true, value: text }
@@ -340,7 +469,6 @@ export function parseEditedLiteral(
         return { ok: false, error: "Invalid JSON" }
       }
     }
-    return { ok: true, value: text }
   }
 
   switch (kind) {
@@ -364,8 +492,11 @@ export function parseEditedLiteral(
         return { ok: false, error: "Invalid JSON" }
       }
     }
+    case "longtext":
     case "string":
     case "enum":
+    case "enum-radio":
+    case "multiselect":
     default:
       return { ok: true, value: text }
   }

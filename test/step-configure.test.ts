@@ -1,13 +1,17 @@
 import { describe, expect, it } from "vitest"
 import {
+  ENUM_RADIO_MAX_OPTIONS,
   editorKindForPort,
   editorKindForTypeLabel,
   editorKindForValueSchema,
   enumOptionsFromValueSchema,
   findStepById,
   isLongTextParam,
+  multiSelectOptionsFromValueSchema,
   parseEditedLiteral,
+  parseMultiselectDraft,
   rewriteStateRefPath,
+  toggleMultiselectDraft,
   unboundPorts,
 } from "../src/lib/step-configure.js"
 import type { ReactFlowStepData } from "@executioncontrolprotocol/format-reactflow"
@@ -42,23 +46,50 @@ describe("step-configure helpers", () => {
     expect(editorKindForTypeLabel("unknown")).toBe("json")
   })
 
-  it("maps valueSchema string+enum to enum editor kind", () => {
+  it("maps small enums to radio and large enums to select", () => {
     expect(
       editorKindForValueSchema({ type: "string", enum: ["fast", "slow"] })
-    ).toBe("enum")
+    ).toBe("enum-radio")
     expect(enumOptionsFromValueSchema({ type: "string", enum: ["fast", "slow"] })).toEqual([
       "fast",
       "slow",
     ])
+    const many = Array.from({ length: ENUM_RADIO_MAX_OPTIONS + 1 }, (_, i) => `opt${i}`)
+    expect(editorKindForValueSchema({ type: "string", enum: many })).toBe("enum")
     expect(editorKindForValueSchema({ type: "string" })).toBe("string")
     expect(editorKindForValueSchema({ type: "number" })).toBe("number")
     expect(
       editorKindForPort({
+        name: "mode",
         typeLabel: "string!",
         valueSchema: { type: "string", enum: ["a", "b"] },
       })
-    ).toBe("enum")
-    expect(editorKindForPort({ typeLabel: "number" })).toBe("number")
+    ).toBe("enum-radio")
+    expect(editorKindForPort({ name: "count", typeLabel: "number" })).toBe("number")
+  })
+
+  it("maps array+items.enum to multiselect", () => {
+    const schema = {
+      type: "array",
+      items: { type: "string", enum: ["a", "b", "c"] },
+    }
+    expect(editorKindForValueSchema(schema)).toBe("multiselect")
+    expect(multiSelectOptionsFromValueSchema(schema)).toEqual(["a", "b", "c"])
+    expect(editorKindForValueSchema({ type: "array" })).toBe("json")
+  })
+
+  it("maps long string params to longtext and short strings to string", () => {
+    expect(
+      editorKindForValueSchema({ type: "string" }, "string", "prompt", "hi")
+    ).toBe("longtext")
+    expect(
+      editorKindForValueSchema({ type: "string" }, "string", "model", "gpt")
+    ).toBe("string")
+    expect(
+      editorKindForValueSchema({ type: "string" }, "string", "notes", "x".repeat(100))
+    ).toBe("longtext")
+    expect(editorKindForValueSchema({ type: "object" })).toBe("json")
+    expect(editorKindForValueSchema({ type: "boolean" })).toBe("boolean")
   })
 
   it("lists unbound schema ports", () => {
@@ -99,5 +130,20 @@ describe("step-configure helpers", () => {
       value: "slow",
     })
     expect(parseEditedLiteral("nope", undefined, "string", schema).ok).toBe(false)
+  })
+
+  it("parses multiselect drafts as JSON arrays of allowed options", () => {
+    const schema = {
+      type: "array",
+      items: { type: "string", enum: ["a", "b", "c"] },
+    }
+    expect(parseEditedLiteral('["a","c"]', undefined, "array", schema)).toEqual({
+      ok: true,
+      value: ["a", "c"],
+    })
+    expect(parseEditedLiteral('["z"]', undefined, "array", schema).ok).toBe(false)
+    expect(parseMultiselectDraft('["b"]')).toEqual(["b"])
+    expect(toggleMultiselectDraft("[]", "a", true)).toBe('["a"]')
+    expect(toggleMultiselectDraft('["a"]', "a", false)).toBe("[]")
   })
 })

@@ -20,4 +20,7 @@ Canonical decisions: sibling monorepo
 - Node pulse: soft, low-spread shadow on **running** only; keep a clear green completed glow.
 - Do not open the state modal on Run click — open when the run finishes; keep **Inspect state** in the zoom/fit Controls.
 - Configure dialog: removable literals after save, add unbound Zod params, editable `as` with ref rewrite; save via `ecp.patch` + `syncFromManifest`.
-- Map editors from port **`valueSchema`** (e.g. `string`+`enum` → `<select>`); fall back to `typeLabel`. Never put widget names in the encode document.
+- Map editors from port **`valueSchema`** (demo-local); fall back to `typeLabel`. Never put widget names in the encode document.
+  - short `string` → text input; long (`prompt`/`system`/… or length/`\n`) → textarea
+  - `object`/`array`/unknown → Monaco JSON; `number` → number input; `boolean` → toggle
+  - `string`+`enum` ≤4 → radios; >4 → `<select>`; `array`+`items.enum` → checkbox multi-select

@@ -13,4 +13,15 @@ Summary for demo UI work:
 - Flat action nodes; property-level `$ref` edges only
 - Hollow vs solid handles; idle cyan routes; ants while running; green when source completed
 - Configure + Inspect state; patch write-back keeps Fluent and Flow in sync
-- **Opinionated type mapping:** prefer port `valueSchema` (JSON Schema primitives + constraints). Example: `{ type: "string", enum: [...] }` → `<select>`. Fall back to `typeLabel` when no schema. Other apps may map the same encode document differently.
+- **Opinionated type mapping** (demo-local; encode stays UI-neutral — no widget names in `format-reactflow`). Prefer port `valueSchema`; fall back to `typeLabel`. Other apps may map the same document differently:
+
+  | `valueSchema` signal | Demo widget |
+  | --- | --- |
+  | `type: "string"` (no enum), short | Single-line text `<input>` |
+  | `type: "string"`, long (`prompt` / `system` / … or length / newline) | Plain `<textarea>` |
+  | `type: "object"` / `array` / empty / unknown | Monaco JSON |
+  | `type: "number"` / `integer` | Number input |
+  | `type: "boolean"` | Toggle switch |
+  | `type: "string"` + `enum` (≤4 options) | Radio group |
+  | `type: "string"` + `enum` (>4 options) | `<select>` dropdown |
+  | `type: "array"` + `items.enum` | Checkbox multi-select → JSON array |
