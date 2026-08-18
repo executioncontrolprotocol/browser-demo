@@ -30,8 +30,6 @@
     "@executioncontrolprotocol/chrome-ai": "^0.12.0",
     "@executioncontrolprotocol/claude": "^0.12.0",
     "@executioncontrolprotocol/core": "^0.12.0",
-    "@executioncontrolprotocol/extension-fal": "^0.10.1",
-    "@executioncontrolprotocol/extension-image-sharp": "^0.10.1",
     "@executioncontrolprotocol/extension-ollama": "^0.12.0",
     "@executioncontrolprotocol/extension-openai": "^0.12.0",
     "@executioncontrolprotocol/format-eql": "^0.12.0",

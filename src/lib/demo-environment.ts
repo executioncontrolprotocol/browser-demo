@@ -23,8 +23,6 @@ import { registerChromeAiExtension } from "@executioncontrolprotocol/chrome-ai"
 import { registerOpenaiExtension } from "@executioncontrolprotocol/extension-openai"
 import { registerClaudeExtension } from "@executioncontrolprotocol/claude"
 import { registerOllamaExtension } from "@executioncontrolprotocol/extension-ollama"
-import { registerFalExtension } from "@executioncontrolprotocol/extension-fal"
-import { registerImageSharpExtension } from "@executioncontrolprotocol/extension-image-sharp"
 import { registerFormatEqlExtension } from "@executioncontrolprotocol/format-eql"
 import { registerFormatToonExtension } from "@executioncontrolprotocol/format-toon"
 import { registerFormatMermaidExtension } from "@executioncontrolprotocol/format-mermaid"
@@ -33,8 +31,6 @@ import "@executioncontrolprotocol/chrome-ai"
 import "@executioncontrolprotocol/extension-openai"
 import "@executioncontrolprotocol/claude"
 import "@executioncontrolprotocol/extension-ollama"
-import "@executioncontrolprotocol/extension-fal"
-import "@executioncontrolprotocol/extension-image-sharp"
 import "@executioncontrolprotocol/format-eql"
 import "@executioncontrolprotocol/format-toon"
 import "@executioncontrolprotocol/format-mermaid"
@@ -73,8 +69,6 @@ export async function createDemoAppEnvironment(
   await registerClaudeExtension()
   await registerOllamaExtension()
   await registerBridgeOllamaExtension()
-  await registerFalExtension()
-  await registerImageSharpExtension()
   await registerFormatEqlExtension()
   await registerFormatToonExtension()
   await registerFormatMermaidExtension()
@@ -102,11 +96,6 @@ export async function createDemoAppEnvironment(
   env.addExtensionBinding("@executioncontrolprotocol/claude", {
     apiKey: browser("ANTHROPIC_API_KEY", { optional: true }),
   })
-  env.addExtensionBinding("@executioncontrolprotocol/fal", {
-    apiKey: browser("FAL_KEY", { optional: true }),
-    defaultMode: "subscribe",
-  })
-  env.addExtensionBinding("@executioncontrolprotocol/image-sharp", {})
 
   env.withHarnesses([
     harness(BROWSER_NANO_HARNESS_ID, "Nano Harness")
@@ -125,8 +114,6 @@ export async function createDemoAppEnvironment(
         "@executioncontrolprotocol/claude",
         "@executioncontrolprotocol/ollama",
         "@browser-demo/bridge-ollama",
-        "@executioncontrolprotocol/fal",
-        "@executioncontrolprotocol/image-sharp",
         "@executioncontrolprotocol/browser",
         "@customer/*",
       ],

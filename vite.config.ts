@@ -90,14 +90,10 @@ export default defineConfig({
     ],
   },
   optimizeDeps: {
-    // Prebundle CJS `@fal-ai/client` so named ESM imports work (real client, not a stub).
-    include: ["@fal-ai/client"],
     exclude: [
       "@executioncontrolprotocol/core",
       "@executioncontrolprotocol/browser",
       "@executioncontrolprotocol/chrome-ai",
-      "@executioncontrolprotocol/extension-fal",
-      "@executioncontrolprotocol/extension-image-sharp",
       "@executioncontrolprotocol/format-mermaid",
       "@executioncontrolprotocol/format-reactflow",
       "@executioncontrolprotocol/format-toon",

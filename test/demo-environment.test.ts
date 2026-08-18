@@ -10,14 +10,4 @@ describe("createDemoAppEnvironment", () => {
     expect(ids.some((id) => id.startsWith("@executioncontrolprotocol/test."))).toBe(false)
     expect(descriptor.extensions.some((e) => e.id === "@executioncontrolprotocol/test")).toBe(false)
   })
-
-  it("binds FAL and image-sharp capabilities for image workflows", async () => {
-    const { descriptor } = await createDemoAppEnvironment()
-    const ids = descriptor.capabilities.map((c) => c.id)
-    expect(ids).toContain("@executioncontrolprotocol/fal.generate")
-    expect(ids).toContain("@executioncontrolprotocol/image-sharp.inspect")
-    expect(ids).toContain("@executioncontrolprotocol/image-sharp.transform")
-    expect(descriptor.extensions.some((e) => e.id === "@executioncontrolprotocol/fal")).toBe(true)
-    expect(descriptor.extensions.some((e) => e.id === "@executioncontrolprotocol/image-sharp")).toBe(true)
-  })
 })

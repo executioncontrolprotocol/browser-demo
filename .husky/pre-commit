@@ -1,2 +1,5 @@
+set -e
+npm install
+git add package-lock.json
 npx lint-staged
 npm run lint
