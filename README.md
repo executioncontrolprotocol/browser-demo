@@ -243,9 +243,9 @@ npm run eval:matrix
 | Type errors in demo after ECP API change | Rebuild ECP, then `npm run typecheck` here; update demo imports if the API moved |
 | Linked package still shows old behavior | Confirm link targets built `dist/` (`npm run build` in ECP); restart `npm run dev` |
 | `npm install` fails on `@executioncontrolprotocol/*` | Publish packages or complete `npm link` setup above |
-| `Harness prompt fixture not found: intent-classification` | Ensure `@executioncontrolprotocol/harnesses-browser-*` is `>=0.10.1` (0.10.0 had a bad `import.meta.glob` path). Reinstall from the lockfile; do not use stale `file:` links to unbuilt packages. |
+| `Harness prompt fixture not found: intent-classification` | Ensure `@executioncontrolprotocol/harnesses-browser-*` is `>=0.10.1` (0.10.0 had a bad `import.meta.glob` path). Reinstall from the lockfile; use `npm link` for local unpublished packages, never `file:` in `package.json`. |
 
-**Alternative to `npm link` (local only — do not commit):** temporarily override ranges with `"file:../executioncontrolprotocol/packages/..."` in `package.json`, or use `npm install ../executioncontrolprotocol/packages/<pkg>`. Restore caret ranges before push so GitHub Actions / Pages can resolve from the npm registry.
+Never put `"file:..."` in `package.json`. For local ECP packages, use `npm link` only.
 
 ## Local ECP development (`npm link`) — summary
 
@@ -297,7 +297,7 @@ Local Pages build:
 GITHUB_PAGES=true GITHUB_REPOSITORY=executioncontrolprotocol/browser-demo npm run build:pages
 ```
 
-Requires `@executioncontrolprotocol/*@^0.10.1` so browser `core/compile` exports `compileHarnessArtifactSource` (used by the coding harness).
+Requires `@executioncontrolprotocol/*@^0.12.0` from npm (or `npm link` to a local build) so browser `core/compile` exports `compileHarnessArtifactSource` (used by the coding harness).
 
 ## Spec
 

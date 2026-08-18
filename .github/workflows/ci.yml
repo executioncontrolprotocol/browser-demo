@@ -18,22 +18,11 @@ jobs:
         with:
           fetch-depth: 0
           path: browser-demo
-      - uses: actions/checkout@v5
-        with:
-          repository: executioncontrolprotocol/executioncontrolprotocol
-          path: executioncontrolprotocol
       - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: browser-demo/package-lock.json
-      - name: Build ECP format-reactflow (file: dependency)
-        working-directory: executioncontrolprotocol
-        run: |
-          npm ci
-          npm run build -w @executioncontrolprotocol/types
-          npm run build -w @executioncontrolprotocol/core
-          npm run build -w @executioncontrolprotocol/format-reactflow
       - working-directory: browser-demo
         run: npm ci
       - name: Secretlint (working tree)
@@ -57,24 +46,11 @@ jobs:
       - uses: actions/checkout@v5
         with:
           path: browser-demo
-      - uses: actions/checkout@v5
-        with:
-          repository: executioncontrolprotocol/executioncontrolprotocol
-          path: executioncontrolprotocol
       - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: |
-            browser-demo/package-lock.json
-            executioncontrolprotocol/package-lock.json
-      - name: Build ECP format-reactflow (file: dependency)
-        working-directory: executioncontrolprotocol
-        run: |
-          npm ci
-          npm run build -w @executioncontrolprotocol/types
-          npm run build -w @executioncontrolprotocol/core
-          npm run build -w @executioncontrolprotocol/format-reactflow
+          cache-dependency-path: browser-demo/package-lock.json
       - working-directory: browser-demo
         run: npm ci
       - working-directory: browser-demo

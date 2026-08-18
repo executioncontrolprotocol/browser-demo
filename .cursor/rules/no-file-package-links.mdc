@@ -1,0 +1,12 @@
+---
+description: Never use file: package links; use npm link for local unpublished packages
+alwaysApply: true
+---
+
+# No `file:` package links
+
+Never put `"file:..."` in `package.json` `dependencies`, `devDependencies`, or `peerDependencies`. That includes sibling ECP packages. `file:` breaks CI, GitHub Pages, and any install that does not share this machine’s directory layout.
+
+Committed `@executioncontrolprotocol/*` deps use registry ranges (e.g. `^0.12.0`).
+
+For local unpublished packages, use `npm link` after `npm run build` in the ECP monorepo. Do not substitute `file:` even temporarily in committed `package.json`.
