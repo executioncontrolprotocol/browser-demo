@@ -278,11 +278,15 @@ npm run supabase:push
 
 Copy `.env.example` to `.env` and set `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`.
 
+## CI
+
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on push and pull request to **`main`** and **`development`**. Jobs: **Secrets scan**, **Typecheck**, **Test**, and **Build**. It does not deploy.
+
 ## Deploy (GitHub Pages)
 
 Live demo: `https://executioncontrolprotocol.github.io/browser-demo/`
 
-Deploys on push to **`main`** via [`.github/workflows/pages.yml`](.github/workflows/pages.yml).
+Deploys on push to **`main`** via [`.github/workflows/pages.yml`](.github/workflows/pages.yml). `development` is verify-only (see CI above).
 
 **Setup:** repo **Settings → Pages → Source: GitHub Actions**.
 

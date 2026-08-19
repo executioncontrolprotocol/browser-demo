@@ -1,16 +1,19 @@
+# Verify-only: secrets scan, typecheck, test, and build.
+# Does not deploy. GitHub Pages stays on push to main (pages.yml).
 name: ci
 
 on:
   push:
-    branches: [main]
+    branches: [main, development]
   pull_request:
+    branches: [main, development]
 
 permissions:
   contents: read
 
 jobs:
   secrets:
-    name: secrets
+    name: Secrets scan
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -39,9 +42,10 @@ jobs:
         working-directory: browser-demo
         run: gitleaks detect --source . --redact --verbose --config .gitleaks.toml
 
-  ci:
+  typecheck:
+    name: Typecheck
     runs-on: ubuntu-latest
-    needs: secrets
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
         with:
@@ -55,7 +59,39 @@ jobs:
         run: npm ci
       - working-directory: browser-demo
         run: npm run typecheck
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          path: browser-demo
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: browser-demo/package-lock.json
+      - working-directory: browser-demo
+        run: npm ci
       - working-directory: browser-demo
         run: npm test
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          path: browser-demo
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: browser-demo/package-lock.json
+      - working-directory: browser-demo
+        run: npm ci
       - working-directory: browser-demo
         run: npm run build
