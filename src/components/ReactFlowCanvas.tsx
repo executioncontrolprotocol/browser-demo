@@ -32,6 +32,9 @@ import { edgeStatusClass, stepNodeStatusClass } from "../lib/reactflow-run-statu
 import { edgeMenuPosition } from "../lib/edge-menu.js"
 import { portsAreCompatible } from "../lib/step-connect.js"
 import { ensureReturnsNode } from "../lib/workflow-io.js"
+import { capabilityHostBadge } from "../lib/capability-execution-badge.js"
+import type { CapabilityBlobStore } from "@executioncontrolprotocol/core"
+import type { CapabilityExecution } from "@executioncontrolprotocol/types"
 
 const EDGE_INTERACTION_WIDTH = 24
 
@@ -102,12 +105,18 @@ export interface ReactFlowCanvasProps {
   onCloseRunOverlay: () => void
   /** Open the run/state inspect overlay without starting a run. */
   onOpenRunOverlay: () => void
-  onRun: (input?: Record<string, unknown>) => void
+  onRun: (input?: Record<string, unknown>, blobs?: CapabilityBlobStore) => void
   hasWorkflow: boolean
   /** JSON Schema object for `workflow.accepts` (run form). */
   acceptsSchema?: Record<string, unknown>
   /** Last public `result.output` JSON when `returns` is set. */
   runPublicOutput?: string
+  /** File picker for locator fields; off when unpaired. */
+  filePickerEnabled?: boolean
+  /** Capability id → execution from describe(). */
+  capabilityExecution?: Record<string, CapabilityExecution>
+  /** Whether `withRemoteInvoke` is bound. */
+  hostPaired?: boolean
   /** Open configure dialog for a step with literal inputs. */
   onConfigureStep?: (stepId: string) => void
   /** Draw output→input: write `$ref` into the target step (manifest + Fluent sync). */
@@ -136,6 +145,9 @@ function ReactFlowCanvasInner({
   hasWorkflow,
   acceptsSchema,
   runPublicOutput,
+  filePickerEnabled = false,
+  capabilityExecution = {},
+  hostPaired = false,
   onConfigureStep,
   onConnectPorts,
   onDisconnectPorts,
@@ -165,9 +177,17 @@ function ReactFlowCanvasInner({
       setEdges([])
       return
     }
-    setNodes(toRfNodes(doc.nodes))
+    setNodes(
+      toRfNodes(doc.nodes).map((node) => {
+        if (node.type !== "ecp-step") return node
+        const uses = (node.data as { uses?: string }).uses
+        const execution = uses ? capabilityExecution[uses] : undefined
+        const hostBadge = capabilityHostBadge(execution, hostPaired)
+        return hostBadge ? { ...node, data: { ...node.data, hostBadge } } : node
+      })
+    )
     setEdges(toRfEdges(doc.edges))
-  }, [doc, setNodes, setEdges])
+  }, [doc, setNodes, setEdges, capabilityExecution, hostPaired])
 
   const isValidConnection = useCallback(
     (connection: Connection | Edge) => {
@@ -503,6 +523,7 @@ function ReactFlowCanvasInner({
               hasWorkflow={hasWorkflow}
               acceptsSchema={acceptsSchema}
               runPublicOutput={runPublicOutput}
+              filePickerEnabled={filePickerEnabled}
             />
           </div>
         </div>

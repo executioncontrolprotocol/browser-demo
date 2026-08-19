@@ -12,7 +12,7 @@ export function environmentSourceFromDescriptor(descriptor: EnvironmentDescripto
 export default await environment("browser-demo-app").withExtensions([
   extension("@executioncontrolprotocol/chrome-ai").with({}),
   extension("@executioncontrolprotocol/fal").with({}),
-  extension("@executioncontrolprotocol/image-sharp").with({}),
+  extension("@executioncontrolprotocol/ollama").with({}),
 ])
 `
   }

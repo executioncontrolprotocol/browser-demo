@@ -4,6 +4,7 @@ import {
   detectEcpBridge,
   isOllamaBridgeUsable,
   listModelsViaBridge,
+  invokeViaBridge,
   parseBridgeQueryParams,
   consumeBridgeQueryParams,
   BRIDGE_SETTINGS_STORAGE_KEY,
@@ -68,6 +69,34 @@ describe("listModelsViaBridge", () => {
     expect(String(fetchMock.mock.calls[0]?.[0])).toBe(`${DEFAULT_BRIDGE_BASE_URL}/v1/invoke`)
     const init = fetchMock.mock.calls[0]?.[1] as RequestInit
     expect(init.headers).toMatchObject({ Authorization: "Bearer tok" })
+  })
+})
+
+describe("invokeViaBridge", () => {
+  it("returns InvokeResult on HTTP 404 instead of throwing", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: false,
+        status: 404,
+        json: async () => ({
+          schema: "@executioncontrolprotocol.invoke.result",
+          success: false,
+          capabilityId: "x.y",
+          diagnostics: [{ code: "CAPABILITY_NOT_FOUND", message: "missing" }],
+        }),
+      }))
+    )
+    await expect(
+      invokeViaBridge({
+        baseURL: DEFAULT_BRIDGE_BASE_URL,
+        token: "tok",
+        capability: "x.y",
+      })
+    ).resolves.toMatchObject({
+      success: false,
+      diagnostics: [{ code: "CAPABILITY_NOT_FOUND" }],
+    })
   })
 })
 

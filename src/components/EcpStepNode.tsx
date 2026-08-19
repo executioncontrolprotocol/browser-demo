@@ -8,6 +8,8 @@ import { ReactFlowConfigureContext } from "./reactflow-configure-context.js"
 export interface EcpStepNodeData extends ReactFlowStepData {
   /** Extra CSS class for run status. */
   statusClass?: string
+  /** Host/mixed execution badge. */
+  hostBadge?: string
   /** Input port ids that have an incoming data edge. */
   connectedTargetHandles?: string[]
   /** Output port ids that have an outgoing data edge. */
@@ -82,6 +84,9 @@ export function EcpStepNode({ id, data }: NodeProps) {
           ) : null}
           {step.as ? (
             <div className="mt-1 font-mono text-[10px] text-primary-fixed">as {step.as}</div>
+          ) : null}
+          {step.hostBadge ? (
+            <div className="mt-1 font-mono text-[10px] text-on-surface-variant">{step.hostBadge}</div>
           ) : null}
         </div>
         {showConfigure ? (

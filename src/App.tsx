@@ -16,7 +16,7 @@ import type {
   ValidationResult,
   WorkflowManifest,
 } from "@executioncontrolprotocol/types"
-import type { Ecp } from "@executioncontrolprotocol/core"
+import type { Ecp, CapabilityBlobStore } from "@executioncontrolprotocol/core"
 import { compileWorkflowSource } from "@executioncontrolprotocol/core/browser"
 import type {
   ReactFlowDocument,
@@ -61,6 +61,7 @@ import { readAvailability } from "@executioncontrolprotocol/chrome-ai"
 import { useViewLayout } from "./hooks/useViewLayout.js"
 import { installEsbuildWasmUrl } from "./lib/esbuild-wasm-bootstrap.js"
 import { createDemoAppEnvironment } from "./lib/demo-environment.js"
+import { capabilityExecutionMap } from "./lib/capability-execution-badge.js"
 import { shouldBlockForVault } from "./lib/vault-gate.js"
 import {
   harnessInvokeChatError,
@@ -865,14 +866,17 @@ export function App() {
     [layout]
   )
 
-  const onRun = async (input?: Record<string, unknown>) => {
+  const onRun = async (input?: Record<string, unknown>, blobs?: CapabilityBlobStore) => {
     if (!ecp || !manifest) return
     setRunBusy(true)
     setRunOutput("")
     setRunPublicOutput("")
     layout.ensureWorkflowVisible()
     try {
-      const result = await ecp.run(manifest, input ? { input } : undefined)
+      const result = await ecp.run(manifest, {
+        ...(input ? { input } : {}),
+        ...(blobs ? { blobs } : {}),
+      })
       setRunOutput(JSON.stringify(result, null, 2))
       const output = (result as { output?: Record<string, unknown> }).output
       setRunPublicOutput(output ? JSON.stringify(output, null, 2) : "")
@@ -941,6 +945,9 @@ export function App() {
                 hasWorkflow={hasWorkflow}
                 acceptsSchema={manifest ? workflowContract(manifest).accepts : undefined}
                 runPublicOutput={runPublicOutput || undefined}
+                filePickerEnabled={Boolean(descriptor?.remoteInvoke?.url)}
+                capabilityExecution={capabilityExecutionMap(descriptor)}
+                hostPaired={Boolean(descriptor?.remoteInvoke?.url)}
                 onConfigureStep={onConfigureStep}
                 onConnectPorts={onConnectPorts}
                 onDisconnectPorts={onDisconnectPorts}
