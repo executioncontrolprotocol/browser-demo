@@ -11,7 +11,6 @@ const NODE_BUILTIN_STUBS: Record<string, string> = {
   "node:http": "node-empty.ts",
   "node:child_process": "node-empty.ts",
   "node:util": "node-empty.ts",
-  sharp: "sharp-stub.ts",
 }
 
 /**

@@ -82,11 +82,6 @@ export default defineConfig({
         find: "node:util",
         replacement: aliasPath(stubDir, "node-empty.ts"),
       },
-      // Native Node only — image-sharp cannot run in the browser bundle.
-      {
-        find: "sharp",
-        replacement: aliasPath(stubDir, "sharp-stub.ts"),
-      },
     ],
   },
   optimizeDeps: {
