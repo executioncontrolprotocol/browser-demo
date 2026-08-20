@@ -22,6 +22,12 @@ describe("createDemoAppEnvironment", () => {
     expect(descriptor.extensions.some((e) => e.id === "@executioncontrolprotocol/image-sharp")).toBe(
       false
     )
+    const fal = descriptor.capabilities.find((c) => c.id === "@executioncontrolprotocol/fal.generate")
+    expect(fal?.execution).toBe("host")
+    const chrome = descriptor.capabilities.find(
+      (c) => c.id === "@executioncontrolprotocol/chrome-ai.generate"
+    )
+    expect(chrome?.execution).toBe("local")
   })
 
   it("binds remoteInvoke from pairing without including the token", async () => {
