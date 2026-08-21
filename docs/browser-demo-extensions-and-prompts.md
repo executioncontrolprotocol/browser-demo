@@ -79,7 +79,7 @@ Source: [`packages/runtimes/browser/src/environment.ts`](https://github.com/exec
 
 ### 2.2 Demo app environment manifest
 
-`createDemoAppEnvironment()` builds on `createBrowserDemoEnvironment("browser-demo-app")` with Chrome AI, format extensions, and model providers bound for authoring and workflow steps. The demo does **not** bind `@executioncontrolprotocol/test` (that extension is for monorepo unit tests and eval fixtures only).
+`createDemoAppEnvironment()` builds on `createBrowserEnvironment("browser-demo-app")` with Chrome AI and model providers **bound** for harnesses and workflow steps. Format extensions (EQL, TOON, Mermaid, React Flow, JSON) are **registered** for panel encode/decode but **not bound** into the authoring environment inventory. The demo does **not** bind `@executioncontrolprotocol/test` (that extension is for monorepo unit tests and eval fixtures only).
 
 Source: [`src/lib/demo-environment.ts`](../src/lib/demo-environment.ts).
 
@@ -161,7 +161,7 @@ Demo-generated workflows may reference `@executioncontrolprotocol/chrome-ai.gene
 
 Store `FAL_KEY` in the encrypted vault (Settings → encrypted API keys) alongside OpenAI and Claude keys. Harness authoring summaries include required vs optional fields from each capability schema so models can propose valid `WITH` blocks.
 
-Local unpublished `@executioncontrolprotocol/image-sharp`: build the extensions monorepo, `npm link` in `packages/image-sharp`, then `npm link @executioncontrolprotocol/image-sharp` here (semver range in `package.json`; never `file:`).
+Local unpublished `@executioncontrolprotocol/image-sharp` / `fal`: build the extensions monorepo, `npm link` each package, then `npm link @executioncontrolprotocol/fal @executioncontrolprotocol/image-sharp` here (optional peers in `package.json`; never `file:`).
 
 Reference workflow: [`examples/03-fal-chain/workflow.ts`](https://github.com/executioncontrolprotocol/executioncontrolprotocol/blob/main/examples/03-fal-chain/workflow.ts) in the protocol repo.
 

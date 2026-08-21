@@ -7,7 +7,9 @@ alwaysApply: true
 
 - **Never** put `"file:..."` in any `package.json` dependency field (`dependencies`, `devDependencies`, `peerDependencies`, `optionalDependencies`).
 - `file:` breaks CI, GitHub Pages, and consumer installs that lack the sibling path.
-- Local unpublished packages: build the package, then `npm link` from the package directory and `npm link <name>` in this app.
+- Local unpublished packages: build the package, then `npm link` from the package directory and `npm link <name>` in this app (or `npm run link:vendor` for fal + image-sharp).
+- Declaring unpublished packages as optional `peerDependencies` is fine; never put them in `dependencies` with `file:`.
+- After they publish to npm, move them to `dependencies` with a registry range and drop the CI link step.
 - Committed ranges must be registry versions (e.g. `"^0.12.0"`).
 - Do not document `file:` as a temporary alternative in README or rules.
 - Pre-commit / CI: `npm run check:no-file-deps`.

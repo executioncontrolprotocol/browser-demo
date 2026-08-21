@@ -25,7 +25,7 @@ Prefer the real SDK whenever it can run in the browser:
 | `@executioncontrolprotocol/fal` | **Yes** — official `@fal-ai/client` | Configure `apiKey` via `browser("FAL_KEY")` (vault / secrets). Vite prebundles the CJS client (`optimizeDeps.include`). |
 | `@executioncontrolprotocol/image-sharp` | **Catalog + host hop** | Bound in the demo env (browser catalog only; no native `sharp`). Steps hop to `ecp up --env …` that binds Sharp on the host. Bare `ecp up` (Ollama-only) is not enough. |
 
-Local unpublished dogfood: build the extensions repo, then `npm link` from `packages/image-sharp` and `npm link @executioncontrolprotocol/image-sharp` in this app (never commit `file:` deps). Host example: [extensions/examples/04-image-prep](https://github.com/executioncontrolprotocol/extensions/tree/main/examples/04-image-prep) — `ecp up --env environment.ts --open-url http://localhost:5173/`.
+Local unpublished dogfood (required until these packages are on npm): from this app run `npm run link:vendor` (or manually `npm link` from `packages/fal` / `packages/image-sharp` in the extensions repo). Never commit `file:` deps. They stay optional peers so registry `npm ci` stays clean. Host example for Sharp: [extensions/examples/04-image-prep](https://github.com/executioncontrolprotocol/extensions/tree/main/examples/04-image-prep) — `ecp up --env environment.ts --open-url http://localhost:5173/`.
 
 Do not stub browser-capable HTTP clients. Native addons belong on the package `browser` export, not a Vite alias.
 

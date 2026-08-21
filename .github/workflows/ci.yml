@@ -48,53 +48,86 @@ jobs:
   typecheck:
     name: Typecheck
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
         with:
           path: browser-demo
+      - uses: actions/checkout@v5
+        with:
+          repository: executioncontrolprotocol/extensions
+          path: extensions
       - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: browser-demo/package-lock.json
+          cache-dependency-path: |
+            browser-demo/package-lock.json
+            extensions/package-lock.json
       - working-directory: browser-demo
         run: npm ci
+      - name: Link unpublished vendor extensions
+        working-directory: browser-demo
+        env:
+          EXTENSIONS_ROOT: ${{ github.workspace }}/extensions
+        run: npm run link:vendor
       - working-directory: browser-demo
         run: npm run typecheck
 
   test:
     name: Test
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
         with:
           path: browser-demo
+      - uses: actions/checkout@v5
+        with:
+          repository: executioncontrolprotocol/extensions
+          path: extensions
       - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: browser-demo/package-lock.json
+          cache-dependency-path: |
+            browser-demo/package-lock.json
+            extensions/package-lock.json
       - working-directory: browser-demo
         run: npm ci
+      - name: Link unpublished vendor extensions
+        working-directory: browser-demo
+        env:
+          EXTENSIONS_ROOT: ${{ github.workspace }}/extensions
+        run: npm run link:vendor
       - working-directory: browser-demo
         run: npm test
 
   build:
     name: Build
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
         with:
           path: browser-demo
+      - uses: actions/checkout@v5
+        with:
+          repository: executioncontrolprotocol/extensions
+          path: extensions
       - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: browser-demo/package-lock.json
+          cache-dependency-path: |
+            browser-demo/package-lock.json
+            extensions/package-lock.json
       - working-directory: browser-demo
         run: npm ci
+      - name: Link unpublished vendor extensions
+        working-directory: browser-demo
+        env:
+          EXTENSIONS_ROOT: ${{ github.workspace }}/extensions
+        run: npm run link:vendor
       - working-directory: browser-demo
         run: npm run build
