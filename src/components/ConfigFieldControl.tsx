@@ -7,6 +7,7 @@ import {
   toggleMultiselectDraft,
   type ConfigEditorKind,
 } from "../lib/step-configure.js"
+import { isBrowserFileLocator } from "@executioncontrolprotocol/core"
 
 function BooleanToggle({
   value,
@@ -36,6 +37,59 @@ function BooleanToggle({
   )
 }
 
+function FileFieldControl({
+  name,
+  value,
+  busy,
+  disabled,
+  hint,
+  onFile,
+}: {
+  name: string
+  value: string
+  busy: boolean
+  disabled: boolean
+  hint?: string
+  onFile?: (file: File) => void
+}) {
+  const summary = fileDraftSummary(value)
+  return (
+    <div className="space-y-1">
+      <input
+        type="file"
+        aria-label={name}
+        className="block w-full font-mono text-label text-on-surface-variant file:mr-2 file:rounded file:border file:border-outline-variant file:bg-surface-container-high file:px-2 file:py-1 file:font-mono file:text-label"
+        disabled={busy || disabled || !onFile}
+        onChange={(e) => {
+          const file = e.target.files?.[0]
+          if (file && onFile) onFile(file)
+        }}
+      />
+      {summary ? (
+        <span className="block font-mono text-label text-on-surface-variant">{summary}</span>
+      ) : null}
+      {hint ? <span className="block text-label text-on-surface-variant">{hint}</span> : null}
+    </div>
+  )
+}
+
+function fileDraftSummary(value: string): string | null {
+  const trimmed = value.trim()
+  if (!trimmed) return null
+  if (isBrowserFileLocator(trimmed)) return `Selected: ${trimmed}`
+  if (trimmed.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(trimmed) as { kind?: string; path?: string; mediaType?: string }
+      if (parsed.kind === "file" && typeof parsed.path === "string") {
+        return `Selected file ref${parsed.mediaType ? ` (${parsed.mediaType})` : ""}: ${parsed.path}`
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+  return `Value set (${trimmed.length} chars)`
+}
+
 /** Schema-driven editor used by step configure and the run-input form. */
 export function ConfigFieldControl({
   kind,
@@ -45,6 +99,9 @@ export function ConfigFieldControl({
   busy,
   onChange,
   enumOptions,
+  filePickerEnabled = true,
+  fileHint,
+  onFile,
 }: {
   kind: ConfigEditorKind
   fieldId: string
@@ -53,7 +110,28 @@ export function ConfigFieldControl({
   busy: boolean
   onChange: (next: string) => void
   enumOptions?: Array<string | number | boolean>
+  filePickerEnabled?: boolean
+  fileHint?: string
+  onFile?: (file: File) => void
 }) {
+  if (kind === "file") {
+    return (
+      <FileFieldControl
+        name={name}
+        value={value}
+        busy={busy}
+        disabled={!filePickerEnabled}
+        hint={
+          fileHint ??
+          (!filePickerEnabled
+            ? "File picker requires a local host. Start `ecp up --env …` for host / mixed steps."
+            : undefined)
+        }
+        onFile={onFile}
+      />
+    )
+  }
+
   if ((kind === "enum" || kind === "enum-radio") && enumOptions && enumOptions.length > 0) {
     if (kind === "enum-radio") {
       return (
@@ -184,12 +262,18 @@ export function ConfigPortControl({
   value,
   busy,
   onChange,
+  filePickerEnabled = true,
+  fileHint,
+  onFile,
 }: {
   fieldId: string
   port: ReactFlowPort
   value: string
   busy: boolean
   onChange: (next: string) => void
+  filePickerEnabled?: boolean
+  fileHint?: string
+  onFile?: (file: File) => void
 }) {
   return (
     <ConfigFieldControl
@@ -200,6 +284,9 @@ export function ConfigPortControl({
       busy={busy}
       onChange={onChange}
       enumOptions={optionsForPort(port)}
+      filePickerEnabled={filePickerEnabled}
+      fileHint={fileHint}
+      onFile={onFile}
     />
   )
 }

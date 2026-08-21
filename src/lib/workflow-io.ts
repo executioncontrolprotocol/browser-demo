@@ -10,9 +10,10 @@ import {
 } from "@executioncontrolprotocol/format-reactflow"
 import type { StepNode, WorkflowManifest, WorkflowNode } from "@executioncontrolprotocol/types"
 import { rewriteWorkflowAsRefs } from "./step-configure.js"
+import { WORKFLOW_FILE_VALUE_SCHEMA } from "./run-form-files.js"
 
 /** JSON Schema types offered when adding an I/O parameter. */
-export type WorkflowIoSchemaType = "string" | "number" | "boolean" | "object" | "array"
+export type WorkflowIoSchemaType = "string" | "number" | "boolean" | "object" | "array" | "file"
 
 /** Handle id used on an empty Outputs node so the first connection can land. */
 export const RETURNS_PLACEHOLDER_HANDLE = "+"
@@ -44,6 +45,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function schemaType(schema: Record<string, unknown>): WorkflowIoSchemaType {
+  if (schema["x-ecp-file"] === true) return "file"
+  if (typeof schema.contentMediaType === "string" && schema.contentMediaType.length > 0) {
+    return "file"
+  }
+  if (schema.format === "binary" || schema.format === "byte") return "file"
   const t = schema.type
   if (t === "number" || t === "integer") return "number"
   if (t === "boolean") return "boolean"
@@ -53,6 +59,7 @@ function schemaType(schema: Record<string, unknown>): WorkflowIoSchemaType {
 }
 
 function defaultSchemaForType(type: WorkflowIoSchemaType): Record<string, unknown> {
+  if (type === "file") return { ...WORKFLOW_FILE_VALUE_SCHEMA }
   if (type === "array") return { type: "array" }
   if (type === "object") return { type: "object" }
   if (type === "number") return { type: "number" }
@@ -76,13 +83,44 @@ export function ioFieldsFromSchema(
   )
   return Object.entries(props).map(([name, raw]) => {
     const valueSchema = isRecord(raw) ? { ...raw } : {}
+    const type = schemaType(valueSchema)
+    // Legacy string file fields → ImageRef file-ref schema (locator path, no base64).
+    const normalizedSchema =
+      type === "file" && valueSchema.type === "string"
+        ? { ...WORKFLOW_FILE_VALUE_SCHEMA }
+        : valueSchema
     return {
       name,
-      type: schemaType(valueSchema),
+      type,
       required: required.has(name),
-      valueSchema,
+      valueSchema: normalizedSchema,
     }
   })
+}
+
+/**
+ * Upgrade legacy string `file` accepts properties to ImageRef file-ref schemas for run validation.
+ */
+export function withNormalizedFileAccepts(manifest: WorkflowManifest): WorkflowManifest {
+  const accepts = asWorkflowContract(manifest.workflow).accepts
+  if (!accepts || !isRecord(accepts.properties)) return manifest
+  const properties: Record<string, unknown> = { ...accepts.properties }
+  let changed = false
+  for (const [name, raw] of Object.entries(properties)) {
+    if (!isRecord(raw)) continue
+    if (schemaType(raw) === "file" && raw.type === "string") {
+      properties[name] = { ...WORKFLOW_FILE_VALUE_SCHEMA }
+      changed = true
+    }
+  }
+  if (!changed) return manifest
+  return {
+    ...manifest,
+    workflow: {
+      ...manifest.workflow,
+      accepts: { ...accepts, properties },
+    },
+  }
 }
 
 /**

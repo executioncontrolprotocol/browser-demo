@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import type { ReactFlowPort } from "@executioncontrolprotocol/format-reactflow"
 import {
-  createBrowserFileLocator,
   createCapabilityBlobStore,
+  type CapabilityBlob,
   type CapabilityBlobStore,
 } from "@executioncontrolprotocol/core"
 import { ConfigPortControl } from "./ConfigFieldControl.js"
-import { draftForPort, parseEditedLiteral } from "../lib/step-configure.js"
+import { draftForPort, editorKindForPort, parseEditedLiteral } from "../lib/step-configure.js"
 import { runFormPortsFromAccepts } from "../lib/workflow-io.js"
-import { capabilityBlobFromFile, isRunFormFilePort } from "../lib/run-form-files.js"
+import { encodeFileForPort, locatorFromFileDraft } from "../lib/run-form-files.js"
 
 /** Props for {@link RunOutputPanel}. */
 export interface RunOutputPanelProps {
@@ -18,7 +18,7 @@ export interface RunOutputPanelProps {
   hasWorkflow: boolean
   acceptsSchema?: Record<string, unknown>
   runPublicOutput?: string
-  /** File picker for locator fields; off when the demo is unpaired. */
+  /** File picker requires a paired host for locator resolution / hops. */
   filePickerEnabled?: boolean
 }
 
@@ -35,7 +35,7 @@ export function RunOutputPanel({
   const ports = useMemo(() => runFormPortsFromAccepts(acceptsSchema), [acceptsSchema])
   const [drafts, setDrafts] = useState<Record<string, string>>({})
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
-  const filesByLocator = useRef(new Map<string, File>())
+  const filesByLocator = useRef(new Map<string, CapabilityBlob>())
 
   useEffect(() => {
     const next: Record<string, string> = {}
@@ -47,10 +47,22 @@ export function RunOutputPanel({
     filesByLocator.current.clear()
   }, [ports])
 
-  const stashFile = (portName: string, file: File) => {
-    const locator = createBrowserFileLocator()
-    filesByLocator.current.set(locator, file)
-    setDrafts((prev) => ({ ...prev, [portName]: locator }))
+  const applyFile = async (port: ReactFlowPort, file: File) => {
+    try {
+      const encoded = await encodeFileForPort(file, port)
+      filesByLocator.current.set(encoded.locator, encoded.blob)
+      setDrafts((prev) => ({ ...prev, [port.name]: encoded.draft }))
+      setFieldErrors((prev) => {
+        const next = { ...prev }
+        delete next[port.name]
+        return next
+      })
+    } catch (err) {
+      setFieldErrors((prev) => ({
+        ...prev,
+        [port.name]: err instanceof Error ? err.message : String(err),
+      }))
+    }
   }
 
   const handleRun = () => {
@@ -62,8 +74,9 @@ export function RunOutputPanel({
     const errors: Record<string, string> = {}
     const blobs = createCapabilityBlobStore()
     for (const port of ports) {
+      const draft = drafts[port.name] ?? ""
       const parsed = parseEditedLiteral(
-        drafts[port.name] ?? "",
+        draft,
         undefined,
         port.typeLabel,
         port.valueSchema,
@@ -74,9 +87,10 @@ export function RunOutputPanel({
         continue
       }
       input[port.name] = parsed.value
-      if (typeof parsed.value === "string") {
-        const file = filesByLocator.current.get(parsed.value)
-        if (file) blobs.set(parsed.value, capabilityBlobFromFile(file))
+      const locator = locatorFromFileDraft(draft)
+      if (locator) {
+        const blob = filesByLocator.current.get(locator)
+        if (blob) blobs.set(locator, blob)
       }
     }
     setFieldErrors(errors)
@@ -91,43 +105,29 @@ export function RunOutputPanel({
           <p className="font-mono text-label uppercase tracking-wide text-on-surface-variant">
             Run input
           </p>
-          {ports.map((port: ReactFlowPort) => (
-            <div key={port.id} className="space-y-1.5">
-              <span className="font-mono text-label text-on-surface">
-                {port.name}
-                <span className="text-outline">:{port.typeLabel}</span>
-              </span>
-              <ConfigPortControl
-                fieldId={`run-${port.name}`}
-                port={port}
-                value={drafts[port.name] ?? ""}
-                busy={runBusy}
-                onChange={(next) => setDrafts((prev) => ({ ...prev, [port.name]: next }))}
-              />
-              {isRunFormFilePort(port) ? (
-                <div className="space-y-1">
-                  <input
-                    type="file"
-                    className="block w-full font-mono text-label text-on-surface-variant file:mr-2 file:rounded file:border file:border-outline-variant file:bg-surface-container-high file:px-2 file:py-1 file:font-mono file:text-label"
-                    disabled={runBusy || !filePickerEnabled}
-                    onChange={(e) => {
-                      const file = e.target.files?.[0]
-                      if (file) stashFile(port.name, file)
-                    }}
-                  />
-                  {!filePickerEnabled ? (
-                    <span className="block text-label text-on-surface-variant">
-                      File picker requires a local host. Start `ecp up --env …` to upload at step
-                      time. Paste an https URL for local capabilities.
-                    </span>
-                  ) : null}
-                </div>
-              ) : null}
-              {fieldErrors[port.name] ? (
-                <span className="block text-label text-error">{fieldErrors[port.name]}</span>
-              ) : null}
-            </div>
-          ))}
+          {ports.map((port: ReactFlowPort) => {
+            const kind = editorKindForPort(port)
+            return (
+              <div key={port.id} className="space-y-1.5">
+                <span className="font-mono text-label text-on-surface">
+                  {port.name}
+                  <span className="text-outline">:{port.typeLabel}</span>
+                </span>
+                <ConfigPortControl
+                  fieldId={`run-${port.name}`}
+                  port={port}
+                  value={drafts[port.name] ?? ""}
+                  busy={runBusy}
+                  onChange={(next) => setDrafts((prev) => ({ ...prev, [port.name]: next }))}
+                  filePickerEnabled={filePickerEnabled}
+                  onFile={kind === "file" ? (file) => void applyFile(port, file) : undefined}
+                />
+                {fieldErrors[port.name] ? (
+                  <span className="block text-label text-error">{fieldErrors[port.name]}</span>
+                ) : null}
+              </div>
+            )
+          })}
         </div>
       ) : null}
       <button

@@ -40,6 +40,7 @@ import {
   removeReturnsProperty,
   schemaFromIoFields,
   workflowIoPatchOps,
+  withNormalizedFileAccepts,
   withWorkflowIoSchema,
   workflowContract,
 } from "./lib/workflow-io.js"
@@ -873,7 +874,7 @@ export function App() {
     setRunPublicOutput("")
     layout.ensureWorkflowVisible()
     try {
-      const result = await ecp.run(manifest, {
+      const result = await ecp.run(withNormalizedFileAccepts(manifest), {
         ...(input ? { input } : {}),
         ...(blobs ? { blobs } : {}),
       })

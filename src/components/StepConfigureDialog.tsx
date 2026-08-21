@@ -12,6 +12,7 @@ import {
   unboundPorts,
   type StepConfigureSavePayload,
 } from "../lib/step-configure.js"
+import { encodeFileForConfigure } from "../lib/run-form-files.js"
 
 /** Props for {@link StepConfigureDialog}. */
 export interface StepConfigureDialogProps {
@@ -204,6 +205,20 @@ export function StepConfigureDialog({
                     value={drafts[port.name] ?? ""}
                     busy={busy}
                     onChange={(next) => setDrafts((prev) => ({ ...prev, [port.name]: next }))}
+                    onFile={
+                      editorKindForPort(port) === "file"
+                        ? (file) => {
+                            void encodeFileForConfigure(file, port).then((encoded) => {
+                              setDrafts((prev) => ({ ...prev, [port.name]: encoded.draft }))
+                              setFieldErrors((prev) => {
+                                const next = { ...prev }
+                                delete next[port.name]
+                                return next
+                              })
+                            })
+                          }
+                        : undefined
+                    }
                   />
                   {fieldError ? <span className="block text-label text-error">{fieldError}</span> : null}
                 </div>

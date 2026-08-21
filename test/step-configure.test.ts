@@ -92,6 +92,24 @@ describe("step-configure helpers", () => {
     expect(editorKindForValueSchema({ type: "boolean" })).toBe("boolean")
   })
 
+  it("maps file schemas and labels to file editor", () => {
+    expect(editorKindForTypeLabel("file")).toBe("file")
+    expect(
+      editorKindForValueSchema(
+        { type: "string", contentMediaType: "image/png" },
+        "string",
+        "asset"
+      )
+    ).toBe("file")
+    expect(
+      editorKindForValueSchema(
+        { type: "object", properties: { kind: { enum: ["buffer", "file"] } } },
+        "object",
+        "image"
+      )
+    ).toBe("file")
+  })
+
   it("lists unbound schema ports", () => {
     const step: ReactFlowStepData = {
       label: "Gen",

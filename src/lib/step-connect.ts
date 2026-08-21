@@ -36,7 +36,7 @@ function kindFromSchemaType(type: unknown): PortTypeKind | undefined {
 function kindFromTypeLabel(typeLabel: string | undefined): PortTypeKind {
   const base = normalizeTypeLabel(typeLabel ?? "")
   if (!base || base === "unknown") return "unknown"
-  if (base === "string") return "string"
+  if (base === "string" || base === "file") return "string"
   if (base === "number" || base === "int" || base === "integer" || base === "float") return "number"
   if (base === "boolean" || base === "bool") return "boolean"
   if (base === "object" || base === "record" || base === "json") return "object"

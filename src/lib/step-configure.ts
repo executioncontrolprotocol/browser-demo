@@ -1,5 +1,6 @@
 import type { ReactFlowPort, ReactFlowStepData } from "@executioncontrolprotocol/format-reactflow"
 import type { StepNode, WorkflowNode } from "@executioncontrolprotocol/types"
+import { isFileValueSchema } from "./run-form-files.js"
 
 const LONG_TEXT_PARAM_NAMES = new Set(["prompt", "system", "instructions", "query", "text"])
 
@@ -18,6 +19,7 @@ export type ConfigEditorKind =
   | "enum-radio"
   | "multiselect"
   | "json"
+  | "file"
 
 function isStepNode(node: WorkflowNode): node is StepNode {
   return !node.type || node.type === "step"
@@ -66,6 +68,7 @@ export function normalizeTypeLabel(typeLabel: string): string {
  */
 export function editorKindForTypeLabel(typeLabel: string): ConfigEditorKind {
   const base = normalizeTypeLabel(typeLabel)
+  if (base === "file") return "file"
   if (base === "number" || base === "int" || base === "integer" || base === "float") return "number"
   if (base === "boolean" || base === "bool") return "boolean"
   if (
@@ -132,6 +135,10 @@ export function editorKindForValueSchema(
   fieldName?: string,
   valueTitle?: string
 ): ConfigEditorKind {
+  if (isFileValueSchema(valueSchema, typeLabelFallback, fieldName)) {
+    return "file"
+  }
+
   if (valueSchema) {
     const multi = multiSelectOptionsFromValueSchema(valueSchema)
     if (multi) return "multiselect"
@@ -195,6 +202,7 @@ export function defaultDraftForKind(
     case "enum":
     case "enum-radio":
       return enumOptions && enumOptions.length > 0 ? String(enumOptions[0]) : ""
+    case "file":
     case "longtext":
     case "string":
     default:
@@ -218,6 +226,7 @@ export function defaultTypedValueForKind(
     case "enum":
     case "enum-radio":
       return enumOptions && enumOptions.length > 0 ? enumOptions[0] : ""
+    case "file":
     case "longtext":
     case "string":
     default:
@@ -509,6 +518,18 @@ export function parseEditedLiteral(
       } catch {
         return { ok: false, error: "Invalid JSON" }
       }
+    }
+    case "file": {
+      const trimmed = text.trim()
+      if (!trimmed) return { ok: false, error: "Choose a file" }
+      if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+        try {
+          return { ok: true, value: JSON.parse(trimmed) as unknown }
+        } catch {
+          return { ok: false, error: "Invalid file value JSON" }
+        }
+      }
+      return { ok: true, value: trimmed }
     }
     case "longtext":
     case "string":

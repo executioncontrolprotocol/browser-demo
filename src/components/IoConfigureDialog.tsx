@@ -5,8 +5,16 @@ import {
   type WorkflowIoField,
   type WorkflowIoSchemaType,
 } from "../lib/workflow-io.js"
+import { WORKFLOW_FILE_VALUE_SCHEMA } from "../lib/run-form-files.js"
 
-const TYPE_OPTIONS: WorkflowIoSchemaType[] = ["string", "number", "boolean", "object", "array"]
+const TYPE_OPTIONS: WorkflowIoSchemaType[] = [
+  "string",
+  "number",
+  "boolean",
+  "object",
+  "array",
+  "file",
+]
 
 /** Save payload for projected Inputs / Outputs configure. */
 export interface IoConfigureSavePayload {
@@ -65,7 +73,7 @@ export function IoConfigureDialog({
       name,
       type: newType,
       required: true,
-      valueSchema: { type: newType },
+      valueSchema: newType === "file" ? { ...WORKFLOW_FILE_VALUE_SCHEMA } : { type: newType },
     }
     setRows((prev) => [...prev, field])
     setOriginalNames((prev) => [...prev, ""])
@@ -156,7 +164,14 @@ export function IoConfigureDialog({
                       const type = e.target.value as WorkflowIoSchemaType
                       setRows((prev) =>
                         prev.map((r, i) =>
-                          i === index ? { ...r, type, valueSchema: { type } } : r
+                          i === index
+                            ? {
+                                ...r,
+                                type,
+                                valueSchema:
+                                  type === "file" ? { ...WORKFLOW_FILE_VALUE_SCHEMA } : { type },
+                              }
+                            : r
                         )
                       )
                     }}
