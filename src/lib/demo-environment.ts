@@ -24,7 +24,6 @@ import { registerChromeAiExtension } from "@executioncontrolprotocol/chrome-ai"
 import { registerOpenaiExtension } from "@executioncontrolprotocol/extension-openai"
 import { registerClaudeExtension } from "@executioncontrolprotocol/claude"
 import { registerOllamaExtension } from "@executioncontrolprotocol/extension-ollama"
-import { registerFalExtension } from "@executioncontrolprotocol/extension-fal"
 import { registerFormatEqlExtension } from "@executioncontrolprotocol/format-eql"
 import { registerFormatToonExtension } from "@executioncontrolprotocol/format-toon"
 import { registerFormatMermaidExtension } from "@executioncontrolprotocol/format-mermaid"
@@ -33,7 +32,6 @@ import "@executioncontrolprotocol/chrome-ai"
 import "@executioncontrolprotocol/extension-openai"
 import "@executioncontrolprotocol/claude"
 import "@executioncontrolprotocol/extension-ollama"
-import "@executioncontrolprotocol/extension-fal"
 import "@executioncontrolprotocol/format-eql"
 import "@executioncontrolprotocol/format-toon"
 import "@executioncontrolprotocol/format-mermaid"
@@ -66,7 +64,6 @@ export async function createDemoAppEnvironment(
   await registerOpenaiExtension(globalRegistry)
   await registerClaudeExtension(globalRegistry)
   await registerOllamaExtension(globalRegistry)
-  await registerFalExtension(globalRegistry)
   await registerFormatEqlExtension(globalRegistry)
   await registerFormatToonExtension(globalRegistry)
   await registerFormatMermaidExtension(globalRegistry)
@@ -89,10 +86,6 @@ export async function createDemoAppEnvironment(
   env.addExtensionBinding("@executioncontrolprotocol/claude", {
     apiKey: browser("ANTHROPIC_API_KEY", { optional: true }),
   })
-  env.addExtensionBinding("@executioncontrolprotocol/fal", {
-    apiKey: browser("FAL_KEY", { optional: true }),
-    defaultMode: "subscribe",
-  })
 
   env.withHarnesses([
     harness(BROWSER_NANO_HARNESS_ID, "Nano Harness")
@@ -111,6 +104,7 @@ export async function createDemoAppEnvironment(
         "@executioncontrolprotocol/claude",
         "@executioncontrolprotocol/ollama",
         "@executioncontrolprotocol/fal",
+        "@executioncontrolprotocol/image-sharp",
         "@executioncontrolprotocol/azure-blob-storage",
         "@executioncontrolprotocol/browser",
         "@customer/*",

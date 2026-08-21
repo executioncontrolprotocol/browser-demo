@@ -1,16 +1,19 @@
+# Verify-only: secrets scan, typecheck, test, and build.
+# Does not deploy. GitHub Pages stays on push to main (pages.yml).
 name: ci
 
 on:
   push:
-    branches: [main]
+    branches: [main, development]
   pull_request:
+    branches: [main, development]
 
 permissions:
   contents: read
 
 jobs:
   secrets:
-    name: secrets
+    name: Secrets scan
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -18,24 +21,16 @@ jobs:
         with:
           fetch-depth: 0
           path: browser-demo
-      - uses: actions/checkout@v5
-        with:
-          repository: executioncontrolprotocol/executioncontrolprotocol
-          path: executioncontrolprotocol
       - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: browser-demo/package-lock.json
-      - name: Build ECP format-reactflow (file: dependency)
-        working-directory: executioncontrolprotocol
-        run: |
-          npm ci
-          npm run build -w @executioncontrolprotocol/types
-          npm run build -w @executioncontrolprotocol/core
-          npm run build -w @executioncontrolprotocol/format-reactflow
       - working-directory: browser-demo
         run: npm ci
+      - name: Forbid file: package links
+        working-directory: browser-demo
+        run: npm run check:no-file-deps
       - name: Secretlint (working tree)
         working-directory: browser-demo
         run: npm run secrets:scan
@@ -50,36 +45,56 @@ jobs:
         working-directory: browser-demo
         run: gitleaks detect --source . --redact --verbose --config .gitleaks.toml
 
-  ci:
+  typecheck:
+    name: Typecheck
     runs-on: ubuntu-latest
-    needs: secrets
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
         with:
           path: browser-demo
-      - uses: actions/checkout@v5
-        with:
-          repository: executioncontrolprotocol/executioncontrolprotocol
-          path: executioncontrolprotocol
       - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: |
-            browser-demo/package-lock.json
-            executioncontrolprotocol/package-lock.json
-      - name: Build ECP format-reactflow (file: dependency)
-        working-directory: executioncontrolprotocol
-        run: |
-          npm ci
-          npm run build -w @executioncontrolprotocol/types
-          npm run build -w @executioncontrolprotocol/core
-          npm run build -w @executioncontrolprotocol/format-reactflow
+          cache-dependency-path: browser-demo/package-lock.json
       - working-directory: browser-demo
         run: npm ci
       - working-directory: browser-demo
         run: npm run typecheck
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          path: browser-demo
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: browser-demo/package-lock.json
+      - working-directory: browser-demo
+        run: npm ci
       - working-directory: browser-demo
         run: npm test
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          path: browser-demo
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: browser-demo/package-lock.json
+      - working-directory: browser-demo
+        run: npm ci
       - working-directory: browser-demo
         run: npm run build

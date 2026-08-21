@@ -72,7 +72,7 @@ All of the following are registered on the global extension catalog when the bro
 | `@executioncontrolprotocol/openai` | `packages/extensions/openai` | OpenAI Chat Completions |
 | `@executioncontrolprotocol/claude` | `packages/extensions/claude` | Anthropic Messages API |
 | `@executioncontrolprotocol/fal` | `packages/extensions/fal` | FAL image/model inference (`generate`) |
-| `@executioncontrolprotocol/image-sharp` | `packages/extensions/image-sharp` | Image inspect/transform capabilities (describe + authoring; native `sharp` runs on Node only) |
+| `@executioncontrolprotocol/image-sharp` | `packages/extensions/image-sharp` (sibling repo) | Image inspect/transform — **bound in the demo** as browser catalog; native `sharp` runs via host hop |
 | `@executioncontrolprotocol/policies` (standard) | `packages/policies` | Including `@executioncontrolprotocol/registry-control` |
 
 Source: [`packages/runtimes/browser/src/environment.ts`](https://github.com/executioncontrolprotocol/executioncontrolprotocol/blob/main/packages/runtimes/browser/src/environment.ts).
@@ -157,9 +157,11 @@ Demo-generated workflows may reference `@executioncontrolprotocol/chrome-ai.gene
 | Extension | Capability examples | Config | Browser run |
 | --------- | ------------------- | ------ | ----------- |
 | `@executioncontrolprotocol/fal` | `@executioncontrolprotocol/fal.generate` | `apiKey` via `browser("FAL_KEY")` in vault; step `input` requires FAL endpoint payload (`endpoint?`, `input`, `mode?`) | **Yes** — real `@fal-ai/client` in the browser (Vite prebundles the CJS package; do not stub it) |
-| `@executioncontrolprotocol/image-sharp` | `inspect`, `metadata`, `transform`, `resize`, `crop`, `convert`, `composite`, … | Extension binding `{}`; steps pass `image` (buffer/base64/path per schema) | **Author in the tab, run on host** — package `exports["."].browser` is catalog-only (no native `sharp`); dispatch hops to `ecp up --env …` |
+| `@executioncontrolprotocol/image-sharp` | `inspect`, `metadata`, `transform`, `resize`, `crop`, `convert`, `composite`, … | Extension binding `{}`; steps pass `image` (buffer/base64/path per schema) | **Bound in the demo** — browser catalog only; run hops to a paired host. Use `ecp up --env` with an environment that binds image-sharp (e.g. [extensions/examples/04-image-prep](https://github.com/executioncontrolprotocol/extensions/tree/main/examples/04-image-prep)). Bare `ecp up` (Ollama-only) cannot serve Sharp. Unpaired runs fail with a clear “local host required” error. |
 
 Store `FAL_KEY` in the encrypted vault (Settings → encrypted API keys) alongside OpenAI and Claude keys. Harness authoring summaries include required vs optional fields from each capability schema so models can propose valid `WITH` blocks.
+
+Local unpublished `@executioncontrolprotocol/image-sharp`: build the extensions monorepo, `npm link` in `packages/image-sharp`, then `npm link @executioncontrolprotocol/image-sharp` here (semver range in `package.json`; never `file:`).
 
 Reference workflow: [`examples/03-fal-chain/workflow.ts`](https://github.com/executioncontrolprotocol/executioncontrolprotocol/blob/main/examples/03-fal-chain/workflow.ts) in the protocol repo.
 

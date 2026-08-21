@@ -23,7 +23,9 @@ Prefer the real SDK whenever it can run in the browser:
 | Extension | Browser runtime | Notes |
 | --------- | --------------- | ----- |
 | `@executioncontrolprotocol/fal` | **Yes** — official `@fal-ai/client` | Configure `apiKey` via `browser("FAL_KEY")` (vault / secrets). Vite prebundles the CJS client (`optimizeDeps.include`). |
-| `@executioncontrolprotocol/image-sharp` | **Catalog + host hop** | Package `exports["."].browser` is catalog-only (no native `sharp`). Dispatch hops to `ecp up --env …`. |
+| `@executioncontrolprotocol/image-sharp` | **Catalog + host hop** | Bound in the demo env (browser catalog only; no native `sharp`). Steps hop to `ecp up --env …` that binds Sharp on the host. Bare `ecp up` (Ollama-only) is not enough. |
+
+Local unpublished dogfood: build the extensions repo, then `npm link` from `packages/image-sharp` and `npm link @executioncontrolprotocol/image-sharp` in this app (never commit `file:` deps). Host example: [extensions/examples/04-image-prep](https://github.com/executioncontrolprotocol/extensions/tree/main/examples/04-image-prep) — `ecp up --env environment.ts --open-url http://localhost:5173/`.
 
 Do not stub browser-capable HTTP clients. Native addons belong on the package `browser` export, not a Vite alias.
 
@@ -243,13 +245,13 @@ npm run eval:matrix
 | Type errors in demo after ECP API change | Rebuild ECP, then `npm run typecheck` here; update demo imports if the API moved |
 | Linked package still shows old behavior | Confirm link targets built `dist/` (`npm run build` in ECP); restart `npm run dev` |
 | `npm install` fails on `@executioncontrolprotocol/*` | Publish packages or complete `npm link` setup above |
-| `Harness prompt fixture not found: intent-classification` | Ensure `@executioncontrolprotocol/harnesses-browser-*` is `>=0.10.1` (0.10.0 had a bad `import.meta.glob` path). Reinstall from the lockfile; do not use stale `file:` links to unbuilt packages. |
-
-**Alternative to `npm link` (local only — do not commit):** temporarily override ranges with `"file:../executioncontrolprotocol/packages/..."` in `package.json`, or use `npm install ../executioncontrolprotocol/packages/<pkg>`. Restore caret ranges before push so GitHub Actions / Pages can resolve from the npm registry.
+| `Harness prompt fixture not found: intent-classification` | Ensure `@executioncontrolprotocol/harnesses-browser-*` is `>=0.10.1` (0.10.0 had a bad `import.meta.glob` path). Reinstall from the lockfile; use `npm link` for local unpublished packages — never `file:` deps. |
 
 ## Local ECP development (`npm link`) — summary
 
 When developing ECP and the demo side-by-side, link local built packages instead of pulling from npm. See [Rebuild workspace from scratch](#rebuild-workspace-from-scratch-after-large-ecp-changes) for the full procedure.
+
+**Never use `file:` package links** in `package.json` (CI and Pages resolve from the npm registry only). `npm run check:no-file-deps` enforces this on pre-commit and in CI.
 
 **Tips:**
 
@@ -278,11 +280,15 @@ npm run supabase:push
 
 Copy `.env.example` to `.env` and set `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`.
 
+## CI
+
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on push and pull request to **`main`** and **`development`**. Jobs: **Secrets scan** (includes `check:no-file-deps`), **Typecheck**, **Test**, and **Build**. It does not deploy.
+
 ## Deploy (GitHub Pages)
 
 Live demo: `https://executioncontrolprotocol.github.io/browser-demo/`
 
-Deploys on push to **`main`** via [`.github/workflows/pages.yml`](.github/workflows/pages.yml).
+Deploys on push to **`main`** via [`.github/workflows/pages.yml`](.github/workflows/pages.yml). `development` is verify-only (see CI above).
 
 **Setup:** repo **Settings → Pages → Source: GitHub Actions**.
 

@@ -13,21 +13,17 @@ describe("createDemoAppEnvironment", () => {
     expect(descriptor.remoteInvoke).toBeUndefined()
   })
 
-  it("binds FAL and not image-sharp", async () => {
+  it("keeps chrome-ai local and does not bind unpublished vendor packages", async () => {
     const { descriptor } = await createDemoAppEnvironment()
-    const ids = descriptor.capabilities.map((c) => c.id)
-    expect(ids).toContain("@executioncontrolprotocol/fal.generate")
-    expect(ids).not.toContain("@executioncontrolprotocol/image-sharp.inspect")
-    expect(descriptor.extensions.some((e) => e.id === "@executioncontrolprotocol/fal")).toBe(true)
-    expect(descriptor.extensions.some((e) => e.id === "@executioncontrolprotocol/image-sharp")).toBe(
-      false
-    )
-    const fal = descriptor.capabilities.find((c) => c.id === "@executioncontrolprotocol/fal.generate")
-    expect(fal?.execution).toBe("host")
     const chrome = descriptor.capabilities.find(
       (c) => c.id === "@executioncontrolprotocol/chrome-ai.generate"
     )
     expect(chrome?.execution).toBe("local")
+    // fal / image-sharp are host-side via `ecp up` + npm link — not committed deps.
+    expect(descriptor.extensions.some((e) => e.id === "@executioncontrolprotocol/fal")).toBe(false)
+    expect(descriptor.extensions.some((e) => e.id === "@executioncontrolprotocol/image-sharp")).toBe(
+      false
+    )
   })
 
   it("binds remoteInvoke from pairing without including the token", async () => {
