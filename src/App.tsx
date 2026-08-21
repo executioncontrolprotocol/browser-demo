@@ -51,6 +51,7 @@ import { FirstRunModal } from "./components/FirstRunModal.js"
 import { VaultSetupModal } from "./components/VaultSetupModal.js"
 import { VaultUnlockModal } from "./components/VaultUnlockModal.js"
 import { ReactFlowCanvas } from "./components/ReactFlowCanvas.js"
+import { RunResultModal } from "./components/RunResultModal.js"
 import { StepConfigureDialog } from "./components/StepConfigureDialog.js"
 import { IoConfigureDialog, type IoConfigureSavePayload } from "./components/IoConfigureDialog.js"
 import { StatusFooter } from "./components/StatusFooter.js"
@@ -174,6 +175,9 @@ export function App() {
   const [runPublicOutput, setRunPublicOutput] = useState("")
   const [runBusy, setRunBusy] = useState(false)
   const [runOverlayOpen, setRunOverlayOpen] = useState(false)
+  const [runResultModalOpen, setRunResultModalOpen] = useState(false)
+  const [lastRunResult, setLastRunResult] = useState<unknown>(null)
+  const lastRunBlobs = useRef<CapabilityBlobStore | undefined>(undefined)
   const [configureStepId, setConfigureStepId] = useState<string | null>(null)
   const [configureBusy, setConfigureBusy] = useState(false)
   const [configureError, setConfigureError] = useState<string | null>(null)
@@ -872,18 +876,23 @@ export function App() {
     setRunBusy(true)
     setRunOutput("")
     setRunPublicOutput("")
+    lastRunBlobs.current = blobs
     layout.ensureWorkflowVisible()
     try {
       const result = await ecp.run(withNormalizedFileAccepts(manifest), {
         ...(input ? { input } : {}),
         ...(blobs ? { blobs } : {}),
       })
+      setLastRunResult(result)
       setRunOutput(JSON.stringify(result, null, 2))
       const output = (result as { output?: Record<string, unknown> }).output
       setRunPublicOutput(output ? JSON.stringify(output, null, 2) : "")
       setRunOverlayOpen(true)
+      setRunResultModalOpen(true)
     } catch (err) {
-      setRunOutput(err instanceof Error ? err.message : String(err))
+      const message = err instanceof Error ? err.message : String(err)
+      setLastRunResult({ error: message })
+      setRunOutput(message)
       setRunOverlayOpen(true)
     } finally {
       setRunBusy(false)
@@ -947,6 +956,9 @@ export function App() {
                 acceptsSchema={manifest ? workflowContract(manifest).accepts : undefined}
                 runPublicOutput={runPublicOutput || undefined}
                 filePickerEnabled={Boolean(descriptor?.remoteInvoke?.url)}
+                onOpenResultModal={
+                  runOutput ? () => setRunResultModalOpen(true) : undefined
+                }
                 capabilityExecution={capabilityExecutionMap(descriptor)}
                 hostPaired={Boolean(descriptor?.remoteInvoke?.url)}
                 onConfigureStep={onConfigureStep}
@@ -978,6 +990,16 @@ export function App() {
         validation={validation}
         chromeInstallUi={chromeInstallUi}
         chromeInstallState={chromeInstallState}
+      />
+
+      <RunResultModal
+        open={runResultModalOpen}
+        onClose={() => setRunResultModalOpen(false)}
+        runResult={lastRunResult}
+        runOutputJson={runOutput}
+        runPublicOutput={runPublicOutput || undefined}
+        bridge={bridgeSettings}
+        blobs={lastRunBlobs.current}
       />
 
       {showProviderModal ? (

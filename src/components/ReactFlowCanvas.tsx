@@ -113,6 +113,8 @@ export interface ReactFlowCanvasProps {
   runPublicOutput?: string
   /** File picker for locator fields; off when unpaired. */
   filePickerEnabled?: boolean
+  /** Open rich run result modal. */
+  onOpenResultModal?: () => void
   /** Capability id → execution from describe(). */
   capabilityExecution?: Record<string, CapabilityExecution>
   /** Whether `withRemoteInvoke` is bound. */
@@ -146,6 +148,7 @@ function ReactFlowCanvasInner({
   acceptsSchema,
   runPublicOutput,
   filePickerEnabled = false,
+  onOpenResultModal,
   capabilityExecution = {},
   hostPaired = false,
   onConfigureStep,
@@ -524,6 +527,7 @@ function ReactFlowCanvasInner({
               acceptsSchema={acceptsSchema}
               runPublicOutput={runPublicOutput}
               filePickerEnabled={filePickerEnabled}
+              onOpenResultModal={onOpenResultModal}
             />
           </div>
         </div>

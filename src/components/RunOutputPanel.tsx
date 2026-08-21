@@ -20,6 +20,8 @@ export interface RunOutputPanelProps {
   runPublicOutput?: string
   /** File picker requires a paired host for locator resolution / hops. */
   filePickerEnabled?: boolean
+  /** Open rich run result modal when JSON is available. */
+  onOpenResultModal?: () => void
 }
 
 /** Run workflow, collect `accepts` input, and display JSON output. */
@@ -31,6 +33,7 @@ export function RunOutputPanel({
   acceptsSchema,
   runPublicOutput,
   filePickerEnabled = false,
+  onOpenResultModal,
 }: RunOutputPanelProps) {
   const ports = useMemo(() => runFormPortsFromAccepts(acceptsSchema), [acceptsSchema])
   const [drafts, setDrafts] = useState<Record<string, string>>({})
@@ -138,6 +141,15 @@ export function RunOutputPanel({
       >
         {runBusy ? "Running..." : "Run workflow"}
       </button>
+      {runOutput && onOpenResultModal ? (
+        <button
+          type="button"
+          onClick={onOpenResultModal}
+          className="mb-4 ml-2 rounded border border-outline-variant px-4 py-2 font-mono text-label text-on-surface hover:bg-surface-container-high"
+        >
+          View output
+        </button>
+      ) : null}
       {runPublicOutput ? (
         <div className="mb-4">
           <p className="mb-2 font-mono text-label uppercase tracking-wide text-on-surface-variant">
