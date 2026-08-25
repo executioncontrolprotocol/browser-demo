@@ -19,9 +19,8 @@ function aliasPath(...segments: string[]): string {
   return join(...segments).replace(/\\/g, "/")
 }
 
-const repoName = process.env.GITHUB_REPOSITORY?.split("/")[1]
-const pagesBase =
-  process.env.GITHUB_PAGES === "true" && repoName ? `/${repoName}/` : "/"
+/** Deploy at domain root (custom domain). Override with VITE_BASE for a subpath. */
+const pagesBase = process.env.VITE_BASE?.trim() || "/"
 
 export default defineConfig({
   base: pagesBase,

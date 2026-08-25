@@ -31,8 +31,7 @@ jobs:
       - name: Build for GitHub Pages
         working-directory: browser-demo
         env:
-          GITHUB_PAGES: "true"
-          GITHUB_REPOSITORY: ${{ github.repository }}
+          # Custom domain serves at / (not /browser-demo/). Override with VITE_BASE if needed.
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
         run: npm run build:pages

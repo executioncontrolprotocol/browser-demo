@@ -284,22 +284,24 @@ Copy `.env.example` to `.env` and set `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUB
 
 ## Deploy (GitHub Pages)
 
-Live demo: `https://executioncontrolprotocol.github.io/browser-demo/`
+Live demo: `https://demo.executioncontrolprotocol.io/`
 
-Deploys on push to **`main`** via [`.github/workflows/pages.yml`](.github/workflows/pages.yml). `development` is verify-only (see CI above).
+Deploys on push to **`main`** via [`.github/workflows/pages.yml`](.github/workflows/pages.yml). `development` is verify-only (see CI above). Assets are built with Vite `base: "/"` for the custom domain (domain root, not `/browser-demo/`).
 
-**Setup:** repo **Settings → Pages → Source: GitHub Actions**.
+**Setup:** repo **Settings → Pages → Source: GitHub Actions**, custom domain `demo.executioncontrolprotocol.io`.
 
 **Secrets for Supabase logging in production builds:**
 
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_PUBLISHABLE_KEY`
 
-Local Pages build:
+Local production build (same as Pages):
 
 ```sh
-GITHUB_PAGES=true GITHUB_REPOSITORY=executioncontrolprotocol/browser-demo npm run build:pages
+npm run build:pages
 ```
+
+For a subdirectory deploy, set `VITE_BASE=/your-subpath/` before building.
 
 Requires `@executioncontrolprotocol/*@^0.12.0` from npm (or `npm link` to a local build) so browser `core/compile` exports `compileHarnessArtifactSource` (used by the coding harness).
 
