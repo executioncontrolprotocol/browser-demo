@@ -1,6 +1,6 @@
 ---
 description: Browser demo React Flow canvas UX (ports, edges, run, configure)
-globs: src/components/{ReactFlowCanvas,EcpStepNode,EcpIoNode,EcpDataEdge,StepConfigureDialog,IoConfigureDialog,RunOutputPanel}.tsx,src/lib/{reactflow-run-status,step-configure,step-connect,workflow-io,edge-menu}.ts,src/hooks/useReactFlowRunProgress.ts,src/styles/globals.css
+globs: src/components/{ReactFlowCanvas,EcpStepNode,EcpIoNode,EcpDataEdge,StepConfigureDialog,IoConfigureDialog,RunResultModal,RunInputForm}.tsx,src/lib/{reactflow-run-status,step-configure,step-connect,workflow-io,edge-menu}.ts,src/hooks/useReactFlowRunProgress.ts,src/styles/globals.css
 alwaysApply: false
 ---
 
@@ -18,7 +18,7 @@ Canonical decisions: sibling monorepo
 - Idle routes: solid cyan matching input handles (`--color-tertiary-fixed-dim`).
 - During run: marching ants on in-flight edges; green when source step completed.
 - Node pulse: soft, low-spread shadow on **running** only; keep a clear green completed glow.
-- Do not open the state modal on Run click — open when the run finishes (or when `accepts` needs a form); keep **Inspect state** in the zoom/fit Controls.
+- Do not open the state modal on Run click — open when the run finishes (or when `accepts` needs a form); keep **Inspect state** in the zoom/fit Controls. Use one **Workflow state** modal with modes: **input** (play / accepts form only), **output** (post-run media + output + expandable JSON), **inspect** (canvas control — inputs + outputs). Dismiss the modal while the run is in progress so the canvas run animation stays visible.
 - Configure dialog (steps): removable literals after save, add unbound Zod params, editable `as` with ref rewrite; save via `ecp.patch` + `syncFromManifest`.
 - Configure dialog (I/O): patch `workflow.accepts` / `workflow.returns`, not `steps[id]`. Add/remove/rename schema properties. Renaming an accepts key rewrites `state.<old>` refs.
 - Canvas connect: output→input writes `$ref` into target `step.input` (Fluent `ref(...)`); Inputs source uses the property name (`ref("prompt")`). Dropping onto an occupied handle **replaces** the previous connection. Click a route to select it; the mid-path ellipsis (or right-click) opens **Delete connection**. Backspace/Delete also removes that binding — never delete step nodes from the canvas. Connect to Outputs patches `returns` so the property name matches source `.as()`. Same patch + sync path. Do not treat RF edges as source of truth—re-encode after patch.

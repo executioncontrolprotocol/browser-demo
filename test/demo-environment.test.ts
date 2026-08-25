@@ -13,10 +13,11 @@ describe("createDemoAppEnvironment", () => {
     expect(descriptor.remoteInvoke).toBeUndefined()
   })
 
-  it("registers formats for encode without binding them into the authoring inventory", async () => {
+  it("registers formats for encode; binds format-reactflow only for canvas run progress", async () => {
     const { descriptor, ecp } = await createDemoAppEnvironment()
-    expect(descriptor.extensions.some((e) => e.id.includes("/format-"))).toBe(false)
-    expect(descriptor.capabilities.some((c) => c.id.includes("/format-"))).toBe(false)
+    const formatExtensions = descriptor.extensions.filter((e) => e.id.includes("/format-"))
+    expect(formatExtensions.map((e) => e.id)).toEqual(["@executioncontrolprotocol/format-reactflow"])
+    expect(descriptor.capabilities.some((c) => c.id.includes("/format-"))).toBe(true)
     const encoded = await ecp
       .encode({
         schema: "@executioncontrolprotocol.workflow",

@@ -76,8 +76,10 @@ export async function createDemoAppEnvironment(
   await registerFormatReactflowExtension(globalRegistry)
 
   // Formats stay registered for panel encode/decode (.uses(...)) but are not bound
-  // into the authoring environment — they are app tooling, not workflow step inventory.
+  // into the authoring environment — except format-reactflow, which must be bound
+  // so its lifecycle hooks drive canvas run progress (marching ants, node pulse).
   const env = createBrowserEnvironment("browser-demo-app")
+  env.addExtensionBinding("@executioncontrolprotocol/format-reactflow", {})
   env.addExtensionBinding("@executioncontrolprotocol/chrome-ai", {})
   env.addExtensionBinding("@executioncontrolprotocol/ollama", {
     baseURL: ollama.baseURL,

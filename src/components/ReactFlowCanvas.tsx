@@ -26,14 +26,12 @@ import {
   type EdgeMenuTarget,
 } from "./reactflow-edge-menu-context.js"
 import { PanelHeader } from "./PanelHeader.js"
-import { RunOutputPanel } from "./RunOutputPanel.js"
 import { useReactFlowRunProgress } from "../hooks/useReactFlowRunProgress.js"
 import { edgeStatusClass, stepNodeStatusClass } from "../lib/reactflow-run-status.js"
 import { edgeMenuPosition } from "../lib/edge-menu.js"
 import { portsAreCompatible } from "../lib/step-connect.js"
 import { ensureReturnsNode } from "../lib/workflow-io.js"
 import { capabilityHostBadge } from "../lib/capability-execution-badge.js"
-import type { CapabilityBlobStore } from "@executioncontrolprotocol/core"
 import type { CapabilityExecution } from "@executioncontrolprotocol/types"
 
 const EDGE_INTERACTION_WIDTH = 24
@@ -99,22 +97,10 @@ function parseDocument(source: string): ReactFlowDocument | null {
 /** Props for {@link ReactFlowCanvas}. */
 export interface ReactFlowCanvasProps {
   reactflowJson: string
-  runOutput: string
   runBusy: boolean
-  runOverlayOpen: boolean
-  onCloseRunOverlay: () => void
-  /** Open the run/state inspect overlay without starting a run. */
-  onOpenRunOverlay: () => void
-  onRun: (input?: Record<string, unknown>, blobs?: CapabilityBlobStore) => void
+  /** Open the workflow state modal (input / inspect). */
+  onOpenRunModal: () => void
   hasWorkflow: boolean
-  /** JSON Schema object for `workflow.accepts` (run form). */
-  acceptsSchema?: Record<string, unknown>
-  /** Last public `result.output` JSON when `returns` is set. */
-  runPublicOutput?: string
-  /** File picker for locator fields; off when unpaired. */
-  filePickerEnabled?: boolean
-  /** Open rich run result modal. */
-  onOpenResultModal?: () => void
   /** Capability id → execution from describe(). */
   capabilityExecution?: Record<string, CapabilityExecution>
   /** Whether `withRemoteInvoke` is bound. */
@@ -138,17 +124,9 @@ export interface ReactFlowCanvasProps {
 
 function ReactFlowCanvasInner({
   reactflowJson,
-  runOutput,
   runBusy,
-  runOverlayOpen,
-  onCloseRunOverlay,
-  onOpenRunOverlay,
-  onRun,
+  onOpenRunModal,
   hasWorkflow,
-  acceptsSchema,
-  runPublicOutput,
-  filePickerEnabled = false,
-  onOpenResultModal,
   capabilityExecution = {},
   hostPaired = false,
   onConfigureStep,
@@ -160,7 +138,7 @@ function ReactFlowCanvasInner({
     () => (doc?.nodes.filter((n) => n.type === "ecp-step").map((n) => n.id) ?? []),
     [doc]
   )
-  const { statuses, runActive } = useReactFlowRunProgress(stepIds)
+  const { statuses, runActive } = useReactFlowRunProgress(stepIds, runBusy)
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
@@ -373,7 +351,7 @@ function ReactFlowCanvasInner({
           }
         }
         const status = statuses[node.id]
-        const statusClass = stepNodeStatusClass(status, runActive || runBusy)
+        const statusClass = stepNodeStatusClass(status, runActive)
         return {
           ...node,
           data: {
@@ -384,13 +362,13 @@ function ReactFlowCanvasInner({
           className: statusClass,
         }
       }),
-    [nodes, statuses, runActive, runBusy, connectedByNode]
+    [nodes, statuses, runActive, connectedByNode]
   )
 
   const decoratedEdges = useMemo(
     () =>
       edges.map((edge) => {
-        const cls = edgeStatusClass(statuses[edge.source], statuses[edge.target], runActive || runBusy)
+        const cls = edgeStatusClass(statuses[edge.source], statuses[edge.target], runActive)
         const incomplete = cls === "ecp-rf-edge--incomplete"
         const completed = cls === "ecp-rf-edge--completed"
         return {
@@ -410,7 +388,7 @@ function ReactFlowCanvasInner({
           },
         }
       }),
-    [edges, statuses, runActive, runBusy]
+    [edges, statuses, runActive]
   )
 
   return (
@@ -420,10 +398,7 @@ function ReactFlowCanvasInner({
     >
       <PanelHeader icon="account_tree" label="Workflow Canvas" />
 
-      <div
-        ref={canvasRef}
-        className={`relative flex min-h-0 flex-1 flex-col ${runOverlayOpen ? "opacity-50" : ""}`}
-      >
+      <div ref={canvasRef} className="relative flex min-h-0 flex-1 flex-col">
         {hasWorkflow && doc ? (
           <ReactFlowConfigureContext.Provider value={onConfigureStep}>
             <ReactFlowEdgeMenuContext.Provider value={handleOpenEdgeMenu}>
@@ -458,7 +433,7 @@ function ReactFlowCanvasInner({
                   className="react-flow__controls-button ecp-rf-controls-inspect"
                   title="Inspect state"
                   aria-label="Inspect state"
-                  onClick={onOpenRunOverlay}
+                  onClick={onOpenRunModal}
                 >
                   <span
                     className="material-symbols-outlined ecp-rf-controls-inspect-icon"
@@ -504,34 +479,6 @@ function ReactFlowCanvasInner({
           </div>
         )}
       </div>
-
-      {runOverlayOpen ? (
-        <div className="absolute inset-0 z-20 flex items-start justify-center overflow-auto bg-background/50 p-6 backdrop-blur-[2px]">
-          <div className="flex w-full max-w-2xl flex-col rounded-xl border border-outline-variant bg-surface-container p-6">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="font-display text-headline text-on-surface">Workflow state</h2>
-              <button
-                type="button"
-                className="material-symbols-outlined cursor-pointer text-on-surface-variant hover:text-on-surface"
-                onClick={onCloseRunOverlay}
-                aria-label="Close"
-              >
-                close
-              </button>
-            </div>
-            <RunOutputPanel
-              runOutput={runOutput}
-              runBusy={runBusy}
-              onRun={onRun}
-              hasWorkflow={hasWorkflow}
-              acceptsSchema={acceptsSchema}
-              runPublicOutput={runPublicOutput}
-              filePickerEnabled={filePickerEnabled}
-              onOpenResultModal={onOpenResultModal}
-            />
-          </div>
-        </div>
-      ) : null}
     </section>
   )
 }

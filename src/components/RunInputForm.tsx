@@ -10,31 +10,24 @@ import { draftForPort, editorKindForPort, parseEditedLiteral } from "../lib/step
 import { runFormPortsFromAccepts } from "../lib/workflow-io.js"
 import { encodeFileForPort, locatorFromFileDraft } from "../lib/run-form-files.js"
 
-/** Props for {@link RunOutputPanel}. */
-export interface RunOutputPanelProps {
-  runOutput: string
+/** Props for {@link RunInputForm}. */
+export interface RunInputFormProps {
   runBusy: boolean
   onRun: (input?: Record<string, unknown>, blobs?: CapabilityBlobStore) => void
   hasWorkflow: boolean
   acceptsSchema?: Record<string, unknown>
-  runPublicOutput?: string
   /** File picker requires a paired host for locator resolution / hops. */
   filePickerEnabled?: boolean
-  /** Open rich run result modal when JSON is available. */
-  onOpenResultModal?: () => void
 }
 
-/** Run workflow, collect `accepts` input, and display JSON output. */
-export function RunOutputPanel({
-  runOutput,
+/** Collects `accepts` input and runs the workflow. @category Demo */
+export function RunInputForm({
   runBusy,
   onRun,
   hasWorkflow,
   acceptsSchema,
-  runPublicOutput,
   filePickerEnabled = false,
-  onOpenResultModal,
-}: RunOutputPanelProps) {
+}: RunInputFormProps) {
   const ports = useMemo(() => runFormPortsFromAccepts(acceptsSchema), [acceptsSchema])
   const [drafts, setDrafts] = useState<Record<string, string>>({})
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
@@ -102,7 +95,7 @@ export function RunOutputPanel({
   }
 
   return (
-    <div>
+    <section>
       {ports.length > 0 ? (
         <div className="mb-4 space-y-3">
           <p className="font-mono text-label uppercase tracking-wide text-on-surface-variant">
@@ -137,32 +130,10 @@ export function RunOutputPanel({
         type="button"
         disabled={runBusy || !hasWorkflow}
         onClick={handleRun}
-        className="mb-4 rounded bg-primary px-4 py-2 font-mono text-label font-bold text-on-primary hover:brightness-110 disabled:opacity-50"
+        className="rounded bg-primary px-4 py-2 font-mono text-label font-bold text-on-primary hover:brightness-110 disabled:opacity-50"
       >
         {runBusy ? "Running..." : "Run workflow"}
       </button>
-      {runOutput && onOpenResultModal ? (
-        <button
-          type="button"
-          onClick={onOpenResultModal}
-          className="mb-4 ml-2 rounded border border-outline-variant px-4 py-2 font-mono text-label text-on-surface hover:bg-surface-container-high"
-        >
-          View output
-        </button>
-      ) : null}
-      {runPublicOutput ? (
-        <div className="mb-4">
-          <p className="mb-2 font-mono text-label uppercase tracking-wide text-on-surface-variant">
-            Output
-          </p>
-          <pre className="max-h-[20vh] overflow-auto rounded border border-outline-variant/50 bg-surface-container-lowest p-4 font-mono text-label text-on-surface-variant whitespace-pre-wrap">
-            {runPublicOutput}
-          </pre>
-        </div>
-      ) : null}
-      <pre className="max-h-[50vh] overflow-auto rounded border border-outline-variant/50 bg-surface-container-lowest p-4 font-mono text-label text-on-surface-variant whitespace-pre-wrap">
-        {runOutput || "Run output will appear here."}
-      </pre>
-    </div>
+    </section>
   )
 }

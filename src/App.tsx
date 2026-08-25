@@ -51,7 +51,7 @@ import { FirstRunModal } from "./components/FirstRunModal.js"
 import { VaultSetupModal } from "./components/VaultSetupModal.js"
 import { VaultUnlockModal } from "./components/VaultUnlockModal.js"
 import { ReactFlowCanvas } from "./components/ReactFlowCanvas.js"
-import { RunResultModal } from "./components/RunResultModal.js"
+import { RunResultModal, type RunModalMode } from "./components/RunResultModal.js"
 import { StepConfigureDialog } from "./components/StepConfigureDialog.js"
 import { IoConfigureDialog, type IoConfigureSavePayload } from "./components/IoConfigureDialog.js"
 import { StatusFooter } from "./components/StatusFooter.js"
@@ -174,8 +174,8 @@ export function App() {
   const [runOutput, setRunOutput] = useState("")
   const [runPublicOutput, setRunPublicOutput] = useState("")
   const [runBusy, setRunBusy] = useState(false)
-  const [runOverlayOpen, setRunOverlayOpen] = useState(false)
-  const [runResultModalOpen, setRunResultModalOpen] = useState(false)
+  const [runModalOpen, setRunModalOpen] = useState(false)
+  const [runModalMode, setRunModalMode] = useState<RunModalMode>("inspect")
   const [lastRunResult, setLastRunResult] = useState<unknown>(null)
   const lastRunBlobs = useRef<CapabilityBlobStore | undefined>(undefined)
   const [configureStepId, setConfigureStepId] = useState<string | null>(null)
@@ -874,6 +874,7 @@ export function App() {
   const onRun = async (input?: Record<string, unknown>, blobs?: CapabilityBlobStore) => {
     if (!ecp || !manifest) return
     setRunBusy(true)
+    setRunModalOpen(false)
     setRunOutput("")
     setRunPublicOutput("")
     lastRunBlobs.current = blobs
@@ -887,13 +888,14 @@ export function App() {
       setRunOutput(JSON.stringify(result, null, 2))
       const output = (result as { output?: Record<string, unknown> }).output
       setRunPublicOutput(output ? JSON.stringify(output, null, 2) : "")
-      setRunOverlayOpen(true)
-      setRunResultModalOpen(true)
+      setRunModalMode("output")
+      setRunModalOpen(true)
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
       setLastRunResult({ error: message })
       setRunOutput(message)
-      setRunOverlayOpen(true)
+      setRunModalMode("output")
+      setRunModalOpen(true)
     } finally {
       setRunBusy(false)
     }
@@ -903,7 +905,8 @@ export function App() {
     if (!manifest) return
     const accepts = workflowContract(manifest).accepts
     if (ioFieldsFromSchema(accepts).length > 0) {
-      setRunOverlayOpen(true)
+      setRunModalMode("input")
+      setRunModalOpen(true)
       return
     }
     void onRun()
@@ -946,19 +949,12 @@ export function App() {
             {layout.views.workflow ? (
               <ReactFlowCanvas
                 reactflowJson={reactflow}
-                runOutput={runOutput}
                 runBusy={runBusy}
-                runOverlayOpen={runOverlayOpen}
-                onCloseRunOverlay={() => setRunOverlayOpen(false)}
-                onOpenRunOverlay={() => setRunOverlayOpen(true)}
-                onRun={onRun}
+                onOpenRunModal={() => {
+                  setRunModalMode("inspect")
+                  setRunModalOpen(true)
+                }}
                 hasWorkflow={hasWorkflow}
-                acceptsSchema={manifest ? workflowContract(manifest).accepts : undefined}
-                runPublicOutput={runPublicOutput || undefined}
-                filePickerEnabled={Boolean(descriptor?.remoteInvoke?.url)}
-                onOpenResultModal={
-                  runOutput ? () => setRunResultModalOpen(true) : undefined
-                }
                 capabilityExecution={capabilityExecutionMap(descriptor)}
                 hostPaired={Boolean(descriptor?.remoteInvoke?.url)}
                 onConfigureStep={onConfigureStep}
@@ -993,13 +989,19 @@ export function App() {
       />
 
       <RunResultModal
-        open={runResultModalOpen}
-        onClose={() => setRunResultModalOpen(false)}
+        open={runModalOpen}
+        onClose={() => setRunModalOpen(false)}
+        mode={runModalMode}
         runResult={lastRunResult}
         runOutputJson={runOutput}
         runPublicOutput={runPublicOutput || undefined}
         bridge={bridgeSettings}
         blobs={lastRunBlobs.current}
+        runBusy={runBusy}
+        onRun={onRun}
+        hasWorkflow={hasWorkflow}
+        acceptsSchema={manifest ? workflowContract(manifest).accepts : undefined}
+        filePickerEnabled={Boolean(descriptor?.remoteInvoke?.url)}
       />
 
       {showProviderModal ? (

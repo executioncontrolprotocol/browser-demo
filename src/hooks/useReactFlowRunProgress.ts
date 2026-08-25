@@ -11,7 +11,7 @@ import {
 } from "../lib/reactflow-run-status.js"
 
 /** Subscribe to format-reactflow run progress for the Workflow canvas. */
-export function useReactFlowRunProgress(stepIds: string[]) {
+export function useReactFlowRunProgress(stepIds: string[], runBusy = false) {
   const [statuses, setStatuses] = useState<StepStatusMap>({})
   const [runActive, setRunActive] = useState(false)
   const stepKey = stepIds.join("\0")
@@ -41,5 +41,14 @@ export function useReactFlowRunProgress(stepIds: string[]) {
     }
   }, [stepKey])
 
-  return { statuses, runActive }
+  // Fallback when lifecycle hooks lag or the modal closed before the first hook:
+  // runBusy alone does not style edges — statuses must be pending/running.
+  useEffect(() => {
+    if (!runBusy) return
+    const ids = stepKey.length > 0 ? stepKey.split("\0") : []
+    setRunActive(true)
+    setStatuses(resetStepStatuses(ids))
+  }, [runBusy, stepKey])
+
+  return { statuses, runActive: runActive || runBusy }
 }

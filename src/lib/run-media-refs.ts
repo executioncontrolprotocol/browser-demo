@@ -31,16 +31,60 @@ function isArtifactLocator(value: string): boolean {
 }
 
 /**
+ * Collect media only from the workflow's final `output` (skip intermediate `state.*` artifacts).
+ * Also skips Sharp-style input echoes (`source.image` beside a result `image`) so resize/transform
+ * previews show the result once, not the input again.
+ * @category Demo
+ */
+export function collectFinalOutputMediaRefs(runResult: unknown): CollectedMediaRef[] {
+  if (runResult !== null && typeof runResult === "object" && !Array.isArray(runResult)) {
+    const output = (runResult as { output?: unknown }).output
+    if (output !== undefined) {
+      return collectMediaRefs(output, "output", { skipSourceEchoes: true })
+    }
+  }
+  return []
+}
+
+/**
  * Walk a run result (or any JSON value) and collect ImageRef / locator media values.
  * @category Demo
  */
-export function collectMediaRefs(value: unknown, basePath = ""): CollectedMediaRef[] {
+export function collectMediaRefs(
+  value: unknown,
+  basePath = "",
+  options: { skipSourceEchoes?: boolean } = {}
+): CollectedMediaRef[] {
   const out: CollectedMediaRef[] = []
-  walk(value, basePath, out)
+  walk(value, basePath, out, options.skipSourceEchoes === true)
   return out
 }
 
-function walk(value: unknown, path: string, out: CollectedMediaRef[]): void {
+/** Whether `value` looks like an ImageRef object. @category Demo */
+function isImageRefShape(value: unknown): boolean {
+  if (!isRecord(value)) return false
+  const kind = typeof value.kind === "string" ? value.kind : undefined
+  return Boolean(kind && IMAGE_REF_KINDS.has(kind))
+}
+
+/**
+ * Sharp transform/derive outputs echo the input as `source.image` next to the result.
+ * Skip that key when the parent already exposes a result `image` or `variants`.
+ * @category Demo
+ */
+export function shouldSkipSourceEchoKey(parent: Record<string, unknown>, key: string): boolean {
+  if (key !== "source") return false
+  if (isImageRefShape(parent.image)) return true
+  if (isRecord(parent.variants)) return true
+  return false
+}
+
+function walk(
+  value: unknown,
+  path: string,
+  out: CollectedMediaRef[],
+  skipSourceEchoes: boolean
+): void {
   if (typeof value === "string") {
     if (isBrowserLocator(value) || isArtifactLocator(value)) {
       out.push({
@@ -52,7 +96,9 @@ function walk(value: unknown, path: string, out: CollectedMediaRef[]): void {
     return
   }
   if (Array.isArray(value)) {
-    value.forEach((item, i) => walk(item, path ? `${path}[${i}]` : `[${i}]`, out))
+    value.forEach((item, i) =>
+      walk(item, path ? `${path}[${i}]` : `[${i}]`, out, skipSourceEchoes)
+    )
     return
   }
   if (!isRecord(value)) return
@@ -109,7 +155,8 @@ function walk(value: unknown, path: string, out: CollectedMediaRef[]): void {
   }
 
   for (const [key, child] of Object.entries(value)) {
-    walk(child, path ? `${path}.${key}` : key, out)
+    if (skipSourceEchoes && shouldSkipSourceEchoKey(value, key)) continue
+    walk(child, path ? `${path}.${key}` : key, out, skipSourceEchoes)
   }
 }
 

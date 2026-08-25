@@ -273,6 +273,11 @@
       0 16px 48px rgb(0 0 0 / 0.35);
   }
 
+  /** Match Workflow state overlay width (`max-w-2xl`). */
+  .modal-panel--run-output {
+    width: min(42rem, 92vw);
+  }
+
   .modal-panel-header {
     position: relative;
     flex-shrink: 0;

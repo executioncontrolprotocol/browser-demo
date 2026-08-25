@@ -1,16 +1,22 @@
 import { useEffect, useMemo, useState } from "react"
 import type { CapabilityBlobStore } from "@executioncontrolprotocol/core"
 import type { BridgeSettings } from "../lib/ecp-bridge.js"
-import { collectMediaRefs } from "../lib/run-media-refs.js"
+import { collectFinalOutputMediaRefs } from "../lib/run-media-refs.js"
 import {
   resolveMediaPreview,
   type ResolvedMediaPreview,
 } from "../lib/resolve-media-preview.js"
+import { RunInputForm } from "./RunInputForm.js"
+
+/** Which sections the workflow state modal shows. @category Demo */
+export type RunModalMode = "input" | "output" | "inspect"
 
 /** Props for {@link RunResultModal}. */
 export interface RunResultModalProps {
   open: boolean
   onClose: () => void
+  /** input = play form; output = post-run; inspect = canvas control (all). */
+  mode: RunModalMode
   /** Parsed run result (or error string wrapped by caller). */
   runResult: unknown
   /** Pretty JSON for the full dump. */
@@ -19,6 +25,11 @@ export interface RunResultModalProps {
   runPublicOutput?: string
   bridge?: BridgeSettings
   blobs?: CapabilityBlobStore
+  runBusy: boolean
+  onRun: (input?: Record<string, unknown>, blobs?: CapabilityBlobStore) => void
+  hasWorkflow: boolean
+  acceptsSchema?: Record<string, unknown>
+  filePickerEnabled?: boolean
 }
 
 function MediaPreview({ item }: { item: ResolvedMediaPreview }) {
@@ -64,26 +75,54 @@ function MediaPreview({ item }: { item: ResolvedMediaPreview }) {
   }
 }
 
+function titleForMode(mode: RunModalMode): string {
+  switch (mode) {
+    case "input":
+      return "Run workflow"
+    case "output":
+      return "Run output"
+    case "inspect":
+      return "Workflow state"
+  }
+}
+
 /**
- * Modal that previews media outputs from a workflow run and shows full JSON.
+ * Workflow state modal: input-only, output-only, or full inspect.
  * @category Demo
  */
 export function RunResultModal({
   open,
   onClose,
+  mode,
   runResult,
   runOutputJson,
   runPublicOutput,
   bridge,
   blobs,
+  runBusy,
+  onRun,
+  hasWorkflow,
+  acceptsSchema,
+  filePickerEnabled = false,
 }: RunResultModalProps) {
-  const mediaRefs = useMemo(() => collectMediaRefs(runResult), [runResult])
+  const mediaRefs = useMemo(() => collectFinalOutputMediaRefs(runResult), [runResult])
   const [previews, setPreviews] = useState<ResolvedMediaPreview[]>([])
   const [jsonOpen, setJsonOpen] = useState(false)
   const [loading, setLoading] = useState(false)
+  const showInput = mode === "input" || mode === "inspect"
+  const showOutput = mode === "output" || mode === "inspect"
+  const hasResult = Boolean(runOutputJson)
 
   useEffect(() => {
-    if (!open) return
+    if (!open) {
+      setJsonOpen(false)
+      return
+    }
+    if (!showOutput) {
+      setPreviews([])
+      setLoading(false)
+      return
+    }
     let cancelled = false
     const created: string[] = []
     setLoading(true)
@@ -113,7 +152,7 @@ export function RunResultModal({
         return []
       })
     }
-  }, [open, mediaRefs, bridge, blobs])
+  }, [open, showOutput, mediaRefs, bridge, blobs])
 
   if (!open) return null
 
@@ -131,10 +170,10 @@ export function RunResultModal({
       aria-labelledby="run-result-title"
       onClick={onClose}
     >
-      <div className="modal-panel max-w-3xl" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-panel modal-panel--run-output" onClick={(e) => e.stopPropagation()}>
         <header className="modal-panel-header">
           <h2 id="run-result-title" className="font-display text-headline text-on-surface">
-            Run output
+            {titleForMode(mode)}
           </h2>
           <button
             type="button"
@@ -146,46 +185,58 @@ export function RunResultModal({
           </button>
         </header>
         <div className="modal-panel-scroll flex flex-col gap-6">
-          <section className="space-y-3">
-            <p className="font-mono text-label uppercase tracking-wide text-on-surface-variant">
-              Media
-            </p>
-            {loading ? (
-              <p className="text-label text-on-surface-variant">Loading previews…</p>
-            ) : mediaRefs.length === 0 ? (
-              <p className="text-label text-on-surface-variant">No file or image refs in this result.</p>
-            ) : (
-              <ul className="space-y-4">
-                {previews.map((item) => (
-                  <li
-                    key={item.path}
-                    className="rounded border border-outline-variant/40 bg-surface-container-lowest p-3"
-                  >
-                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                      <div>
-                        <p className="font-mono text-label text-on-surface">{item.path}</p>
-                        <p className="font-mono text-label text-on-surface-variant">
-                          {item.name ? `${item.name} · ` : ""}
-                          {item.mediaType}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        disabled={!item.url && !item.hostOpenUrl}
-                        onClick={() => openNative(item)}
-                        className="rounded bg-primary px-3 py-1.5 font-mono text-label font-bold text-on-primary hover:brightness-110 disabled:opacity-40"
-                      >
-                        Open
-                      </button>
-                    </div>
-                    <MediaPreview item={item} />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
+          {showInput ? (
+            <RunInputForm
+              runBusy={runBusy}
+              onRun={onRun}
+              hasWorkflow={hasWorkflow}
+              acceptsSchema={acceptsSchema}
+              filePickerEnabled={filePickerEnabled}
+            />
+          ) : null}
 
-          {runPublicOutput ? (
+          {showOutput && hasResult ? (
+            <section className="space-y-3">
+              <p className="font-mono text-label uppercase tracking-wide text-on-surface-variant">
+                Media
+              </p>
+              {loading ? (
+                <p className="text-label text-on-surface-variant">Loading previews…</p>
+              ) : mediaRefs.length === 0 ? (
+                <p className="text-label text-on-surface-variant">No media in workflow output.</p>
+              ) : (
+                <ul className="space-y-4">
+                  {previews.map((item) => (
+                    <li
+                      key={item.path}
+                      className="rounded border border-outline-variant/40 bg-surface-container-lowest p-3"
+                    >
+                      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <p className="font-mono text-label text-on-surface">{item.path}</p>
+                          <p className="font-mono text-label text-on-surface-variant">
+                            {item.name ? `${item.name} · ` : ""}
+                            {item.mediaType}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={!item.url && !item.hostOpenUrl}
+                          onClick={() => openNative(item)}
+                          className="rounded bg-primary px-3 py-1.5 font-mono text-label font-bold text-on-primary hover:brightness-110 disabled:opacity-40"
+                        >
+                          Open
+                        </button>
+                      </div>
+                      <MediaPreview item={item} />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          ) : null}
+
+          {showOutput && runPublicOutput ? (
             <section>
               <p className="mb-2 font-mono text-label uppercase tracking-wide text-on-surface-variant">
                 Output
@@ -196,20 +247,22 @@ export function RunResultModal({
             </section>
           ) : null}
 
-          <section>
-            <button
-              type="button"
-              className="mb-2 font-mono text-label uppercase tracking-wide text-on-surface-variant hover:text-on-surface"
-              onClick={() => setJsonOpen((v) => !v)}
-            >
-              {jsonOpen ? "Hide full JSON" : "Show full JSON"}
-            </button>
-            {jsonOpen ? (
-              <pre className="max-h-[30vh] overflow-auto rounded border border-outline-variant/50 bg-surface-container-lowest p-3 font-mono text-label text-on-surface-variant whitespace-pre-wrap">
-                {runOutputJson || "—"}
-              </pre>
-            ) : null}
-          </section>
+          {showOutput ? (
+            <section>
+              <button
+                type="button"
+                className="mb-2 font-mono text-label uppercase tracking-wide text-on-surface-variant hover:text-on-surface"
+                onClick={() => setJsonOpen((v) => !v)}
+              >
+                {jsonOpen ? "Hide full state JSON" : "Show full state JSON"}
+              </button>
+              {jsonOpen ? (
+                <pre className="max-h-[30vh] overflow-auto rounded border border-outline-variant/50 bg-surface-container-lowest p-3 font-mono text-label text-on-surface-variant whitespace-pre-wrap">
+                  {runOutputJson || "Run output will appear here."}
+                </pre>
+              ) : null}
+            </section>
+          ) : null}
         </div>
         <footer className="modal-panel-footer">
           <button
