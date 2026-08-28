@@ -1,6 +1,7 @@
 import { useContext, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react"
 import { Handle, Position, useConnection, type NodeProps } from "@xyflow/react"
 import type { ReactFlowPort, ReactFlowStepData } from "@executioncontrolprotocol/format-reactflow"
+import { useSyncNodeHandles } from "../hooks/useSyncNodeHandles.js"
 import { portsAreCompatible } from "../lib/step-connect.js"
 import { ReactFlowConfigureContext } from "./reactflow-configure-context.js"
 
@@ -53,6 +54,12 @@ export function EcpStepNode({ id, data }: NodeProps) {
   const showConfigure = Boolean(onConfigureStep)
   const connectedTargets = new Set(step.connectedTargetHandles ?? [])
   const connectedSources = new Set(step.connectedSourceHandles ?? [])
+
+  useSyncNodeHandles(
+    id,
+    step.inputs.map((port) => port.id),
+    step.outputs.map((port) => port.id)
+  )
 
   const connection = useConnection()
   const dragFromOutput =

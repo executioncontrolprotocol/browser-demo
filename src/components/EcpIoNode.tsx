@@ -1,6 +1,7 @@
 import { useContext, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react"
 import { Handle, Position, useConnection, type NodeProps } from "@xyflow/react"
 import type { ReactFlowIoData, ReactFlowPort } from "@executioncontrolprotocol/format-reactflow"
+import { useSyncNodeHandles } from "../hooks/useSyncNodeHandles.js"
 import { portsAreCompatible } from "../lib/step-connect.js"
 import { RETURNS_PLACEHOLDER_HANDLE } from "../lib/workflow-io.js"
 import { ReactFlowConfigureContext } from "./reactflow-configure-context.js"
@@ -48,6 +49,12 @@ export function EcpIoNode({ id, data }: NodeProps) {
   const connectedTargets = new Set(io.connectedTargetHandles ?? [])
   const connectedSources = new Set(io.connectedSourceHandles ?? [])
   const isReturns = io.kind === "returns"
+
+  useSyncNodeHandles(
+    id,
+    io.inputs.map((port) => port.id),
+    io.outputs.map((port) => port.id)
+  )
 
   const connection = useConnection()
   const dragFromOutput =

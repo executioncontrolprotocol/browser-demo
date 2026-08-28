@@ -7,6 +7,7 @@ import {
   ReactFlowProvider,
   useEdgesState,
   useNodesState,
+  useReactFlow,
   type Connection,
   type Edge,
   type Node,
@@ -43,6 +44,21 @@ const nodeTypes = {
 
 const edgeTypes = {
   "ecp-data": EcpDataEdge,
+}
+
+/** Re-measure all nodes after the encoded document changes so edges attach to handles. */
+function ReactFlowInternalsSync({ nodeIds }: { nodeIds: string[] }) {
+  const { updateNodeInternals } = useReactFlow()
+  const nodeKey = nodeIds.join("\0")
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      for (const id of nodeIds) updateNodeInternals(id)
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [nodeKey, nodeIds, updateNodeInternals])
+
+  return null
 }
 
 function toRfNodes(nodes: ReactFlowNode[]): Node[] {
@@ -135,7 +151,7 @@ function ReactFlowCanvasInner({
 }: ReactFlowCanvasProps) {
   const doc = useMemo(() => parseDocument(reactflowJson), [reactflowJson])
   const stepIds = useMemo(
-    () => (doc?.nodes.filter((n) => n.type === "ecp-step").map((n) => n.id) ?? []),
+    () => (doc?.nodes.filter((n) => n.type === "ecp-step" || n.type === "ecp-io").map((n) => n.id) ?? []),
     [doc]
   )
   const { statuses, runActive } = useReactFlowRunProgress(stepIds, runBusy)
@@ -426,6 +442,7 @@ function ReactFlowCanvasInner({
               zoomOnDoubleClick={false}
               proOptions={{ hideAttribution: true }}
             >
+              <ReactFlowInternalsSync nodeIds={stepIds} />
               <Background gap={24} color="var(--color-surface-container-highest)" />
               <Controls className="ecp-rf-controls" showInteractive={false}>
                 <button
