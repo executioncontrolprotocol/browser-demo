@@ -4,51 +4,44 @@ import {
   isBrowserFileLocator,
   type CapabilityBlob,
 } from "@executioncontrolprotocol/core"
-import { IMAGE_REF_KINDS } from "@executioncontrolprotocol/types"
+import { FILE_REF_KINDS, fileRefValueSchemaHint, isFileRefKind } from "@executioncontrolprotocol/types"
 
 const FILE_FIELD_RE = /^(image|file|filePath|source|blob|photo|upload)$/i
 const LOCATOR_ONLY_FIELD_RE = /^(filePath|source)$/i
-const IMAGE_REF_FILE_FIELD_RE = /^(image|photo|file|blob|upload)$/i
+const FILE_REF_FILE_FIELD_RE = /^(image|photo|file|blob|upload)$/i
 
 /**
  * Default `workflow.accepts` schema for the demo `file` type.
- * Values are ImageRef file refs (`path: ecp://browser/<id>`), never base64 payloads.
+ * Values are FileRef file refs (`path: ecp://browser/<id>`), never base64 payloads.
  */
-export const WORKFLOW_FILE_VALUE_SCHEMA: Record<string, unknown> = {
-  "x-ecp-file": true,
-  type: "object",
-  required: ["kind", "path"],
-  properties: {
-    kind: { type: "string", const: IMAGE_REF_KINDS.FILE },
-    path: { type: "string" },
-    mediaType: { type: "string" },
-    sizeBytes: { type: "number" },
-  },
-}
+export const WORKFLOW_FILE_VALUE_SCHEMA: Record<string, unknown> = fileRefValueSchemaHint()
 
 /** How a file pick is encoded into run / configure input. */
-export type FilePortEncoding = "locator" | "image-ref-file"
+export type FilePortEncoding = "locator" | "file-ref-file"
 
 /**
- * Whether a JSON Schema hint describes an {@link ImageRef} (object with `kind`).
+ * Whether a JSON Schema hint describes a {@link FileRef} (object with `kind`).
  */
-export function isImageRefValueSchema(schema: Record<string, unknown> | undefined): boolean {
+export function isFileRefValueSchema(schema: Record<string, unknown> | undefined): boolean {
   if (!schema) return false
   if (schema.type === "object" && isRecord(schema.properties)) {
     const kind = schema.properties.kind
     if (isRecord(kind) && Array.isArray(kind.enum)) {
-      return kind.enum.some((v) => typeof v === "string" && isImageRefKind(v))
+      return kind.enum.some((v) => typeof v === "string" && isFileRefKind(v))
     }
-    if (isRecord(kind) && typeof kind.const === "string" && isImageRefKind(kind.const)) {
+    if (isRecord(kind) && typeof kind.const === "string" && isFileRefKind(kind.const)) {
       return true
     }
   }
   if (Array.isArray(schema.oneOf) || Array.isArray(schema.anyOf)) {
     const alts = (schema.oneOf ?? schema.anyOf) as unknown[]
-    return alts.some((alt) => isRecord(alt) && isImageRefValueSchema(alt))
+    return alts.some((alt) => isRecord(alt) && isFileRefValueSchema(alt))
   }
   return false
 }
+
+/** @deprecated Prefer {@link isFileRefValueSchema}. */
+export const isImageRefValueSchema = isFileRefValueSchema
 
 /**
  * Whether this schema / label / name should use the file editor.
@@ -64,12 +57,15 @@ export function isFileValueSchema(
     if (typeof valueSchema.contentMediaType === "string" && valueSchema.contentMediaType.length > 0) {
       return true
     }
+    if (Array.isArray(valueSchema.contentMediaType) && valueSchema.contentMediaType.length > 0) {
+      return true
+    }
     if (valueSchema.format === "binary" || valueSchema.format === "byte") return true
-    if (isImageRefValueSchema(valueSchema)) return true
+    if (isFileRefValueSchema(valueSchema)) return true
   }
   if (fieldName && FILE_FIELD_RE.test(fieldName)) {
     const t = valueSchema?.type
-    if (t === undefined || t === "string" || isImageRefValueSchema(valueSchema)) return true
+    if (t === undefined || t === "string" || isFileRefValueSchema(valueSchema)) return true
   }
   return false
 }
@@ -91,17 +87,17 @@ export function isRunFormFilePort(port: ReactFlowPort): boolean {
 }
 
 /**
- * ImageRef file refs for image/file accepts; plain locator strings for Azure `source` / `filePath`.
+ * FileRef file refs for image/file accepts; plain locator strings for Azure `source` / `filePath`.
  */
 export function filePortEncoding(port: {
   name: string
   typeLabel: string
   valueSchema?: Record<string, unknown>
 }): FilePortEncoding {
-  if (isImageRefValueSchema(port.valueSchema)) return "image-ref-file"
-  if (port.valueSchema?.["x-ecp-file"] === true) return "image-ref-file"
-  if (normalizeTypeLabel(port.typeLabel) === "file") return "image-ref-file"
-  if (IMAGE_REF_FILE_FIELD_RE.test(port.name)) return "image-ref-file"
+  if (isFileRefValueSchema(port.valueSchema)) return "file-ref-file"
+  if (port.valueSchema?.["x-ecp-file"] === true) return "file-ref-file"
+  if (normalizeTypeLabel(port.typeLabel) === "file") return "file-ref-file"
+  if (FILE_REF_FILE_FIELD_RE.test(port.name)) return "file-ref-file"
   if (LOCATOR_ONLY_FIELD_RE.test(port.name)) return "locator"
   return "locator"
 }
@@ -118,7 +114,7 @@ export function capabilityBlobFromFile(file: File): CapabilityBlob {
 
 /** Result of encoding a picked file into a draft + blob stash. */
 export interface EncodedFileInput {
-  /** Draft text stored in the form (locator string or ImageRef JSON with path ref). */
+  /** Draft text stored in the form (locator string or FileRef JSON with path ref). */
   draft: string
   /** Parsed run/configure value. */
   value: unknown
@@ -129,7 +125,7 @@ export interface EncodedFileInput {
 }
 
 /**
- * Encode a browser File as a locator or ImageRef file ref (never base64 file bytes).
+ * Encode a browser File as a locator or FileRef file ref (never base64 file bytes).
  */
 export async function encodeFileForPort(
   file: File,
@@ -139,9 +135,9 @@ export async function encodeFileForPort(
   const blob = capabilityBlobFromFile(file)
   const mediaType = file.type || undefined
 
-  if (filePortEncoding(port) === "image-ref-file") {
+  if (filePortEncoding(port) === "file-ref-file") {
     const value = {
-      kind: IMAGE_REF_KINDS.FILE,
+      kind: FILE_REF_KINDS.FILE,
       path: locator,
       ...(mediaType ? { mediaType } : {}),
       sizeBytes: file.size,
@@ -175,17 +171,17 @@ export function isFileDraftLocator(draft: string): boolean {
   return isBrowserFileLocator(draft.trim())
 }
 
-/** Extract a browser locator from a file draft (plain string or ImageRef file path). */
+/** Extract a browser locator from a file draft (plain string or FileRef file path). */
 export function locatorFromFileDraft(draft: string): string | undefined {
   const trimmed = draft.trim()
   if (isBrowserFileLocator(trimmed)) return trimmed
   if (!trimmed.startsWith("{")) return undefined
   try {
     const parsed = JSON.parse(trimmed) as { kind?: string; path?: string; uri?: string }
-    if (parsed.kind === IMAGE_REF_KINDS.FILE && typeof parsed.path === "string") {
+    if (parsed.kind === FILE_REF_KINDS.FILE && typeof parsed.path === "string") {
       return isBrowserFileLocator(parsed.path) ? parsed.path : undefined
     }
-    if (parsed.kind === IMAGE_REF_KINDS.ARTIFACT && typeof parsed.uri === "string") {
+    if (parsed.kind === FILE_REF_KINDS.ARTIFACT && typeof parsed.uri === "string") {
       return isBrowserFileLocator(parsed.uri) ? parsed.uri : undefined
     }
   } catch {
@@ -196,15 +192,6 @@ export function locatorFromFileDraft(draft: string): string | undefined {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value)
-}
-
-function isImageRefKind(value: string): boolean {
-  return (
-    value === IMAGE_REF_KINDS.ARTIFACT ||
-    value === IMAGE_REF_KINDS.FILE ||
-    value === IMAGE_REF_KINDS.URL ||
-    value === IMAGE_REF_KINDS.BUFFER
-  )
 }
 
 function normalizeTypeLabel(typeLabel: string): string {

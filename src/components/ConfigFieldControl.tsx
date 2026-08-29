@@ -8,6 +8,7 @@ import {
   type ConfigEditorKind,
 } from "../lib/step-configure.js"
 import { isBrowserFileLocator } from "@executioncontrolprotocol/core"
+import { fileAcceptHint } from "../lib/file-accept.js"
 
 function BooleanToggle({
   value,
@@ -43,6 +44,7 @@ function FileFieldControl({
   busy,
   disabled,
   hint,
+  accept,
   onFile,
 }: {
   name: string
@@ -50,14 +52,17 @@ function FileFieldControl({
   busy: boolean
   disabled: boolean
   hint?: string
+  accept?: string
   onFile?: (file: File) => void
 }) {
   const summary = fileDraftSummary(value)
+  const acceptHint = fileAcceptHint(accept)
   return (
     <div className="space-y-1">
       <input
         type="file"
         aria-label={name}
+        accept={accept}
         className="block w-full font-mono text-label text-on-surface-variant file:mr-2 file:rounded file:border file:border-outline-variant file:bg-surface-container-high file:px-2 file:py-1 file:font-mono file:text-label"
         disabled={busy || disabled || !onFile}
         onChange={(e) => {
@@ -67,6 +72,9 @@ function FileFieldControl({
       />
       {summary ? (
         <span className="block font-mono text-label text-on-surface-variant">{summary}</span>
+      ) : null}
+      {acceptHint ? (
+        <span className="block text-label text-on-surface-variant">{acceptHint}</span>
       ) : null}
       {hint ? <span className="block text-label text-on-surface-variant">{hint}</span> : null}
     </div>
@@ -101,6 +109,7 @@ export function ConfigFieldControl({
   enumOptions,
   filePickerEnabled = true,
   fileHint,
+  accept,
   onFile,
 }: {
   kind: ConfigEditorKind
@@ -112,6 +121,7 @@ export function ConfigFieldControl({
   enumOptions?: Array<string | number | boolean>
   filePickerEnabled?: boolean
   fileHint?: string
+  accept?: string
   onFile?: (file: File) => void
 }) {
   if (kind === "file") {
@@ -121,6 +131,7 @@ export function ConfigFieldControl({
         value={value}
         busy={busy}
         disabled={!filePickerEnabled}
+        accept={accept}
         hint={
           fileHint ??
           (!filePickerEnabled
@@ -264,6 +275,7 @@ export function ConfigPortControl({
   onChange,
   filePickerEnabled = true,
   fileHint,
+  accept,
   onFile,
 }: {
   fieldId: string
@@ -273,6 +285,7 @@ export function ConfigPortControl({
   onChange: (next: string) => void
   filePickerEnabled?: boolean
   fileHint?: string
+  accept?: string
   onFile?: (file: File) => void
 }) {
   return (
@@ -286,6 +299,7 @@ export function ConfigPortControl({
       enumOptions={optionsForPort(port)}
       filePickerEnabled={filePickerEnabled}
       fileHint={fileHint}
+      accept={accept}
       onFile={onFile}
     />
   )

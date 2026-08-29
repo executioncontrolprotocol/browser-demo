@@ -44,9 +44,68 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value)
 }
 
+/** Preset keys for workflow file `contentMediaType` hints. */
+export type WorkflowFileMediaPreset = "any" | "image/*" | "image/png" | "application/pdf" | "text/plain" | "custom"
+
+/** Preset options shown when configuring file I/O fields. */
+export const WORKFLOW_FILE_MEDIA_PRESETS: Array<{
+  id: WorkflowFileMediaPreset
+  label: string
+  contentMediaType?: string
+}> = [
+  { id: "any", label: "Any file" },
+  { id: "image/*", label: "Images (image/*)", contentMediaType: "image/*" },
+  { id: "image/png", label: "PNG (image/png)", contentMediaType: "image/png" },
+  { id: "application/pdf", label: "PDF (application/pdf)", contentMediaType: "application/pdf" },
+  { id: "text/plain", label: "Text (text/plain)", contentMediaType: "text/plain" },
+  { id: "custom", label: "Custom…" },
+]
+
+/** Read preset id + optional custom MIME from a file field schema. */
+export function fileMediaPresetFromSchema(
+  schema: Record<string, unknown>
+): { preset: WorkflowFileMediaPreset; custom?: string } {
+  const raw = schema.contentMediaType
+  if (typeof raw !== "string" || raw.length === 0) {
+    return { preset: "any" }
+  }
+  const match = WORKFLOW_FILE_MEDIA_PRESETS.find((p) => p.contentMediaType === raw)
+  if (match && match.id !== "custom") {
+    return { preset: match.id }
+  }
+  return { preset: "custom", custom: raw }
+}
+
+/** Apply a preset (or custom MIME) onto a file value schema clone. */
+export function fileSchemaWithMediaPreset(
+  schema: Record<string, unknown>,
+  preset: WorkflowFileMediaPreset,
+  custom?: string
+): Record<string, unknown> {
+  const next = { ...schema }
+  if (preset === "any") {
+    delete next.contentMediaType
+    return next
+  }
+  if (preset === "custom") {
+    const trimmed = custom?.trim()
+    if (trimmed) next.contentMediaType = trimmed
+    else delete next.contentMediaType
+    return next
+  }
+  const entry = WORKFLOW_FILE_MEDIA_PRESETS.find((p) => p.id === preset)
+  if (entry?.contentMediaType) {
+    next.contentMediaType = entry.contentMediaType
+  }
+  return next
+}
+
 function schemaType(schema: Record<string, unknown>): WorkflowIoSchemaType {
   if (schema["x-ecp-file"] === true) return "file"
   if (typeof schema.contentMediaType === "string" && schema.contentMediaType.length > 0) {
+    return "file"
+  }
+  if (Array.isArray(schema.contentMediaType) && schema.contentMediaType.length > 0) {
     return "file"
   }
   if (schema.format === "binary" || schema.format === "byte") return "file"

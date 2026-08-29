@@ -1,20 +1,23 @@
 import { describe, expect, it } from "vitest"
-import { IMAGE_REF_KINDS } from "@executioncontrolprotocol/types"
+import { FILE_REF_KINDS } from "@executioncontrolprotocol/types"
 import {
   encodeFileForConfigure,
   encodeFileForPort,
   filePortEncoding,
   isFilePort,
-  isImageRefValueSchema,
+  isFileRefValueSchema,
   isRunFormFilePort,
   locatorFromFileDraft,
   WORKFLOW_FILE_VALUE_SCHEMA,
 } from "../src/lib/run-form-files.js"
 import { editorKindForPort, editorKindForTypeLabel, parseEditedLiteral } from "../src/lib/step-configure.js"
+import { fileAcceptFromValueSchema } from "../src/lib/file-accept.js"
 import {
   ioFieldsFromSchema,
   schemaFromIoFields,
   withNormalizedFileAccepts,
+  fileSchemaWithMediaPreset,
+  fileMediaPresetFromSchema,
 } from "../src/lib/workflow-io.js"
 
 describe("file port detection", () => {
@@ -47,8 +50,8 @@ describe("file port detection", () => {
     expect(editorKindForTypeLabel("file!")).toBe("file")
   })
 
-  it("detects ImageRef schemas as file-ref encoding", () => {
-    const imageRefSchema = {
+  it("detects FileRef schemas as file-ref encoding", () => {
+    const fileRefSchemaHint = {
       oneOf: [
         {
           type: "object",
@@ -60,11 +63,21 @@ describe("file port detection", () => {
         },
       ],
     }
-    expect(isImageRefValueSchema(imageRefSchema)).toBe(true)
-    expect(filePortEncoding({ name: "image", typeLabel: "object", valueSchema: imageRefSchema })).toBe(
-      "image-ref-file"
+    expect(isFileRefValueSchema(fileRefSchemaHint)).toBe(true)
+    expect(filePortEncoding({ name: "image", typeLabel: "object", valueSchema: fileRefSchemaHint })).toBe(
+      "file-ref-file"
     )
     expect(filePortEncoding({ name: "source", typeLabel: "string" })).toBe("locator")
+  })
+
+  it("maps contentMediaType to file accept strings", () => {
+    const port = {
+      name: "image",
+      typeLabel: "file!",
+      valueSchema: { ...WORKFLOW_FILE_VALUE_SCHEMA, contentMediaType: "image/*" },
+    }
+    expect(editorKindForPort(port)).toBe("file")
+    expect(fileAcceptFromValueSchema(port.valueSchema)).toBe("image/*")
   })
 })
 
@@ -78,7 +91,7 @@ describe("file encode + parse", () => {
     })
     expect(encoded.locator).toMatch(/^ecp:\/\/browser\//)
     const value = JSON.parse(encoded.draft) as { kind: string; path: string; mediaType: string }
-    expect(value.kind).toBe(IMAGE_REF_KINDS.FILE)
+    expect(value.kind).toBe(FILE_REF_KINDS.FILE)
     expect(value.path).toBe(encoded.locator)
     expect(value.mediaType).toBe("image/png")
     expect(encoded.draft.includes('"data"')).toBe(false)
@@ -111,7 +124,7 @@ describe("file encode + parse", () => {
       typeLabel: "file!",
       valueSchema: { ...WORKFLOW_FILE_VALUE_SCHEMA },
     })
-    expect(JSON.parse(encoded.draft).kind).toBe(IMAGE_REF_KINDS.FILE)
+    expect(JSON.parse(encoded.draft).kind).toBe(FILE_REF_KINDS.FILE)
     expect(encoded.draft.includes('"data"')).toBe(false)
   })
 })
@@ -138,7 +151,7 @@ describe("workflow io file type", () => {
         typeLabel: "file!",
         valueSchema: fields[0]!.valueSchema,
       })
-    ).toBe("image-ref-file")
+    ).toBe("file-ref-file")
   })
 
   it("upgrades legacy string file accepts for run validation", () => {
@@ -168,5 +181,21 @@ describe("workflow io file type", () => {
       type: "object",
       "x-ecp-file": true,
     })
+  })
+
+  it("persists contentMediaType on file I/O fields", () => {
+    const schema = schemaFromIoFields([
+      {
+        name: "doc",
+        type: "file",
+        required: true,
+        valueSchema: fileSchemaWithMediaPreset({ ...WORKFLOW_FILE_VALUE_SCHEMA }, "application/pdf"),
+      },
+    ])
+    expect((schema?.properties as Record<string, Record<string, unknown>>).doc.contentMediaType).toBe(
+      "application/pdf"
+    )
+    const fields = ioFieldsFromSchema(schema)
+    expect(fileMediaPresetFromSchema(fields[0]!.valueSchema).preset).toBe("application/pdf")
   })
 })

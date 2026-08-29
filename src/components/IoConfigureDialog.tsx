@@ -2,8 +2,12 @@ import { useEffect, useState } from "react"
 import type { ReactFlowIoData, ReactFlowIoKind } from "@executioncontrolprotocol/format-reactflow"
 import {
   WORKFLOW_IO_NAME_RE,
+  WORKFLOW_FILE_MEDIA_PRESETS,
+  fileMediaPresetFromSchema,
+  fileSchemaWithMediaPreset,
   type WorkflowIoField,
   type WorkflowIoSchemaType,
+  type WorkflowFileMediaPreset,
 } from "../lib/workflow-io.js"
 import { WORKFLOW_FILE_VALUE_SCHEMA } from "../lib/run-form-files.js"
 
@@ -137,9 +141,12 @@ export function IoConfigureDialog({
               {kind === "accepts" ? " to accept run input." : " to expose run output."}
             </p>
           ) : (
-            rows.map((row, index) => (
+            rows.map((row, index) => {
+              const mediaPreset =
+                row.type === "file" ? fileMediaPresetFromSchema(row.valueSchema) : undefined
+              return (
+              <div key={`${originalNames[index] || row.name}-${index}`} className="space-y-2">
               <div
-                key={`${originalNames[index] || row.name}-${index}`}
                 className="grid grid-cols-[1fr_8rem_auto_auto] items-end gap-3"
               >
                 <label className="block space-y-1">
@@ -209,7 +216,69 @@ export function IoConfigureDialog({
                   Remove
                 </button>
               </div>
-            ))
+              {row.type === "file" ? (
+                <div className="grid grid-cols-[12rem_1fr] items-end gap-3 pl-0">
+                  <label className="block space-y-1">
+                    <span className="font-mono text-label text-on-surface">Accept types</span>
+                    <select
+                      className="w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-3 py-2 font-mono text-sm text-on-surface outline-none focus:border-outline"
+                      value={mediaPreset?.preset ?? "any"}
+                      onChange={(e) => {
+                        const preset = e.target.value as WorkflowFileMediaPreset
+                        setRows((prev) =>
+                          prev.map((r, i) =>
+                            i === index
+                              ? {
+                                  ...r,
+                                  valueSchema: fileSchemaWithMediaPreset(r.valueSchema, preset),
+                                }
+                              : r
+                          )
+                        )
+                      }}
+                      disabled={busy}
+                    >
+                      {WORKFLOW_FILE_MEDIA_PRESETS.map((opt) => (
+                        <option key={opt.id} value={opt.id}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {mediaPreset?.preset === "custom" ? (
+                    <label className="block space-y-1">
+                      <span className="font-mono text-label text-on-surface">Custom MIME</span>
+                      <input
+                        type="text"
+                        className="w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-3 py-2 font-mono text-sm text-on-surface outline-none focus:border-outline"
+                        value={mediaPreset.custom ?? ""}
+                        placeholder="image/webp"
+                        onChange={(e) => {
+                          const custom = e.target.value
+                          setRows((prev) =>
+                            prev.map((r, i) =>
+                              i === index
+                                ? {
+                                    ...r,
+                                    valueSchema: fileSchemaWithMediaPreset(
+                                      r.valueSchema,
+                                      "custom",
+                                      custom
+                                    ),
+                                  }
+                                : r
+                            )
+                          )
+                        }}
+                        disabled={busy}
+                      />
+                    </label>
+                  ) : null}
+                </div>
+              ) : null}
+              </div>
+            )
+            })
           )}
 
           <div className="flex flex-wrap items-end gap-3 border-t border-outline-variant/50 pt-4">

@@ -9,6 +9,7 @@ import { ConfigPortControl } from "./ConfigFieldControl.js"
 import { draftForPort, editorKindForPort, parseEditedLiteral } from "../lib/step-configure.js"
 import { runFormPortsFromAccepts } from "../lib/workflow-io.js"
 import { encodeFileForPort, locatorFromFileDraft } from "../lib/run-form-files.js"
+import { fileAcceptFromValueSchema } from "../lib/file-accept.js"
 
 /** Props for {@link RunInputForm}. */
 export interface RunInputFormProps {
@@ -116,6 +117,7 @@ export function RunInputForm({
                   busy={runBusy}
                   onChange={(next) => setDrafts((prev) => ({ ...prev, [port.name]: next }))}
                   filePickerEnabled={filePickerEnabled}
+                  accept={fileAcceptFromValueSchema(port.valueSchema)}
                   onFile={kind === "file" ? (file) => void applyFile(port, file) : undefined}
                 />
                 {fieldErrors[port.name] ? (
