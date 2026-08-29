@@ -553,6 +553,57 @@
     box-shadow: 0 0 8px color-mix(in srgb, var(--color-error) 30%, transparent);
   }
 
+  .ecp-rf-node-error-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .ecp-rf-node-error-badge {
+    font-size: 1rem;
+    line-height: 1;
+    color: var(--color-error);
+    cursor: help;
+  }
+
+  .ecp-rf-node-error-popover {
+    position: absolute;
+    top: calc(100% + 0.35rem);
+    right: 0;
+    z-index: 40;
+    width: max-content;
+    max-width: min(280px, 70vw);
+    padding: 0.625rem 0.75rem;
+    border-radius: 0.5rem;
+    border: 1px solid color-mix(in srgb, var(--color-error) 35%, var(--color-outline-variant));
+    background-color: var(--color-surface-container);
+    color: var(--color-on-surface-variant);
+    font-family: "Hanken Grotesk", system-ui, sans-serif;
+    font-size: 0.75rem;
+    font-weight: 400;
+    letter-spacing: 0.01em;
+    line-height: 1.35;
+    text-transform: none;
+    box-shadow:
+      0 0 12px color-mix(in srgb, var(--color-error) 18%, transparent),
+      0 8px 24px rgb(0 0 0 / 0.35);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-4px);
+    pointer-events: none;
+    transition:
+      opacity 0.15s ease,
+      visibility 0.15s ease,
+      transform 0.15s ease;
+  }
+
+  .ecp-rf-node-error-wrap:hover .ecp-rf-node-error-popover,
+  .ecp-rf-node-error-wrap:focus-within .ecp-rf-node-error-popover {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+  }
+
   .ecp-rf-node--io {
     border-style: dashed;
   }
@@ -627,6 +678,13 @@
 
   .react-flow__edge.ecp-rf-edge--completed path {
     stroke: var(--color-status-valid) !important;
+    stroke-dasharray: none !important;
+    animation: none !important;
+  }
+
+  .react-flow__edge.ecp-rf-edge--failed path {
+    stroke: var(--color-error) !important;
+    stroke-width: 2.5;
     stroke-dasharray: none !important;
     animation: none !important;
   }

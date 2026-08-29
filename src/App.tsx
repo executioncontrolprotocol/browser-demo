@@ -12,6 +12,7 @@ import {
 import type {
   EnvironmentDescriptor,
   HarnessInvokeResult,
+  RunResult,
   StepNode,
   ValidationResult,
   WorkflowManifest,
@@ -114,6 +115,11 @@ import {
   WORKFLOW_QUICK_STARTS,
   shouldShowWorkflowQuickStarts,
 } from "./lib/workflow-quick-starts.js"
+import {
+  emitRunProgressFailed,
+  isFailedRunResult,
+  syncRunProgressFromResult,
+} from "./lib/run-progress-sync.js"
 import type { CodeEditorTab, FormatTab } from "./types/workspace.js"
 
 const EMPTY_MERMAID = "flowchart TD\n  empty[No workflow]"
@@ -879,26 +885,34 @@ export function App() {
     setRunPublicOutput("")
     lastRunBlobs.current = blobs
     layout.ensureWorkflowVisible()
+    let result: RunResult | undefined
     try {
-      const result = await ecp.run(withNormalizedFileAccepts(manifest), {
+      result = (await ecp.run(withNormalizedFileAccepts(manifest), {
         ...(input ? { input } : {}),
         ...(blobs ? { blobs } : {}),
-      })
+      })) as RunResult
       setLastRunResult(result)
       setRunOutput(JSON.stringify(result, null, 2))
-      const output = (result as { output?: Record<string, unknown> }).output
+      const output = result.output
       setRunPublicOutput(output ? JSON.stringify(output, null, 2) : "")
-      setRunModalMode("output")
-      setRunModalOpen(true)
+      if (!isFailedRunResult(result)) {
+        setRunModalMode("output")
+        setRunModalOpen(true)
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
       setLastRunResult({ error: message })
       setRunOutput(message)
-      setRunModalMode("output")
-      setRunModalOpen(true)
+      emitRunProgressFailed()
     } finally {
+      if (result) syncRunProgressFromResult(result)
       setRunBusy(false)
     }
+  }
+
+  const onRunFromModal = (input?: Record<string, unknown>, blobs?: CapabilityBlobStore) => {
+    setRunModalOpen(false)
+    void onRun(input, blobs)
   }
 
   const onExecute = () => {
@@ -998,7 +1012,7 @@ export function App() {
         bridge={bridgeSettings}
         blobs={lastRunBlobs.current}
         runBusy={runBusy}
-        onRun={onRun}
+        onRun={onRunFromModal}
         hasWorkflow={hasWorkflow}
         acceptsSchema={manifest ? workflowContract(manifest).accepts : undefined}
         filePickerEnabled={Boolean(descriptor?.remoteInvoke?.url)}

@@ -154,7 +154,7 @@ function ReactFlowCanvasInner({
     () => (doc?.nodes.filter((n) => n.type === "ecp-step" || n.type === "ecp-io").map((n) => n.id) ?? []),
     [doc]
   )
-  const { statuses, runActive } = useReactFlowRunProgress(stepIds, runBusy)
+  const { statuses, errors, runActive } = useReactFlowRunProgress(stepIds, runBusy)
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
@@ -373,12 +373,13 @@ function ReactFlowCanvasInner({
           data: {
             ...(node.data as object),
             statusClass,
+            errorMessage: errors[node.id],
             ...connected,
           },
           className: statusClass,
         }
       }),
-    [nodes, statuses, runActive, connectedByNode]
+    [nodes, statuses, errors, runActive, connectedByNode]
   )
 
   const decoratedEdges = useMemo(
@@ -387,6 +388,7 @@ function ReactFlowCanvasInner({
         const cls = edgeStatusClass(statuses[edge.source], statuses[edge.target], runActive)
         const incomplete = cls === "ecp-rf-edge--incomplete"
         const completed = cls === "ecp-rf-edge--completed"
+        const failed = cls === "ecp-rf-edge--failed"
         return {
           ...edge,
           className: `${cls}${edge.selected ? " ecp-rf-edge--selected" : ""}`,
@@ -396,11 +398,13 @@ function ReactFlowCanvasInner({
           style: {
             strokeWidth: 2,
             opacity: 0.9,
-            ...(incomplete
-              ? { stroke: "var(--color-tertiary-fixed-dim)" }
-              : completed
-                ? { stroke: "var(--color-status-valid)" }
-                : { stroke: "var(--color-tertiary-fixed-dim)" }),
+            ...(failed
+              ? { stroke: "var(--color-error)" }
+              : incomplete
+                ? { stroke: "var(--color-tertiary-fixed-dim)" }
+                : completed
+                  ? { stroke: "var(--color-status-valid)" }
+                  : { stroke: "var(--color-tertiary-fixed-dim)" }),
           },
         }
       }),

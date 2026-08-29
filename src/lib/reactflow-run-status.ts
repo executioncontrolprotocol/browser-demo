@@ -36,8 +36,8 @@ export function edgeRunStatus(
   sourceStatus: ReactFlowStepStatus | undefined,
   targetStatus: ReactFlowStepStatus | undefined,
   runActive: boolean
-): "idle" | "incomplete" | "completed" {
-  void targetStatus
+): "idle" | "incomplete" | "completed" | "failed" {
+  if (sourceStatus === "failed" || targetStatus === "failed") return "failed"
   if (sourceStatus === "completed") return "completed"
   if (runActive && (sourceStatus === "pending" || sourceStatus === "running")) {
     return "incomplete"
@@ -70,6 +70,7 @@ export function edgeStatusClass(
   runActive: boolean
 ): string {
   const kind = edgeRunStatus(sourceStatus, targetStatus, runActive)
+  if (kind === "failed") return "ecp-rf-edge--failed"
   if (kind === "completed") return "ecp-rf-edge--completed"
   if (kind === "incomplete") return "ecp-rf-edge--incomplete"
   return "ecp-rf-edge--idle"

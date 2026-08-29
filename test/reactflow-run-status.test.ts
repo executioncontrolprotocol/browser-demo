@@ -27,9 +27,17 @@ describe("reactflow-run-status", () => {
 
   it("maps node status to CSS classes", () => {
     expect(stepNodeStatusClass("completed", true)).toBe("ecp-rf-node--completed")
+    expect(stepNodeStatusClass("failed", true)).toBe("ecp-rf-node--failed")
     expect(stepNodeStatusClass("running", true)).toBe("ecp-rf-node--running")
     expect(stepNodeStatusClass("pending", true)).toBe("ecp-rf-node--pending")
     expect(stepNodeStatusClass(undefined, false)).toBe("")
+  })
+
+  it("maps failed endpoints to failed edge classes", () => {
+    expect(edgeRunStatus("failed", "pending", false)).toBe("failed")
+    expect(edgeRunStatus("completed", "failed", false)).toBe("failed")
+    expect(edgeStatusClass("failed", "pending", false)).toBe("ecp-rf-edge--failed")
+    expect(edgeStatusClass("completed", "failed", false)).toBe("ecp-rf-edge--failed")
   })
 
   it("maps edge status to CSS classes", () => {
