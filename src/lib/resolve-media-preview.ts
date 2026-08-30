@@ -127,7 +127,10 @@ export async function resolveMediaPreview(
           error: "Pair `ecp up` to preview host artifacts",
         }
       }
-      const fetched = await fetchHostArtifact(bridge, locator)
+      const fetched = await fetchHostArtifact(bridge, locator, {
+        name: ref.name,
+        mediaType: ref.mediaType,
+      })
       const mediaType = fetched.mediaType || ref.mediaType || "application/octet-stream"
       const url = URL.createObjectURL(
         new Blob([fetched.bytes], { type: mediaType })
@@ -138,7 +141,10 @@ export async function resolveMediaPreview(
         previewKind: previewKindForMediaType(mediaType),
         url,
         revokeUrl: true,
-        hostOpenUrl: artifactFetchUrl(bridge, locator),
+        hostOpenUrl: artifactFetchUrl(bridge, locator, {
+          name: ref.name || fetched.filename,
+          mediaType,
+        }),
         name: ref.name || fetched.filename,
       }
     }

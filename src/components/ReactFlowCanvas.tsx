@@ -7,7 +7,7 @@ import {
   ReactFlowProvider,
   useEdgesState,
   useNodesState,
-  useReactFlow,
+  useUpdateNodeInternals,
   type Connection,
   type Edge,
   type Node,
@@ -48,7 +48,7 @@ const edgeTypes = {
 
 /** Re-measure all nodes after the encoded document changes so edges attach to handles. */
 function ReactFlowInternalsSync({ nodeIds }: { nodeIds: string[] }) {
-  const { updateNodeInternals } = useReactFlow()
+  const updateNodeInternals = useUpdateNodeInternals()
   const nodeKey = nodeIds.join("\0")
 
   useEffect(() => {

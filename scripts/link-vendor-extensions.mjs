@@ -39,6 +39,9 @@ function ensureSymlink(linkPath, targetPath) {
   symlinkSync(targetPath, linkPath, linkType)
 }
 
+const skipInstall =
+  process.argv.includes("--skip-install") || process.env.SKIP_VENDOR_INSTALL === "1"
+
 if (!existsSync(path.join(extensionsRoot, "package.json"))) {
   console.error(
     `Extensions repo not found at ${extensionsRoot}. Set EXTENSIONS_ROOT or clone sibling executioncontrolprotocol/extensions.`
@@ -47,8 +50,17 @@ if (!existsSync(path.join(extensionsRoot, "package.json"))) {
 }
 
 console.log(`Linking vendor extensions from ${extensionsRoot}`)
-run("npm", ["ci"], extensionsRoot)
+if (skipInstall) {
+  console.log("Skipping extensions npm ci (--skip-install)")
+} else {
+  run("npm", ["ci"], extensionsRoot)
+}
 for (const name of PACKAGES) {
+  const distEntry = path.join(extensionsRoot, "packages", name, "dist", "index.js")
+  if (existsSync(distEntry)) {
+    console.log(`Using existing build for @executioncontrolprotocol/${name}`)
+    continue
+  }
   run("npm", ["run", "build", "-w", `@executioncontrolprotocol/${name}`], extensionsRoot)
 }
 

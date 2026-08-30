@@ -90,10 +90,16 @@ describe("file encode + parse", () => {
       valueSchema: { ...WORKFLOW_FILE_VALUE_SCHEMA },
     })
     expect(encoded.locator).toMatch(/^ecp:\/\/browser\//)
-    const value = JSON.parse(encoded.draft) as { kind: string; path: string; mediaType: string }
+    const value = JSON.parse(encoded.draft) as {
+      kind: string
+      path: string
+      mediaType: string
+      name: string
+    }
     expect(value.kind).toBe(FILE_REF_KINDS.FILE)
     expect(value.path).toBe(encoded.locator)
     expect(value.mediaType).toBe("image/png")
+    expect(value.name).toBe("a.png")
     expect(encoded.draft.includes('"data"')).toBe(false)
     const parsed = parseEditedLiteral(
       encoded.draft,

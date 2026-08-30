@@ -63,7 +63,7 @@ function FileFieldControl({
         type="file"
         aria-label={name}
         accept={accept}
-        className="block w-full font-mono text-label text-on-surface-variant file:mr-2 file:rounded file:border file:border-outline-variant file:bg-surface-container-high file:px-2 file:py-1 file:font-mono file:text-label"
+        className="block w-full font-mono text-label text-on-surface-variant file:mr-2 file:cursor-pointer file:rounded file:border file:border-outline-variant file:bg-surface-container-high file:px-2 file:py-1 file:font-mono file:text-label file:text-on-surface file:hover:bg-surface-container-highest"
         disabled={busy || disabled || !onFile}
         onChange={(e) => {
           const file = e.target.files?.[0]

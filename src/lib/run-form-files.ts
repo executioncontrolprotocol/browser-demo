@@ -139,6 +139,7 @@ export async function encodeFileForPort(
     const value = {
       kind: FILE_REF_KINDS.FILE,
       path: locator,
+      ...(file.name ? { name: file.name } : {}),
       ...(mediaType ? { mediaType } : {}),
       sizeBytes: file.size,
     }

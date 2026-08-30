@@ -249,7 +249,27 @@ npm run eval:matrix
 
 ## Local ECP development (`npm link`) — summary
 
-When developing ECP and the demo side-by-side, link local built packages instead of pulling from npm. See [Rebuild workspace from scratch](#rebuild-workspace-from-scratch-after-large-ecp-changes) for the full procedure.
+When developing ECP and the demo side-by-side, link local built packages instead of pulling from npm.
+
+**One command** (rebuild, link, vendor extensions, host example, restart Vite + `ecp up`):
+
+```sh
+npm run dev:linked
+```
+
+Opens **ECP up** and **Vite** in separate terminal windows (Windows/macOS) so the pairing token and demo URL stay visible. On Linux, logs go to `.dev-logs/`.
+
+After small ECP edits, skip the monorepo rebuild:
+
+```sh
+npm run dev:linked -- --skip-build
+```
+
+Granular steps: `npm run link:ecp`, `npm run link:vendor`, `npm run link:host`, then `npm run dev`.
+
+Environment overrides: `ECP_ROOT`, `EXTENSIONS_ROOT`, `HOST_EXAMPLE_ROOT`, `ECP_HOST_PORT`, `VITE_PORT`.
+
+See [Rebuild workspace from scratch](#rebuild-workspace-from-scratch-after-large-ecp-changes) for manual steps and troubleshooting.
 
 **Never use `file:` package links** in `package.json` (CI and Pages resolve from the npm registry only). `npm run check:no-file-deps` enforces this on pre-commit and in CI.
 
