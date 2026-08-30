@@ -3,7 +3,7 @@ import { Handle, Position, useConnection, type NodeProps } from "@xyflow/react"
 import type { ReactFlowIoData, ReactFlowPort } from "@executioncontrolprotocol/format-reactflow"
 import { useSyncNodeHandles } from "../hooks/useSyncNodeHandles.js"
 import { portsAreCompatible } from "../lib/step-connect.js"
-import { RETURNS_PLACEHOLDER_HANDLE } from "../lib/workflow-io.js"
+import { ACCEPTS_PLACEHOLDER_HANDLE, RETURNS_PLACEHOLDER_HANDLE } from "../lib/workflow-io.js"
 import { ReactFlowConfigureContext } from "./reactflow-configure-context.js"
 
 /** Props data for {@link EcpIoNode}. */
@@ -138,13 +138,18 @@ export function EcpIoNode({ id, data }: NodeProps) {
         })}
 
         {io.outputs.map((port) => {
-          const connected = connectedSources.has(port.id)
+          const placeholder = !isReturns && port.id === ACCEPTS_PLACEHOLDER_HANDLE
+          const connected = !placeholder && connectedSources.has(port.id)
           return (
             <div key={`out-${port.id}`} className="relative flex items-center justify-end pr-2">
               <span className="font-mono text-[10px] text-on-surface-variant">
-                {port.name}
-                <span className="text-outline">:{port.typeLabel}</span>
-                {port.required ? <span className="text-primary">!</span> : null}
+                {placeholder ? "connect to add" : port.name}
+                {placeholder ? null : (
+                  <>
+                    <span className="text-outline">:{port.typeLabel}</span>
+                    {port.required ? <span className="text-primary">!</span> : null}
+                  </>
+                )}
               </span>
               <Handle
                 type="source"

@@ -1,4 +1,5 @@
 import type { StepNode } from "@executioncontrolprotocol/types"
+import { ACCEPTS_PLACEHOLDER_HANDLE } from "./workflow-io.js"
 import { normalizeTypeLabel } from "./step-configure.js"
 
 /** Whole-step output handle id used when the `$ref` has no field path. */
@@ -172,4 +173,19 @@ export function removePortBinding(step: StepNode, paramName: string): StepNode {
     nextStep.input = next as StepNode["input"]
   }
   return nextStep
+}
+
+/**
+ * Resolve the accepts property key for an Inputs→step connection.
+ * Placeholder source handle uses the target step param name.
+ */
+export function resolveAcceptsConnectionKey(
+  sourceHandle: string,
+  targetHandle: string
+): string {
+  const handle = sourceHandle.trim()
+  if (!handle || handle === ACCEPTS_PLACEHOLDER_HANDLE) {
+    return targetHandle.trim()
+  }
+  return handle
 }

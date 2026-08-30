@@ -367,6 +367,38 @@ export function rewriteWorkflowAsRefs(
   })
 }
 
+/** Replace a step node by id anywhere in the workflow tree. */
+export function replaceStepById(
+  nodes: WorkflowNode[],
+  stepId: string,
+  nextStep: StepNode
+): WorkflowNode[] {
+  return nodes.map((node) => {
+    if (isStepNode(node)) {
+      return node.id === stepId ? nextStep : node
+    }
+    if (node.type === "parallel") {
+      return {
+        ...node,
+        branches: node.branches.map((branch) => replaceStepById(branch, stepId, nextStep)),
+      }
+    }
+    if (node.type === "branch") {
+      return {
+        ...node,
+        branches: node.branches.map((arm) => ({
+          ...arm,
+          steps: replaceStepById(arm.steps, stepId, nextStep),
+        })),
+      }
+    }
+    return {
+      ...node,
+      steps: replaceStepById(node.steps, stepId, nextStep),
+    }
+  })
+}
+
 /** Payload from the step configure dialog. */
 export interface StepConfigureSavePayload {
   /** Literal parameter values currently active in the dialog. */
@@ -398,6 +430,54 @@ export function draftForPort(port: ReactFlowPort, original: unknown): string {
 export type ParseLiteralResult =
   | { ok: true; value: unknown }
   | { ok: false; error: string }
+
+/**
+ * Validate JSON Schema length / numeric bounds after kind coercion.
+ */
+export function validateValueSchemaConstraints(
+  value: unknown,
+  kind: ConfigEditorKind,
+  valueSchema?: Record<string, unknown>
+): ParseLiteralResult {
+  if (!valueSchema) return { ok: true, value }
+
+  if (kind === "string" || kind === "longtext" || kind === "enum" || kind === "enum-radio") {
+    if (typeof value !== "string") return { ok: true, value }
+    const minLength = valueSchema.minLength
+    const maxLength = valueSchema.maxLength
+    if (typeof minLength === "number" && value.length < minLength) {
+      return { ok: false, error: `Must be at least ${minLength} characters` }
+    }
+    if (typeof maxLength === "number" && value.length > maxLength) {
+      return { ok: false, error: `Must be at most ${maxLength} characters` }
+    }
+    return { ok: true, value }
+  }
+
+  if (kind === "number") {
+    if (typeof value !== "number" || !Number.isFinite(value)) return { ok: true, value }
+    const minimum = valueSchema.minimum
+    const maximum = valueSchema.maximum
+    if (typeof minimum === "number" && value < minimum) {
+      return { ok: false, error: `Must be at least ${minimum}` }
+    }
+    if (typeof maximum === "number" && value > maximum) {
+      return { ok: false, error: `Must be at most ${maximum}` }
+    }
+    return { ok: true, value }
+  }
+
+  return { ok: true, value }
+}
+
+function applySchemaConstraints(
+  result: ParseLiteralResult,
+  kind: ConfigEditorKind,
+  valueSchema?: Record<string, unknown>
+): ParseLiteralResult {
+  if (!result.ok) return result
+  return validateValueSchemaConstraints(result.value, kind, valueSchema)
+}
 
 function coerceEnumDraft(
   text: string,
@@ -456,23 +536,23 @@ export function parseEditedLiteral(
     multiSelectOptionsFromValueSchema(valueSchema) ?? enumOptionsFromValueSchema(valueSchema)
 
   if ((kind === "enum" || kind === "enum-radio") && enumOptions) {
-    return coerceEnumDraft(text, enumOptions)
+    return applySchemaConstraints(coerceEnumDraft(text, enumOptions), kind, valueSchema)
   }
   if (kind === "multiselect" && enumOptions) {
-    return coerceMultiselectDraft(text, enumOptions)
+    return applySchemaConstraints(coerceMultiselectDraft(text, enumOptions), kind, valueSchema)
   }
 
   // Prefer the existing literal's runtime type when editing a bound value.
   if (original !== undefined) {
     if (typeof original === "string") {
-      return { ok: true, value: text }
+      return applySchemaConstraints({ ok: true, value: text }, kind, valueSchema)
     }
     if (typeof original === "number") {
       const trimmed = text.trim()
       if (trimmed === "") return { ok: false, error: "Expected a number" }
       const n = Number(trimmed)
       if (!Number.isFinite(n)) return { ok: false, error: "Expected a number" }
-      return { ok: true, value: n }
+      return applySchemaConstraints({ ok: true, value: n }, kind, valueSchema)
     }
     if (typeof original === "boolean") {
       const trimmed = text.trim().toLowerCase()
@@ -504,7 +584,7 @@ export function parseEditedLiteral(
       if (trimmed === "") return { ok: false, error: "Expected a number" }
       const n = Number(trimmed)
       if (!Number.isFinite(n)) return { ok: false, error: "Expected a number" }
-      return { ok: true, value: n }
+      return applySchemaConstraints({ ok: true, value: n }, kind, valueSchema)
     }
     case "boolean": {
       const trimmed = text.trim().toLowerCase()
@@ -537,6 +617,6 @@ export function parseEditedLiteral(
     case "enum-radio":
     case "multiselect":
     default:
-      return { ok: true, value: text }
+      return applySchemaConstraints({ ok: true, value: text }, kind, valueSchema)
   }
 }

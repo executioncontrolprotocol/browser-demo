@@ -24,16 +24,18 @@ import type {
   ReactFlowIoData,
   ReactFlowStepData,
 } from "@executioncontrolprotocol/format-reactflow"
-import { findStepById, rewriteWorkflowAsRefs, type StepConfigureSavePayload } from "./lib/step-configure.js"
+import { findStepById, replaceStepById, rewriteWorkflowAsRefs, type StepConfigureSavePayload } from "./lib/step-configure.js"
 import {
   OUTPUT_HANDLE_ID,
   applyPortConnection,
   removePortBinding,
+  resolveAcceptsConnectionKey,
   resolvePortConnection,
 } from "./lib/step-connect.js"
 import {
   WORKFLOW_ACCEPTS_NODE_ID,
   WORKFLOW_RETURNS_NODE_ID,
+  applyAcceptsConnection,
   applyReturnsConnection,
   ioFieldsFromSchema,
   renameAcceptsProperty,
@@ -492,6 +494,7 @@ export function App() {
       sourceHandle: string
       targetHandle: string
       valueSchema?: Record<string, unknown>
+      targetRequired?: boolean
     }) => {
       if (!manifest) return
 
@@ -520,20 +523,69 @@ export function App() {
         return
       }
 
+      if (connection.sourceStepId === WORKFLOW_ACCEPTS_NODE_ID) {
+        const target = findStepById(manifest.steps, connection.targetStepId)
+        if (!target) {
+          setChatStatus("Step not found in workflow")
+          return
+        }
+
+        const acceptsKey = resolveAcceptsConnectionKey(
+          connection.sourceHandle,
+          connection.targetHandle
+        )
+        if (!acceptsKey) {
+          setChatStatus("Missing accepts parameter name")
+          return
+        }
+
+        const resolved = resolvePortConnection({
+          sourceAs: acceptsKey,
+          sourceHandle: OUTPUT_HANDLE_ID,
+          targetHandle: connection.targetHandle,
+        })
+        if (!resolved.ok) {
+          setChatStatus(resolved.error)
+          return
+        }
+
+        const next = withWorkflowIoSchema(
+          manifest,
+          "accepts",
+          applyAcceptsConnection(
+            workflowContract(manifest).accepts,
+            connection.sourceHandle,
+            connection.targetHandle,
+            connection.valueSchema,
+            connection.targetRequired
+          )
+        )
+        const nextTarget = findStepById(next.steps, connection.targetStepId)
+        if (!nextTarget) {
+          setChatStatus("Step not found in workflow")
+          return
+        }
+        const nextWithStep: WorkflowManifest = {
+          ...next,
+          steps: replaceStepById(
+            next.steps,
+            connection.targetStepId,
+            applyPortConnection(nextTarget, resolved.paramName, resolved.refPath)
+          ),
+        }
+        const error = await patchWorkflowMeta(nextWithStep)
+        if (error) setChatStatus(error)
+        return
+      }
+
       const target = findStepById(manifest.steps, connection.targetStepId)
       if (!target) {
         setChatStatus("Step not found in workflow")
         return
       }
 
-      const sourceAs =
-        connection.sourceStepId === WORKFLOW_ACCEPTS_NODE_ID
-          ? connection.sourceHandle
-          : findStepById(manifest.steps, connection.sourceStepId)?.as
-      const sourceHandle =
-        connection.sourceStepId === WORKFLOW_ACCEPTS_NODE_ID
-          ? OUTPUT_HANDLE_ID
-          : connection.sourceHandle
+      const sourceAs = findStepById(manifest.steps, connection.sourceStepId)?.as
+      const sourceHandle = connection.sourceHandle
 
       const resolved = resolvePortConnection({
         sourceAs,

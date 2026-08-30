@@ -36,7 +36,8 @@ import { useReactFlowRunProgress } from "../hooks/useReactFlowRunProgress.js"
 import { edgeStatusClass, stepNodeStatusClass } from "../lib/reactflow-run-status.js"
 import { edgeMenuPosition } from "../lib/edge-menu.js"
 import { portsAreCompatible } from "../lib/step-connect.js"
-import { ensureReturnsNode } from "../lib/workflow-io.js"
+import { ensureAcceptsPlaceholder, ensureReturnsNode } from "../lib/workflow-io.js"
+import { WORKFLOW_ACCEPTS_NODE_ID } from "@executioncontrolprotocol/format-reactflow"
 import { capabilityHostBadge } from "../lib/capability-execution-badge.js"
 import type { CapabilityExecution } from "@executioncontrolprotocol/types"
 
@@ -111,7 +112,7 @@ function parseDocument(source: string): ReactFlowDocument | null {
   try {
     const parsed = JSON.parse(source) as ReactFlowDocument
     if (!parsed || !Array.isArray(parsed.nodes) || !Array.isArray(parsed.edges)) return null
-    return ensureReturnsNode(parsed)
+    return ensureAcceptsPlaceholder(ensureReturnsNode(parsed))
   } catch {
     return null
   }
@@ -137,6 +138,7 @@ export interface ReactFlowCanvasProps {
     sourceHandle: string
     targetHandle: string
     valueSchema?: Record<string, unknown>
+    targetRequired?: boolean
   }) => void | Promise<void>
   /** Delete a data edge: remove that input binding from the target step. */
   onDisconnectPorts?: (connection: {
@@ -229,16 +231,29 @@ function ReactFlowCanvasInner({
       const targetHandle = connection.targetHandle
       if (!connection.source || !connection.target || !sourceHandle || !targetHandle) return
       const sourceNode = nodes.find((n) => n.id === connection.source)
+      const targetNode = nodes.find((n) => n.id === connection.target)
       const sourceData = sourceNode?.data as
         | { outputs?: Array<{ id: string; valueSchema?: Record<string, unknown> }> }
         | undefined
+      const targetData = targetNode?.data as
+        | {
+            inputs?: Array<{
+              id: string
+              valueSchema?: Record<string, unknown>
+              required?: boolean
+            }>
+          }
+        | undefined
       const sourcePort = (sourceData?.outputs ?? []).find((p) => p.id === sourceHandle)
+      const targetPort = (targetData?.inputs ?? []).find((p) => p.id === targetHandle)
+      const fromAccepts = connection.source === WORKFLOW_ACCEPTS_NODE_ID
       void onConnectPorts({
         sourceStepId: connection.source,
         targetStepId: connection.target,
         sourceHandle,
         targetHandle,
-        valueSchema: sourcePort?.valueSchema,
+        valueSchema: fromAccepts ? targetPort?.valueSchema : sourcePort?.valueSchema,
+        targetRequired: fromAccepts ? targetPort?.required : undefined,
       })
     },
     [onConnectPorts, isValidConnection, nodes]

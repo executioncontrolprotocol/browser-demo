@@ -19,6 +19,9 @@ export type WorkflowIoSchemaType = "string" | "number" | "boolean" | "object" | 
 /** Handle id used on an empty Outputs node so the first connection can land. */
 export const RETURNS_PLACEHOLDER_HANDLE = "+"
 
+/** Handle id on Inputs outputs for connect-to-add (same id as returns placeholder). */
+export const ACCEPTS_PLACEHOLDER_HANDLE = RETURNS_PLACEHOLDER_HANDLE
+
 /** Property names for `accepts` / `returns` (same identifier rules as `as`). */
 export const WORKFLOW_IO_NAME_RE = /^[A-Za-z_][A-Za-z0-9_]*$/
 
@@ -118,7 +121,8 @@ function schemaType(schema: Record<string, unknown>): WorkflowIoSchemaType {
   return "string"
 }
 
-function defaultSchemaForType(type: WorkflowIoSchemaType): Record<string, unknown> {
+/** Default JSON Schema fragment for a coarse I/O type picker. */
+export function defaultSchemaForType(type: WorkflowIoSchemaType): Record<string, unknown> {
   if (type === "file") return { ...WORKFLOW_FILE_VALUE_SCHEMA }
   if (type === "array") return { type: "array" }
   if (type === "object") return { type: "object" }
@@ -204,6 +208,17 @@ export function schemaFromIoFields(
   return schema
 }
 
+/** Map an I/O editor field to a React Flow port (shared by run form and configure). */
+export function portFromIoField(field: WorkflowIoField): ReactFlowPort {
+  return {
+    id: field.name,
+    name: field.name,
+    typeLabel: field.required ? `${field.type}!` : field.type,
+    required: field.required,
+    valueSchema: field.valueSchema,
+  }
+}
+
 /** Ports used by the run form (same widgets as step configure). */
 export function runFormPortsFromAccepts(
   schema: Record<string, unknown> | undefined
@@ -283,6 +298,59 @@ export function applyReturnsConnection(
   }
 
   return schemaFromIoFields(nextFields) ?? { type: "object", properties: {} }
+}
+
+function acceptsPropertyName(sourceHandle: string, targetHandle: string): string {
+  const handle = sourceHandle.trim()
+  if (!handle || handle === ACCEPTS_PLACEHOLDER_HANDLE) {
+    return targetHandle.trim()
+  }
+  return handle
+}
+
+/**
+ * Add or update an `accepts` property from an Inputs→step connection.
+ * Copies `valueSchema` from the target step input port when provided.
+ */
+export function applyAcceptsConnection(
+  accepts: Record<string, unknown> | undefined,
+  sourceHandle: string,
+  targetHandle: string,
+  valueSchema?: Record<string, unknown>,
+  required?: boolean
+): Record<string, unknown> {
+  const fields = ioFieldsFromSchema(accepts)
+  const propertyName = acceptsPropertyName(sourceHandle, targetHandle)
+  if (!propertyName) {
+    return schemaFromIoFields(fields) ?? { type: "object", properties: {} }
+  }
+
+  const schemaHint =
+    valueSchema && Object.keys(valueSchema).length > 0 ? valueSchema : { type: "string" }
+  const existingIndex = fields.findIndex((field) => field.name === propertyName)
+  const requiredFlag =
+    required !== undefined
+      ? required
+      : existingIndex >= 0
+        ? fields[existingIndex]!.required
+        : true
+
+  const nextField = fieldFromConnection(propertyName, schemaHint, requiredFlag)
+  if (existingIndex >= 0) {
+    fields[existingIndex] = nextField
+  } else {
+    fields.push(nextField)
+  }
+
+  return schemaFromIoFields(fields) ?? { type: "object", properties: {} }
+}
+
+/** Drop an `accepts` property. */
+export function removeAcceptsProperty(
+  accepts: Record<string, unknown> | undefined,
+  propertyName: string
+): Record<string, unknown> | undefined {
+  return schemaFromIoFields(ioFieldsFromSchema(accepts).filter((f) => f.name !== propertyName))
 }
 
 /** Drop a `returns` property (disconnect from Outputs). */
@@ -405,8 +473,16 @@ export function workflowIoPatchOps(
   return ops
 }
 
-const RETURNS_PLACEHOLDER_PORT: ReactFlowPort = {
+const IO_PLACEHOLDER_PORT: ReactFlowPort = {
   id: RETURNS_PLACEHOLDER_HANDLE,
+  name: "add",
+  typeLabel: "unknown",
+}
+
+const RETURNS_PLACEHOLDER_PORT = IO_PLACEHOLDER_PORT
+
+const ACCEPTS_PLACEHOLDER_PORT: ReactFlowPort = {
+  id: ACCEPTS_PLACEHOLDER_HANDLE,
   name: "add",
   typeLabel: "unknown",
 }
@@ -449,6 +525,33 @@ function withReturnsPlaceholder(doc: ReactFlowDocument): ReactFlowDocument {
  * Demo always shows an Outputs node so `returns` can be added by connecting.
  * Encode omits it when `returns` is empty. A `+` handle is demo-only (not in the schema).
  */
+function withAcceptsPlaceholder(doc: ReactFlowDocument): ReactFlowDocument {
+  return {
+    ...doc,
+    nodes: doc.nodes.map((node) => {
+      if (node.id !== WORKFLOW_ACCEPTS_NODE_ID || node.type !== "ecp-io") return node
+      const data = node.data as ReactFlowIoData
+      const outputs = data.outputs ?? []
+      if (outputs.some((port) => port.id === ACCEPTS_PLACEHOLDER_HANDLE)) return node
+      return {
+        ...node,
+        data: {
+          ...data,
+          outputs: [...outputs, ACCEPTS_PLACEHOLDER_PORT],
+        },
+      }
+    }),
+  }
+}
+
+/**
+ * Demo always shows a connect-to-add handle on Inputs outputs.
+ * Encode omits it; the `+` handle is demo-only (not in the schema).
+ */
+export function ensureAcceptsPlaceholder(doc: ReactFlowDocument): ReactFlowDocument {
+  return withAcceptsPlaceholder(doc)
+}
+
 export function ensureReturnsNode(doc: ReactFlowDocument): ReactFlowDocument {
   if (doc.nodes.some((n) => n.id === WORKFLOW_RETURNS_NODE_ID)) {
     return withReturnsPlaceholder(doc)

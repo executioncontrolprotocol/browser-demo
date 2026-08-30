@@ -1,17 +1,25 @@
 import { describe, expect, it } from "vitest"
 import type { ReactFlowDocument } from "@executioncontrolprotocol/format-reactflow"
 import {
+  ACCEPTS_PLACEHOLDER_HANDLE,
   RETURNS_PLACEHOLDER_HANDLE,
+  WORKFLOW_ACCEPTS_NODE_ID,
   WORKFLOW_RETURNS_NODE_ID,
+  applyAcceptsConnection,
   applyReturnsConnection,
+  ensureAcceptsPlaceholder,
   ensureReturnsNode,
   ioFieldsFromSchema,
+  portFromIoField,
   renameReturnsProperty,
   removeReturnsProperty,
+  runFormPortsFromAccepts,
   schemaFromIoFields,
   withWorkflowIoSchema,
   workflowIoPatchOps,
 } from "../src/lib/workflow-io.js"
+import { applyPortConnection } from "../src/lib/step-connect.js"
+import { editorKindForPort } from "../src/lib/step-configure.js"
 import type { WorkflowManifest } from "@executioncontrolprotocol/types"
 
 function manifest(): WorkflowManifest {
@@ -363,5 +371,151 @@ describe("returns sub-field wiring round-trip", () => {
     expect(pickWorkflowReturns(manifest.workflow.returns as Record<string, unknown>, state)).toEqual({
       "inspected.metadata": { aspectRatio: 1.5, orientation: "landscape" },
     })
+  })
+})
+
+describe("applyAcceptsConnection", () => {
+  it("adds a property from the placeholder using the target param name", () => {
+    const next = applyAcceptsConnection(
+      undefined,
+      ACCEPTS_PLACEHOLDER_HANDLE,
+      "prompt",
+      { type: "string" }
+    )
+    expect(next).toMatchObject({
+      type: "object",
+      properties: { prompt: { type: "string" } },
+      required: ["prompt"],
+    })
+  })
+
+  it("updates an existing accepts key with richer valueSchema", () => {
+    const accepts = applyAcceptsConnection(
+      undefined,
+      ACCEPTS_PLACEHOLDER_HANDLE,
+      "mode",
+      { type: "string" }
+    )
+    const next = applyAcceptsConnection(accepts, "mode", "mode", {
+      type: "string",
+      enum: ["fast", "slow"],
+    })
+    expect(next.properties).toEqual({
+      mode: { type: "string", enum: ["fast", "slow"] },
+    })
+  })
+
+  it("copies boolean and enum schemas", () => {
+    const boolSchema = applyAcceptsConnection(
+      undefined,
+      ACCEPTS_PLACEHOLDER_HANDLE,
+      "enabled",
+      { type: "boolean" },
+      true
+    )
+    expect(ioFieldsFromSchema(boolSchema)[0]).toMatchObject({
+      name: "enabled",
+      type: "boolean",
+      required: true,
+    })
+
+    const enumSchema = applyAcceptsConnection(
+      undefined,
+      ACCEPTS_PLACEHOLDER_HANDLE,
+      "mode",
+      { type: "string", enum: ["a", "b"] },
+      false
+    )
+    expect(enumSchema.required).toBeUndefined()
+    expect(ioFieldsFromSchema(enumSchema)[0]?.valueSchema).toEqual({
+      type: "string",
+      enum: ["a", "b"],
+    })
+  })
+
+  it("preserves required when updating schema without required arg", () => {
+    const accepts = applyAcceptsConnection(
+      undefined,
+      ACCEPTS_PLACEHOLDER_HANDLE,
+      "prompt",
+      { type: "string" },
+      false
+    )
+    const next = applyAcceptsConnection(accepts, "prompt", "prompt", {
+      type: "string",
+      minLength: 3,
+    })
+    expect(next.required).toBeUndefined()
+    expect((next.properties as Record<string, unknown>).prompt).toEqual({
+      type: "string",
+      minLength: 3,
+    })
+  })
+
+  it("ignores empty property name", () => {
+    expect(
+      applyAcceptsConnection(undefined, ACCEPTS_PLACEHOLDER_HANDLE, "  ", { type: "string" })
+    ).toEqual({
+      type: "object",
+      properties: {},
+    })
+  })
+
+  it("maps portFromIoField for run-form widgets", () => {
+    const field = {
+      name: "mode",
+      type: "string" as const,
+      required: true,
+      valueSchema: { type: "string", enum: ["fast", "slow"] },
+    }
+    const port = portFromIoField(field)
+    expect(port.typeLabel).toBe("string!")
+    expect(editorKindForPort(port)).toBe("enum-radio")
+  })
+
+  it("appends placeholder handle to accepts outputs once", () => {
+    const doc: ReactFlowDocument = {
+      nodes: [
+        {
+          id: WORKFLOW_ACCEPTS_NODE_ID,
+          type: "ecp-io",
+          position: { x: 0, y: 0 },
+          data: {
+            label: "Inputs",
+            kind: "accepts",
+            inputs: [],
+            outputs: [{ id: "prompt", name: "prompt", typeLabel: "string!" }],
+          },
+        },
+      ],
+      edges: [],
+    }
+    const next = ensureAcceptsPlaceholder(doc)
+    const io = next.nodes.find((n) => n.id === WORKFLOW_ACCEPTS_NODE_ID)
+    const outputs = (io?.data as { outputs: Array<{ id: string }> }).outputs
+    expect(outputs.map((p) => p.id)).toEqual(["prompt", ACCEPTS_PLACEHOLDER_HANDLE])
+    expect(ensureAcceptsPlaceholder(next)).toEqual(next)
+  })
+
+  it("round-trips accepts wiring into run-form port kinds", () => {
+    const accepts = applyAcceptsConnection(
+      undefined,
+      ACCEPTS_PLACEHOLDER_HANDLE,
+      "enabled",
+      { type: "boolean" },
+      true
+    )
+    const manifestWithAccepts = withWorkflowIoSchema(manifest(), "accepts", accepts)
+    const step = applyPortConnection(
+      { id: "s1", uses: "@x/y", input: {} },
+      "enabled",
+      "state.enabled"
+    )
+    const ports = runFormPortsFromAccepts(
+      (manifestWithAccepts.workflow as { accepts?: Record<string, unknown> }).accepts
+    )
+    expect(ports).toHaveLength(1)
+    expect(editorKindForPort(ports[0]!)).toBe("boolean")
+    expect(step.input).toEqual({ enabled: { $ref: "state.enabled" } })
   })
 })

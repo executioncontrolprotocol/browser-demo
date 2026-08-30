@@ -111,6 +111,8 @@ export function ConfigFieldControl({
   fileHint,
   accept,
   onFile,
+  minLength,
+  maxLength,
 }: {
   kind: ConfigEditorKind
   fieldId: string
@@ -123,6 +125,8 @@ export function ConfigFieldControl({
   fileHint?: string
   accept?: string
   onFile?: (file: File) => void
+  minLength?: number
+  maxLength?: number
 }) {
   if (kind === "file") {
     return (
@@ -251,6 +255,8 @@ export function ConfigFieldControl({
         onChange={(e) => onChange(e.target.value)}
         disabled={busy}
         spellCheck
+        minLength={minLength}
+        maxLength={maxLength}
       />
     )
   }
@@ -262,6 +268,8 @@ export function ConfigFieldControl({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       disabled={busy}
+      minLength={minLength}
+      maxLength={maxLength}
     />
   )
 }
@@ -288,6 +296,10 @@ export function ConfigPortControl({
   accept?: string
   onFile?: (file: File) => void
 }) {
+  const schema = port.valueSchema
+  const minLength = typeof schema?.minLength === "number" ? schema.minLength : undefined
+  const maxLength = typeof schema?.maxLength === "number" ? schema.maxLength : undefined
+
   return (
     <ConfigFieldControl
       kind={editorKindForPort(port)}
@@ -301,6 +313,8 @@ export function ConfigPortControl({
       fileHint={fileHint}
       accept={accept}
       onFile={onFile}
+      minLength={minLength}
+      maxLength={maxLength}
     />
   )
 }

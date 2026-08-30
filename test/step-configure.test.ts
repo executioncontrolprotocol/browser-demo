@@ -13,6 +13,7 @@ import {
   rewriteStateRefPath,
   toggleMultiselectDraft,
   unboundPorts,
+  validateValueSchemaConstraints,
 } from "../src/lib/step-configure.js"
 import type { ReactFlowStepData } from "@executioncontrolprotocol/format-reactflow"
 
@@ -163,5 +164,50 @@ describe("step-configure helpers", () => {
     expect(parseMultiselectDraft('["b"]')).toEqual(["b"])
     expect(toggleMultiselectDraft("[]", "a", true)).toBe('["a"]')
     expect(toggleMultiselectDraft('["a"]', "a", false)).toBe("[]")
+  })
+
+  it("validates minLength and maxLength on string literals", () => {
+    const schema = { type: "string", minLength: 3, maxLength: 5 }
+    expect(parseEditedLiteral("abc", undefined, "string", schema)).toEqual({
+      ok: true,
+      value: "abc",
+    })
+    expect(parseEditedLiteral("ab", undefined, "string", schema).ok).toBe(false)
+    expect(parseEditedLiteral("abcdef", undefined, "string", schema).ok).toBe(false)
+    expect(validateValueSchemaConstraints("abc", "string", schema)).toEqual({
+      ok: true,
+      value: "abc",
+    })
+  })
+
+  it("validates minimum and maximum on numbers", () => {
+    const schema = { type: "number", minimum: 0, maximum: 100 }
+    expect(parseEditedLiteral("0", undefined, "number", schema)).toEqual({ ok: true, value: 0 })
+    expect(parseEditedLiteral("100", undefined, "number", schema)).toEqual({
+      ok: true,
+      value: 100,
+    })
+    expect(parseEditedLiteral("-1", undefined, "number", schema).ok).toBe(false)
+    expect(parseEditedLiteral("101", undefined, "number", schema).ok).toBe(false)
+  })
+
+  it("still enforces enum when length constraints are present", () => {
+    const schema = { type: "string", enum: ["fast", "slow"], minLength: 3 }
+    expect(parseEditedLiteral("fast", undefined, "string", schema)).toEqual({
+      ok: true,
+      value: "fast",
+    })
+    expect(parseEditedLiteral("slow", undefined, "string", schema)).toEqual({
+      ok: true,
+      value: "slow",
+    })
+    expect(parseEditedLiteral("go", undefined, "string", schema).ok).toBe(false)
+  })
+
+  it("leaves plain strings unchanged without constraints", () => {
+    expect(parseEditedLiteral("hello", undefined, "string")).toEqual({
+      ok: true,
+      value: "hello",
+    })
   })
 })
