@@ -87,6 +87,10 @@ import {
   logFluentSyncSkipped,
   logFluentSyncStart,
 } from "./lib/fluent-edit-debug.js"
+import {
+  beautifyFluentWorkflowSource,
+  shouldBeautifyFluentSource,
+} from "./lib/fluent-beautify.js"
 import { columnWidthClass } from "./lib/view-layout.js"
 import {
   harnessCapabilityId,
@@ -179,6 +183,7 @@ export function App() {
   const [reactflow, setReactflow] = useState("")
   const [prompt, setPrompt] = useState("")
   const [compileError, setCompileError] = useState<string | null>(null)
+  const [beautifyBusy, setBeautifyBusy] = useState(false)
   const [runOutput, setRunOutput] = useState("")
   const [runPublicOutput, setRunPublicOutput] = useState("")
   const [runBusy, setRunBusy] = useState(false)
@@ -930,6 +935,33 @@ export function App() {
     [layout]
   )
 
+  const onBeautifyFluent = useCallback(async () => {
+    if (!shouldBeautifyFluentSource(fluent)) return
+    setBeautifyBusy(true)
+    try {
+      if (compileTimer.current) clearTimeout(compileTimer.current)
+      compileGeneration.current += 1
+
+      const result = await beautifyFluentWorkflowSource(fluent)
+      if (!result.ok) {
+        setCompileError(result.error)
+        return
+      }
+
+      setCompileError(null)
+      setFluent(result.fluent)
+      setFluentEditorKey((key) => key + 1)
+      await syncFromManifestRef.current(result.manifest, {
+        refreshFluent: false,
+        ...(result.validation ? { validation: result.validation } : {}),
+      })
+    } catch (err) {
+      setCompileError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setBeautifyBusy(false)
+    }
+  }, [fluent])
+
   const onRun = async (input?: Record<string, unknown>, blobs?: CapabilityBlobStore) => {
     if (!ecp || !manifest) return
     setRunBusy(true)
@@ -1043,6 +1075,8 @@ export function App() {
                 environmentSource={environmentSource}
                 compileError={compileError}
                 onFluentChange={onFluentChange}
+                onBeautifyFluent={onBeautifyFluent}
+                beautifyBusy={beautifyBusy}
               />
             ) : null}
           </WorkspaceColumn>
