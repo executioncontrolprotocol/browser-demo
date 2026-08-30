@@ -21,7 +21,12 @@ import type {
 import { EcpStepNode } from "./EcpStepNode.js"
 import { EcpIoNode } from "./EcpIoNode.js"
 import { EcpDataEdge } from "./EcpDataEdge.js"
+import { EdgeMenuControlOverlay } from "./EdgeMenuControlOverlay.js"
 import { ReactFlowConfigureContext } from "./reactflow-configure-context.js"
+import {
+  ReactFlowEdgeControlRegistryContext,
+  type EdgeMenuControlState,
+} from "./reactflow-edge-control-registry.js"
 import {
   ReactFlowEdgeMenuContext,
   type EdgeMenuTarget,
@@ -36,6 +41,8 @@ import { capabilityHostBadge } from "../lib/capability-execution-badge.js"
 import type { CapabilityExecution } from "@executioncontrolprotocol/types"
 
 const EDGE_INTERACTION_WIDTH = 24
+/** Match React Flow elevated edges/nodes; ellipsis overlay uses a higher tier in CSS. */
+const SELECTED_EDGE_Z_INDEX = 1000
 
 const nodeTypes = {
   "ecp-step": EcpStepNode,
@@ -165,6 +172,7 @@ function ReactFlowCanvasInner({
     targetHandle: string
     edgeId: string
   } | null>(null)
+  const [edgeControl, setEdgeControl] = useState<EdgeMenuControlState | null>(null)
   const canvasRef = useRef<HTMLDivElement>(null)
   const edgeMenuRef = useRef<HTMLDivElement>(null)
 
@@ -259,7 +267,11 @@ function ReactFlowCanvasInner({
     []
   )
 
-  const closeEdgeMenu = useCallback(() => setEdgeMenu(null), [])
+  const closeEdgeMenu = useCallback(() => {
+    setEdgeMenu(null)
+    setEdges((current) => current.map((item) => ({ ...item, selected: false })))
+    setEdgeControl(null)
+  }, [setEdges])
 
   const handleOpenEdgeMenu = useCallback(
     (event: ReactMouseEvent, edge: EdgeMenuTarget) => {
@@ -389,9 +401,12 @@ function ReactFlowCanvasInner({
         const incomplete = cls === "ecp-rf-edge--incomplete"
         const completed = cls === "ecp-rf-edge--completed"
         const failed = cls === "ecp-rf-edge--failed"
+        const selected = Boolean(edge.selected || edgeMenu?.edgeId === edge.id)
         return {
           ...edge,
-          className: `${cls}${edge.selected ? " ecp-rf-edge--selected" : ""}`,
+          selected,
+          className: `${cls}${selected ? " ecp-rf-edge--selected" : ""}`,
+          zIndex: selected ? SELECTED_EDGE_Z_INDEX : edge.zIndex,
           // CSS class drives ants — RF `animated` uses a different dash period and flickers.
           animated: false,
           interactionWidth: EDGE_INTERACTION_WIDTH,
@@ -408,7 +423,7 @@ function ReactFlowCanvasInner({
           },
         }
       }),
-    [edges, statuses, runActive]
+    [edgeMenu?.edgeId, edges, statuses, runActive]
   )
 
   return (
@@ -421,6 +436,7 @@ function ReactFlowCanvasInner({
       <div ref={canvasRef} className="relative flex min-h-0 flex-1 flex-col">
         {hasWorkflow && doc ? (
           <ReactFlowConfigureContext.Provider value={onConfigureStep}>
+            <ReactFlowEdgeControlRegistryContext.Provider value={setEdgeControl}>
             <ReactFlowEdgeMenuContext.Provider value={handleOpenEdgeMenu}>
             <ReactFlow
               nodes={decoratedNodes}
@@ -431,6 +447,12 @@ function ReactFlowCanvasInner({
               onEdgesDelete={handleEdgesDelete}
               onBeforeDelete={handleBeforeDelete}
               onEdgeContextMenu={handleEdgeContextMenu}
+              onEdgeClick={(_, edge) => {
+                setEdges((current) =>
+                  current.map((item) => ({ ...item, selected: item.id === edge.id }))
+                )
+                setEdgeMenu(null)
+              }}
               onPaneClick={closeEdgeMenu}
               onNodeClick={closeEdgeMenu}
               isValidConnection={isValidConnection}
@@ -442,6 +464,7 @@ function ReactFlowCanvasInner({
               nodesDraggable={false}
               nodesConnectable
               elementsSelectable
+              elevateEdgesOnSelect
               panOnDrag
               zoomOnDoubleClick={false}
               proOptions={{ hideAttribution: true }}
@@ -472,10 +495,15 @@ function ReactFlowCanvasInner({
                 maskColor="color-mix(in srgb, var(--color-background) 72%, transparent)"
               />
             </ReactFlow>
+            <EdgeMenuControlOverlay
+              canvasRef={canvasRef}
+              control={edgeControl}
+              onOpenMenu={handleOpenEdgeMenu}
+            />
             {edgeMenu ? (
               <div
                 ref={edgeMenuRef}
-                className="absolute z-30 min-w-[10rem] rounded-md border border-outline-variant bg-surface-container-high py-1 shadow-md"
+                className="absolute z-[1030] min-w-[10rem] rounded-md border border-outline-variant bg-surface-container-high py-1 shadow-md"
                 style={{ left: edgeMenu.x, top: edgeMenu.y }}
                 role="menu"
                 onPointerDown={(event) => event.stopPropagation()}
@@ -491,6 +519,7 @@ function ReactFlowCanvasInner({
               </div>
             ) : null}
             </ReactFlowEdgeMenuContext.Provider>
+            </ReactFlowEdgeControlRegistryContext.Provider>
           </ReactFlowConfigureContext.Provider>
         ) : (
           <div className="flex h-full items-center justify-center p-canvas-padding">

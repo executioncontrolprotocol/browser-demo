@@ -696,12 +696,6 @@
     opacity: 1 !important;
   }
 
-  /* Labels/controls must sit above edge SVGs (selected edges elevate to ~1000)
-     or the interaction stroke steals clicks from the mid-path ellipsis. */
-  .react-flow__edgelabel-renderer {
-    z-index: 1001;
-  }
-
   .ecp-rf-edge-menu-btn {
     display: flex;
     align-items: center;
@@ -715,8 +709,9 @@
     color: var(--color-on-surface-variant);
     cursor: pointer;
     pointer-events: all;
-    z-index: 1;
-    box-shadow: 0 1px 2px color-mix(in srgb, var(--color-background) 50%, transparent);
+    box-shadow:
+      0 0 0 3px var(--color-surface-container-high),
+      0 1px 2px color-mix(in srgb, var(--color-background) 50%, transparent);
   }
 
   .ecp-rf-edge-menu-btn:hover {
@@ -792,4 +787,15 @@
   .react-flow__minimap.ecp-rf-minimap svg {
     background: var(--color-surface-container-low);
   }
+}
+
+/* Route selection stacking — unlayered so it wins over @xyflow/react style.css. */
+.node-canvas .react-flow__edge.selected,
+.node-canvas .react-flow__edge.ecp-rf-edge--selected {
+  z-index: 1000 !important;
+}
+
+.node-canvas .react-flow__edgelabel-renderer,
+.node-canvas .react-flow__viewport-portal {
+  z-index: 1010 !important;
 }
