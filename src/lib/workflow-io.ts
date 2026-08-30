@@ -10,6 +10,7 @@ import {
 } from "@executioncontrolprotocol/format-reactflow"
 import type { StepNode, WorkflowManifest, WorkflowNode } from "@executioncontrolprotocol/types"
 import { rewriteWorkflowAsRefs } from "./step-configure.js"
+import { OUTPUT_HANDLE_ID } from "./step-connect.js"
 import { WORKFLOW_FILE_VALUE_SCHEMA } from "./run-form-files.js"
 
 /** JSON Schema types offered when adding an I/O parameter. */
@@ -229,48 +230,59 @@ function fieldFromConnection(
   }
 }
 
+function returnsPropertyName(sourceAs: string, sourceHandle?: string): string {
+  const handle = sourceHandle?.trim()
+  if (!handle || handle === OUTPUT_HANDLE_ID) return sourceAs
+  return `${sourceAs}.${handle}`
+}
+
 /**
- * Add or rename a `returns` property so it matches the source step `.as()`.
+ * Add or update a `returns` property from a step connection.
+ * Dot-path property names encode sub-field wiring (e.g. `inspected.metadata`).
  * Copies `valueSchema` from the connected source port when provided.
  */
 export function applyReturnsConnection(
   returns: Record<string, unknown> | undefined,
   sourceAs: string,
   targetHandle: string,
-  valueSchema?: Record<string, unknown>
+  valueSchema?: Record<string, unknown>,
+  sourceHandle?: string
 ): Record<string, unknown> {
   const fields = ioFieldsFromSchema(returns)
   if (!sourceAs.trim()) {
     return schemaFromIoFields(fields) ?? { type: "object", properties: {} }
   }
+  const propertyName = returnsPropertyName(sourceAs, sourceHandle)
   const schemaHint = valueSchema && Object.keys(valueSchema).length > 0 ? valueSchema : { type: "object" }
   const placeholder =
     targetHandle === RETURNS_PLACEHOLDER_HANDLE || targetHandle.trim() === ""
-  const existingIndex = placeholder ? -1 : fields.findIndex((f) => f.name === targetHandle)
 
-  if (existingIndex >= 0) {
-    const current = fields[existingIndex]!
-    if (current.name !== sourceAs) {
-      if (fields.some((f, i) => i !== existingIndex && f.name === sourceAs)) {
-        fields.splice(existingIndex, 1)
-        const keep = fields.findIndex((f) => f.name === sourceAs)
-        if (keep >= 0) fields[keep] = fieldFromConnection(sourceAs, schemaHint, fields[keep]!.required)
-      } else {
-        fields[existingIndex] = fieldFromConnection(sourceAs, schemaHint, current.required)
-      }
-    } else {
-      fields[existingIndex] = fieldFromConnection(sourceAs, schemaHint, current.required)
+  const keysToRemove = new Set<string>()
+  if (!placeholder) {
+    keysToRemove.add(targetHandle)
+    if (propertyName.includes(".")) {
+      keysToRemove.add(sourceAs)
     }
-  } else {
-    const already = fields.findIndex((f) => f.name === sourceAs)
-    if (already >= 0) {
-      fields[already] = fieldFromConnection(sourceAs, schemaHint, fields[already]!.required)
-    } else {
-      fields.push(fieldFromConnection(sourceAs, schemaHint, true))
+    if (propertyName === sourceAs) {
+      for (const field of fields) {
+        if (field.name.startsWith(`${sourceAs}.`)) keysToRemove.add(field.name)
+      }
     }
   }
 
-  return schemaFromIoFields(fields) ?? { type: "object", properties: {} }
+  const nextFields = fields.filter((field) => !keysToRemove.has(field.name))
+  const existingIndex = nextFields.findIndex((field) => field.name === propertyName)
+  if (existingIndex >= 0) {
+    nextFields[existingIndex] = fieldFromConnection(
+      propertyName,
+      schemaHint,
+      nextFields[existingIndex]!.required
+    )
+  } else {
+    nextFields.push(fieldFromConnection(propertyName, schemaHint, true))
+  }
+
+  return schemaFromIoFields(nextFields) ?? { type: "object", properties: {} }
 }
 
 /** Drop a `returns` property (disconnect from Outputs). */
@@ -355,10 +367,22 @@ export function renameReturnsProperty(
 ): WorkflowManifest {
   if (fromName === toName || !fromName || !toName) return manifest
   const renamedAs = renameMatchingStepAs(manifest.steps, fromName, toName)
-  return {
+  let next: WorkflowManifest = {
     ...manifest,
     steps: rewriteWorkflowAsRefs(renamedAs, fromName, toName),
   }
+  const returns = asWorkflowContract(manifest.workflow).returns
+  if (returns) {
+    const renamedFields = ioFieldsFromSchema(returns).map((field) => {
+      if (field.name === fromName) return { ...field, name: toName }
+      if (field.name.startsWith(`${fromName}.`)) {
+        return { ...field, name: `${toName}${field.name.slice(fromName.length)}` }
+      }
+      return field
+    })
+    next = withWorkflowIoSchema(next, "returns", schemaFromIoFields(renamedFields))
+  }
+  return next
 }
 
 /** Patch ops for `ecp.patch` (`workflow.accepts` / `workflow.returns`, never `workflow`). */

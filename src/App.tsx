@@ -511,7 +511,8 @@ export function App() {
             workflowContract(manifest).returns,
             sourceAs,
             connection.targetHandle,
-            connection.valueSchema
+            connection.valueSchema,
+            connection.sourceHandle
           )
         )
         const error = await patchWorkflowMeta(next)
