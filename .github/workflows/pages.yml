@@ -34,7 +34,7 @@ jobs:
             extensions/package-lock.json
       - working-directory: browser-demo
         run: npm ci
-      - name: Forbid file: package links
+      - name: "Forbid file: package links"
         working-directory: browser-demo
         run: npm run check:no-file-deps
       - name: Link unpublished vendor extensions
