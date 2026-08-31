@@ -325,7 +325,7 @@ npm run build:pages
 
 For a subdirectory deploy, set `VITE_BASE=/your-subpath/` before building.
 
-Requires `@executioncontrolprotocol/*@^0.12.0` from npm (or `npm link` to a local build) so browser `core/compile` exports `compileHarnessArtifactSource` (used by the coding harness).
+Requires `@executioncontrolprotocol/*@^0.13.0` from npm (or `npm link` to a local build) so browser `core/compile` exports `compileHarnessArtifactSource` (used by the coding harness).
 
 ## Spec
 
