@@ -67,6 +67,24 @@ function killEcpUpDaemons() {
   spawnSync("sh", ["-c", "pkill -f 'ecp.* up' || true"], { stdio: "ignore" })
 }
 
+function killViteDaemons() {
+  if (process.platform === "win32") {
+    spawnSync(
+      "powershell",
+      [
+        "-NoProfile",
+        "-Command",
+        "Get-CimInstance Win32_Process -Filter \"Name='node.exe'\" | " +
+          "Where-Object { $_.CommandLine -match '\\bvite\\b' } | " +
+          "ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }",
+      ],
+      { stdio: "ignore", shell: true }
+    )
+    return
+  }
+  spawnSync("sh", ["-c", "pkill -f 'vite' || true"], { stdio: "ignore" })
+}
+
 function killPort(port) {
   if (process.platform === "win32") {
     spawnSync(
@@ -166,6 +184,7 @@ function main() {
   }
 
   killEcpUpDaemons()
+  killViteDaemons()
   killPort(hostPort)
   killPort(vitePort)
 
@@ -211,7 +230,7 @@ function main() {
       "--port",
       hostPort,
       "--open-url",
-      `http://localhost:${vitePort}/`,
+      `http://127.0.0.1:${vitePort}/`,
       "--no-open",
     ], hostRoot)
   }
@@ -227,8 +246,8 @@ function main() {
     console.log("  Pairing token + demo URL: see the ECP up terminal window")
   }
   if (!noVite) {
-    console.log(`  Demo:  http://localhost:${vitePort}/`)
-    console.log("  If the page 404s, check the Vite terminal window is still open.")
+    console.log(`  Demo:  http://127.0.0.1:${vitePort}/`)
+    console.log("  If the page 404s, close old Vite terminals and re-run dev:linked.")
   }
   console.log("\nRe-run after ECP changes: npm run dev:linked -- --skip-build")
 }

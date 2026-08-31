@@ -75,7 +75,7 @@ function main() {
   console.log(`Preparing host example at ${hostRoot}`)
 
   // Install registry deps first — junctions must run after npm install or npm overwrites them.
-  run("npm", ["install"], hostRoot)
+  run("npm", ["install", "--legacy-peer-deps"], hostRoot)
 
   run(
     "node",
