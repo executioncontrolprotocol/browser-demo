@@ -1,5 +1,6 @@
 node_modules/
 dist/
+.dev-logs/
 *.tsbuildinfo
 
 # Vitest / V8 coverage (never commit)

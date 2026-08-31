@@ -7,6 +7,7 @@ import {
   ReactFlowProvider,
   useEdgesState,
   useNodesState,
+  useUpdateNodeInternals,
   type Connection,
   type Edge,
   type Node,
@@ -20,20 +21,29 @@ import type {
 import { EcpStepNode } from "./EcpStepNode.js"
 import { EcpIoNode } from "./EcpIoNode.js"
 import { EcpDataEdge } from "./EcpDataEdge.js"
+import { EdgeMenuControlOverlay } from "./EdgeMenuControlOverlay.js"
 import { ReactFlowConfigureContext } from "./reactflow-configure-context.js"
+import {
+  ReactFlowEdgeControlRegistryContext,
+  type EdgeMenuControlState,
+} from "./reactflow-edge-control-registry.js"
 import {
   ReactFlowEdgeMenuContext,
   type EdgeMenuTarget,
 } from "./reactflow-edge-menu-context.js"
 import { PanelHeader } from "./PanelHeader.js"
-import { RunOutputPanel } from "./RunOutputPanel.js"
 import { useReactFlowRunProgress } from "../hooks/useReactFlowRunProgress.js"
 import { edgeStatusClass, stepNodeStatusClass } from "../lib/reactflow-run-status.js"
 import { edgeMenuPosition } from "../lib/edge-menu.js"
 import { portsAreCompatible } from "../lib/step-connect.js"
-import { ensureReturnsNode } from "../lib/workflow-io.js"
+import { ensureAcceptsPlaceholder, ensureReturnsNode } from "../lib/workflow-io.js"
+import { WORKFLOW_ACCEPTS_NODE_ID } from "@executioncontrolprotocol/format-reactflow"
+import { capabilityHostBadge } from "../lib/capability-execution-badge.js"
+import type { CapabilityExecution } from "@executioncontrolprotocol/types"
 
 const EDGE_INTERACTION_WIDTH = 24
+/** Match React Flow elevated edges/nodes; ellipsis overlay uses a higher tier in CSS. */
+const SELECTED_EDGE_Z_INDEX = 1000
 
 const nodeTypes = {
   "ecp-step": EcpStepNode,
@@ -42,6 +52,21 @@ const nodeTypes = {
 
 const edgeTypes = {
   "ecp-data": EcpDataEdge,
+}
+
+/** Re-measure all nodes after the encoded document changes so edges attach to handles. */
+function ReactFlowInternalsSync({ nodeIds }: { nodeIds: string[] }) {
+  const updateNodeInternals = useUpdateNodeInternals()
+  const nodeKey = nodeIds.join("\0")
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      for (const id of nodeIds) updateNodeInternals(id)
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [nodeKey, nodeIds, updateNodeInternals])
+
+  return null
 }
 
 function toRfNodes(nodes: ReactFlowNode[]): Node[] {
@@ -87,7 +112,7 @@ function parseDocument(source: string): ReactFlowDocument | null {
   try {
     const parsed = JSON.parse(source) as ReactFlowDocument
     if (!parsed || !Array.isArray(parsed.nodes) || !Array.isArray(parsed.edges)) return null
-    return ensureReturnsNode(parsed)
+    return ensureAcceptsPlaceholder(ensureReturnsNode(parsed))
   } catch {
     return null
   }
@@ -96,18 +121,14 @@ function parseDocument(source: string): ReactFlowDocument | null {
 /** Props for {@link ReactFlowCanvas}. */
 export interface ReactFlowCanvasProps {
   reactflowJson: string
-  runOutput: string
   runBusy: boolean
-  runOverlayOpen: boolean
-  onCloseRunOverlay: () => void
-  /** Open the run/state inspect overlay without starting a run. */
-  onOpenRunOverlay: () => void
-  onRun: (input?: Record<string, unknown>) => void
+  /** Open the workflow state modal (input / inspect). */
+  onOpenRunModal: () => void
   hasWorkflow: boolean
-  /** JSON Schema object for `workflow.accepts` (run form). */
-  acceptsSchema?: Record<string, unknown>
-  /** Last public `result.output` JSON when `returns` is set. */
-  runPublicOutput?: string
+  /** Capability id → execution from describe(). */
+  capabilityExecution?: Record<string, CapabilityExecution>
+  /** Whether `withRemoteInvoke` is bound. */
+  hostPaired?: boolean
   /** Open configure dialog for a step with literal inputs. */
   onConfigureStep?: (stepId: string) => void
   /** Draw output→input: write `$ref` into the target step (manifest + Fluent sync). */
@@ -117,6 +138,7 @@ export interface ReactFlowCanvasProps {
     sourceHandle: string
     targetHandle: string
     valueSchema?: Record<string, unknown>
+    targetRequired?: boolean
   }) => void | Promise<void>
   /** Delete a data edge: remove that input binding from the target step. */
   onDisconnectPorts?: (connection: {
@@ -127,25 +149,21 @@ export interface ReactFlowCanvasProps {
 
 function ReactFlowCanvasInner({
   reactflowJson,
-  runOutput,
   runBusy,
-  runOverlayOpen,
-  onCloseRunOverlay,
-  onOpenRunOverlay,
-  onRun,
+  onOpenRunModal,
   hasWorkflow,
-  acceptsSchema,
-  runPublicOutput,
+  capabilityExecution = {},
+  hostPaired = false,
   onConfigureStep,
   onConnectPorts,
   onDisconnectPorts,
 }: ReactFlowCanvasProps) {
   const doc = useMemo(() => parseDocument(reactflowJson), [reactflowJson])
   const stepIds = useMemo(
-    () => (doc?.nodes.filter((n) => n.type === "ecp-step").map((n) => n.id) ?? []),
+    () => (doc?.nodes.filter((n) => n.type === "ecp-step" || n.type === "ecp-io").map((n) => n.id) ?? []),
     [doc]
   )
-  const { statuses, runActive } = useReactFlowRunProgress(stepIds)
+  const { statuses, errors, runActive } = useReactFlowRunProgress(stepIds, runBusy)
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
@@ -156,6 +174,7 @@ function ReactFlowCanvasInner({
     targetHandle: string
     edgeId: string
   } | null>(null)
+  const [edgeControl, setEdgeControl] = useState<EdgeMenuControlState | null>(null)
   const canvasRef = useRef<HTMLDivElement>(null)
   const edgeMenuRef = useRef<HTMLDivElement>(null)
 
@@ -165,9 +184,17 @@ function ReactFlowCanvasInner({
       setEdges([])
       return
     }
-    setNodes(toRfNodes(doc.nodes))
+    setNodes(
+      toRfNodes(doc.nodes).map((node) => {
+        if (node.type !== "ecp-step") return node
+        const uses = (node.data as { uses?: string }).uses
+        const execution = uses ? capabilityExecution[uses] : undefined
+        const hostBadge = capabilityHostBadge(execution, hostPaired)
+        return hostBadge ? { ...node, data: { ...node.data, hostBadge } } : node
+      })
+    )
     setEdges(toRfEdges(doc.edges))
-  }, [doc, setNodes, setEdges])
+  }, [doc, setNodes, setEdges, capabilityExecution, hostPaired])
 
   const isValidConnection = useCallback(
     (connection: Connection | Edge) => {
@@ -204,16 +231,29 @@ function ReactFlowCanvasInner({
       const targetHandle = connection.targetHandle
       if (!connection.source || !connection.target || !sourceHandle || !targetHandle) return
       const sourceNode = nodes.find((n) => n.id === connection.source)
+      const targetNode = nodes.find((n) => n.id === connection.target)
       const sourceData = sourceNode?.data as
         | { outputs?: Array<{ id: string; valueSchema?: Record<string, unknown> }> }
         | undefined
+      const targetData = targetNode?.data as
+        | {
+            inputs?: Array<{
+              id: string
+              valueSchema?: Record<string, unknown>
+              required?: boolean
+            }>
+          }
+        | undefined
       const sourcePort = (sourceData?.outputs ?? []).find((p) => p.id === sourceHandle)
+      const targetPort = (targetData?.inputs ?? []).find((p) => p.id === targetHandle)
+      const fromAccepts = connection.source === WORKFLOW_ACCEPTS_NODE_ID
       void onConnectPorts({
         sourceStepId: connection.source,
         targetStepId: connection.target,
         sourceHandle,
         targetHandle,
-        valueSchema: sourcePort?.valueSchema,
+        valueSchema: fromAccepts ? targetPort?.valueSchema : sourcePort?.valueSchema,
+        targetRequired: fromAccepts ? targetPort?.required : undefined,
       })
     },
     [onConnectPorts, isValidConnection, nodes]
@@ -242,7 +282,11 @@ function ReactFlowCanvasInner({
     []
   )
 
-  const closeEdgeMenu = useCallback(() => setEdgeMenu(null), [])
+  const closeEdgeMenu = useCallback(() => {
+    setEdgeMenu(null)
+    setEdges((current) => current.map((item) => ({ ...item, selected: false })))
+    setEdgeControl(null)
+  }, [setEdges])
 
   const handleOpenEdgeMenu = useCallback(
     (event: ReactMouseEvent, edge: EdgeMenuTarget) => {
@@ -350,44 +394,51 @@ function ReactFlowCanvasInner({
           }
         }
         const status = statuses[node.id]
-        const statusClass = stepNodeStatusClass(status, runActive || runBusy)
+        const statusClass = stepNodeStatusClass(status, runActive)
         return {
           ...node,
           data: {
             ...(node.data as object),
             statusClass,
+            errorMessage: errors[node.id],
             ...connected,
           },
           className: statusClass,
         }
       }),
-    [nodes, statuses, runActive, runBusy, connectedByNode]
+    [nodes, statuses, errors, runActive, connectedByNode]
   )
 
   const decoratedEdges = useMemo(
     () =>
       edges.map((edge) => {
-        const cls = edgeStatusClass(statuses[edge.source], statuses[edge.target], runActive || runBusy)
+        const cls = edgeStatusClass(statuses[edge.source], statuses[edge.target], runActive)
         const incomplete = cls === "ecp-rf-edge--incomplete"
         const completed = cls === "ecp-rf-edge--completed"
+        const failed = cls === "ecp-rf-edge--failed"
+        const selected = Boolean(edge.selected || edgeMenu?.edgeId === edge.id)
         return {
           ...edge,
-          className: `${cls}${edge.selected ? " ecp-rf-edge--selected" : ""}`,
+          selected,
+          className: `${cls}${selected ? " ecp-rf-edge--selected" : ""}`,
+          zIndex: selected ? SELECTED_EDGE_Z_INDEX : edge.zIndex,
           // CSS class drives ants — RF `animated` uses a different dash period and flickers.
           animated: false,
           interactionWidth: EDGE_INTERACTION_WIDTH,
           style: {
             strokeWidth: 2,
             opacity: 0.9,
-            ...(incomplete
-              ? { stroke: "var(--color-tertiary-fixed-dim)" }
-              : completed
-                ? { stroke: "var(--color-status-valid)" }
-                : { stroke: "var(--color-tertiary-fixed-dim)" }),
+            ...(failed
+              ? { stroke: "var(--color-error)" }
+              : incomplete
+                ? { stroke: "var(--color-tertiary-fixed-dim)" }
+                : completed
+                  ? { stroke: "var(--color-status-valid)" }
+                  : { stroke: "var(--color-tertiary-fixed-dim)" }),
           },
         }
       }),
-    [edges, statuses, runActive, runBusy]
+    [edgeMenu?.edgeId, edges, statuses, runActive]
   )
 
   return (
@@ -397,12 +448,10 @@ function ReactFlowCanvasInner({
     >
       <PanelHeader icon="account_tree" label="Workflow Canvas" />
 
-      <div
-        ref={canvasRef}
-        className={`relative flex min-h-0 flex-1 flex-col ${runOverlayOpen ? "opacity-50" : ""}`}
-      >
+      <div ref={canvasRef} className="relative flex min-h-0 flex-1 flex-col">
         {hasWorkflow && doc ? (
           <ReactFlowConfigureContext.Provider value={onConfigureStep}>
+            <ReactFlowEdgeControlRegistryContext.Provider value={setEdgeControl}>
             <ReactFlowEdgeMenuContext.Provider value={handleOpenEdgeMenu}>
             <ReactFlow
               nodes={decoratedNodes}
@@ -413,6 +462,12 @@ function ReactFlowCanvasInner({
               onEdgesDelete={handleEdgesDelete}
               onBeforeDelete={handleBeforeDelete}
               onEdgeContextMenu={handleEdgeContextMenu}
+              onEdgeClick={(_, edge) => {
+                setEdges((current) =>
+                  current.map((item) => ({ ...item, selected: item.id === edge.id }))
+                )
+                setEdgeMenu(null)
+              }}
               onPaneClick={closeEdgeMenu}
               onNodeClick={closeEdgeMenu}
               isValidConnection={isValidConnection}
@@ -424,10 +479,12 @@ function ReactFlowCanvasInner({
               nodesDraggable={false}
               nodesConnectable
               elementsSelectable
+              elevateEdgesOnSelect
               panOnDrag
               zoomOnDoubleClick={false}
               proOptions={{ hideAttribution: true }}
             >
+              <ReactFlowInternalsSync nodeIds={stepIds} />
               <Background gap={24} color="var(--color-surface-container-highest)" />
               <Controls className="ecp-rf-controls" showInteractive={false}>
                 <button
@@ -435,7 +492,7 @@ function ReactFlowCanvasInner({
                   className="react-flow__controls-button ecp-rf-controls-inspect"
                   title="Inspect state"
                   aria-label="Inspect state"
-                  onClick={onOpenRunOverlay}
+                  onClick={onOpenRunModal}
                 >
                   <span
                     className="material-symbols-outlined ecp-rf-controls-inspect-icon"
@@ -453,10 +510,15 @@ function ReactFlowCanvasInner({
                 maskColor="color-mix(in srgb, var(--color-background) 72%, transparent)"
               />
             </ReactFlow>
+            <EdgeMenuControlOverlay
+              canvasRef={canvasRef}
+              control={edgeControl}
+              onOpenMenu={handleOpenEdgeMenu}
+            />
             {edgeMenu ? (
               <div
                 ref={edgeMenuRef}
-                className="absolute z-30 min-w-[10rem] rounded-md border border-outline-variant bg-surface-container-high py-1 shadow-md"
+                className="absolute z-[1030] min-w-[10rem] rounded-md border border-outline-variant bg-surface-container-high py-1 shadow-md"
                 style={{ left: edgeMenu.x, top: edgeMenu.y }}
                 role="menu"
                 onPointerDown={(event) => event.stopPropagation()}
@@ -472,6 +534,7 @@ function ReactFlowCanvasInner({
               </div>
             ) : null}
             </ReactFlowEdgeMenuContext.Provider>
+            </ReactFlowEdgeControlRegistryContext.Provider>
           </ReactFlowConfigureContext.Provider>
         ) : (
           <div className="flex h-full items-center justify-center p-canvas-padding">
@@ -481,32 +544,6 @@ function ReactFlowCanvasInner({
           </div>
         )}
       </div>
-
-      {runOverlayOpen ? (
-        <div className="absolute inset-0 z-20 flex items-start justify-center overflow-auto bg-background/50 p-6 backdrop-blur-[2px]">
-          <div className="flex w-full max-w-2xl flex-col rounded-xl border border-outline-variant bg-surface-container p-6">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="font-display text-headline text-on-surface">Workflow state</h2>
-              <button
-                type="button"
-                className="material-symbols-outlined cursor-pointer text-on-surface-variant hover:text-on-surface"
-                onClick={onCloseRunOverlay}
-                aria-label="Close"
-              >
-                close
-              </button>
-            </div>
-            <RunOutputPanel
-              runOutput={runOutput}
-              runBusy={runBusy}
-              onRun={onRun}
-              hasWorkflow={hasWorkflow}
-              acceptsSchema={acceptsSchema}
-              runPublicOutput={runPublicOutput}
-            />
-          </div>
-        </div>
-      ) : null}
     </section>
   )
 }

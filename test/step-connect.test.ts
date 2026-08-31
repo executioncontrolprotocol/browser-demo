@@ -7,8 +7,10 @@ import {
   portTypeKind,
   portsAreCompatible,
   removePortBinding,
+  resolveAcceptsConnectionKey,
   resolvePortConnection,
 } from "../src/lib/step-connect.js"
+import { ACCEPTS_PLACEHOLDER_HANDLE } from "../src/lib/workflow-io.js"
 
 describe("step-connect helpers", () => {
   it("builds state refs from as + handle", () => {
@@ -136,5 +138,21 @@ describe("step-connect helpers", () => {
     ).toBe(false)
     expect(portsAreCompatible({ valueSchema: {} }, { valueSchema: { type: "string" } })).toBe(true)
     expect(portsAreCompatible({ typeLabel: "unknown" }, { typeLabel: "number" })).toBe(true)
+  })
+
+  it("resolves accepts connection keys from placeholder or named port", () => {
+    expect(resolveAcceptsConnectionKey(ACCEPTS_PLACEHOLDER_HANDLE, "prompt")).toBe("prompt")
+    expect(resolveAcceptsConnectionKey("prompt", "text")).toBe("prompt")
+    expect(resolveAcceptsConnectionKey("  ", "prompt")).toBe("prompt")
+  })
+
+  it("builds state ref for accepts whole-key wiring", () => {
+    expect(
+      resolvePortConnection({
+        sourceAs: "prompt",
+        sourceHandle: OUTPUT_HANDLE_ID,
+        targetHandle: "text",
+      })
+    ).toEqual({ ok: true, refPath: "state.prompt", paramName: "text" })
   })
 })

@@ -195,17 +195,19 @@ export async function invokeViaBridge<T = unknown>(
   if (res.status === 401) {
     throw new Error("Bridge unauthorized — check the pairing token from `ecp up`")
   }
-  if (!res.ok) {
-    let detail = ""
-    try {
-      detail = (await res.text()).slice(0, 200)
-    } catch {
-      detail = ""
-    }
-    throw new Error(detail || `Bridge invoke failed: ${res.status}`)
+
+  let body: unknown
+  try {
+    body = await res.json()
+  } catch {
+    throw new Error(`Bridge invoke failed: ${res.status}`)
   }
 
-  return (await res.json()) as BridgeInvokeResult<T>
+  if (body && typeof body === "object" && "success" in body) {
+    return body as BridgeInvokeResult<T>
+  }
+
+  throw new Error(`Bridge invoke failed: ${res.status}`)
 }
 
 /** List Ollama models via the local daemon. */

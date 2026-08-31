@@ -2,11 +2,31 @@ import { useEffect, useState } from "react"
 import type { ReactFlowIoData, ReactFlowIoKind } from "@executioncontrolprotocol/format-reactflow"
 import {
   WORKFLOW_IO_NAME_RE,
+  WORKFLOW_FILE_MEDIA_PRESETS,
+  fileMediaPresetFromSchema,
+  fileSchemaWithMediaPreset,
+  portFromIoField,
   type WorkflowIoField,
   type WorkflowIoSchemaType,
+  type WorkflowFileMediaPreset,
 } from "../lib/workflow-io.js"
+import { WORKFLOW_FILE_VALUE_SCHEMA } from "../lib/run-form-files.js"
+import { ConfigPortControl } from "./ConfigFieldControl.js"
+import {
+  buildIoFieldsFromConfigureRows,
+  draftForIoField,
+  ioFieldTypePickerDisabled,
+  mergeIoFieldValueSchemaOnTypeChange,
+} from "../lib/io-configure.js"
 
-const TYPE_OPTIONS: WorkflowIoSchemaType[] = ["string", "number", "boolean", "object", "array"]
+const TYPE_OPTIONS: WorkflowIoSchemaType[] = [
+  "string",
+  "number",
+  "boolean",
+  "object",
+  "array",
+  "file",
+]
 
 /** Save payload for projected Inputs / Outputs configure. */
 export interface IoConfigureSavePayload {
@@ -38,6 +58,13 @@ export function IoConfigureDialog({
 }: IoConfigureDialogProps) {
   const [rows, setRows] = useState<WorkflowIoField[]>(() => initialFields)
   const [originalNames, setOriginalNames] = useState<string[]>(() => initialFields.map((f) => f.name))
+  const [drafts, setDrafts] = useState<Record<string, string>>(() => {
+    const next: Record<string, string> = {}
+    for (const field of initialFields) {
+      next[field.name] = kind === "accepts" ? draftForIoField(field) : ""
+    }
+    return next
+  })
   const [newName, setNewName] = useState("")
   const [newType, setNewType] = useState<WorkflowIoSchemaType>("string")
   const [nameError, setNameError] = useState<string | null>(null)
@@ -45,6 +72,11 @@ export function IoConfigureDialog({
   useEffect(() => {
     setRows(initialFields)
     setOriginalNames(initialFields.map((f) => f.name))
+    const nextDrafts: Record<string, string> = {}
+    for (const field of initialFields) {
+      nextDrafts[field.name] = kind === "accepts" ? draftForIoField(field) : ""
+    }
+    setDrafts(nextDrafts)
     setNewName("")
     setNewType("string")
     setNameError(null)
@@ -65,10 +97,13 @@ export function IoConfigureDialog({
       name,
       type: newType,
       required: true,
-      valueSchema: { type: newType },
+      valueSchema: newType === "file" ? { ...WORKFLOW_FILE_VALUE_SCHEMA } : { type: newType },
     }
     setRows((prev) => [...prev, field])
     setOriginalNames((prev) => [...prev, ""])
+    if (kind === "accepts") {
+      setDrafts((prev) => ({ ...prev, [name]: draftForIoField(field) }))
+    }
     setNewName("")
   }
 
@@ -85,13 +120,26 @@ export function IoConfigureDialog({
       }
       seen.add(row.name)
     }
+
+    let fieldsToSave = rows
+    if (kind === "accepts") {
+      const built = buildIoFieldsFromConfigureRows(rows, drafts, "accepts")
+      if (!built.ok) {
+        setNameError(
+          built.fieldName ? `${built.fieldName}: ${built.error}` : built.error
+        )
+        return
+      }
+      fieldsToSave = built.fields
+    }
+
     setNameError(null)
     const renames: Array<{ from: string; to: string }> = []
     rows.forEach((row, index) => {
       const from = originalNames[index]
       if (from && from !== row.name) renames.push({ from, to: row.name })
     })
-    void onSave({ kind, fields: rows, renames })
+    void onSave({ kind, fields: fieldsToSave, renames })
   }
 
   return (
@@ -129,9 +177,13 @@ export function IoConfigureDialog({
               {kind === "accepts" ? " to accept run input." : " to expose run output."}
             </p>
           ) : (
-            rows.map((row, index) => (
+            rows.map((row, index) => {
+              const mediaPreset =
+                row.type === "file" ? fileMediaPresetFromSchema(row.valueSchema) : undefined
+              const typePickerDisabled = ioFieldTypePickerDisabled(row)
+              return (
+              <div key={`${originalNames[index] || row.name}-${index}`} className="space-y-2">
               <div
-                key={`${originalNames[index] || row.name}-${index}`}
                 className="grid grid-cols-[1fr_8rem_auto_auto] items-end gap-3"
               >
                 <label className="block space-y-1">
@@ -150,17 +202,31 @@ export function IoConfigureDialog({
                 <label className="block space-y-1">
                   <span className="font-mono text-label text-on-surface">Type</span>
                   <select
-                    className="w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-3 py-2 font-mono text-sm text-on-surface outline-none focus:border-outline"
+                    className="w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-3 py-2 font-mono text-sm text-on-surface outline-none focus:border-outline disabled:opacity-60"
                     value={row.type}
                     onChange={(e) => {
                       const type = e.target.value as WorkflowIoSchemaType
                       setRows((prev) =>
                         prev.map((r, i) =>
-                          i === index ? { ...r, type, valueSchema: { type } } : r
+                          i === index
+                            ? {
+                                ...r,
+                                type,
+                                valueSchema: mergeIoFieldValueSchemaOnTypeChange(
+                                  r.valueSchema,
+                                  type
+                                ),
+                              }
+                            : r
                         )
                       )
                     }}
-                    disabled={busy}
+                    disabled={busy || typePickerDisabled}
+                    title={
+                      typePickerDisabled
+                        ? "Type is fixed while wired constraints (enum, min/max, file) are present"
+                        : undefined
+                    }
                   >
                     {TYPE_OPTIONS.map((opt) => (
                       <option key={opt} value={opt}>
@@ -188,13 +254,96 @@ export function IoConfigureDialog({
                   onClick={() => {
                     setRows((prev) => prev.filter((_, i) => i !== index))
                     setOriginalNames((prev) => prev.filter((_, i) => i !== index))
+                    setDrafts((prev) => {
+                      const next = { ...prev }
+                      delete next[row.name]
+                      return next
+                    })
                   }}
                   disabled={busy}
                 >
                   Remove
                 </button>
               </div>
-            ))
+              {kind === "accepts" ? (
+                <label className="block space-y-1">
+                  <span className="font-mono text-label text-on-surface">Default value</span>
+                  <ConfigPortControl
+                    fieldId={`io-accepts-${index}`}
+                    port={portFromIoField(row)}
+                    value={drafts[row.name] ?? ""}
+                    busy={busy}
+                    onChange={(next) =>
+                      setDrafts((prev) => ({ ...prev, [row.name]: next }))
+                    }
+                    filePickerEnabled={false}
+                    fileHint="Default values for file inputs are set at run time."
+                  />
+                </label>
+              ) : null}
+              {row.type === "file" ? (
+                <div className="grid grid-cols-[12rem_1fr] items-end gap-3 pl-0">
+                  <label className="block space-y-1">
+                    <span className="font-mono text-label text-on-surface">Accept types</span>
+                    <select
+                      className="w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-3 py-2 font-mono text-sm text-on-surface outline-none focus:border-outline"
+                      value={mediaPreset?.preset ?? "any"}
+                      onChange={(e) => {
+                        const preset = e.target.value as WorkflowFileMediaPreset
+                        setRows((prev) =>
+                          prev.map((r, i) =>
+                            i === index
+                              ? {
+                                  ...r,
+                                  valueSchema: fileSchemaWithMediaPreset(r.valueSchema, preset),
+                                }
+                              : r
+                          )
+                        )
+                      }}
+                      disabled={busy}
+                    >
+                      {WORKFLOW_FILE_MEDIA_PRESETS.map((opt) => (
+                        <option key={opt.id} value={opt.id}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {mediaPreset?.preset === "custom" ? (
+                    <label className="block space-y-1">
+                      <span className="font-mono text-label text-on-surface">Custom MIME</span>
+                      <input
+                        type="text"
+                        className="w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-3 py-2 font-mono text-sm text-on-surface outline-none focus:border-outline"
+                        value={mediaPreset.custom ?? ""}
+                        placeholder="image/webp"
+                        onChange={(e) => {
+                          const custom = e.target.value
+                          setRows((prev) =>
+                            prev.map((r, i) =>
+                              i === index
+                                ? {
+                                    ...r,
+                                    valueSchema: fileSchemaWithMediaPreset(
+                                      r.valueSchema,
+                                      "custom",
+                                      custom
+                                    ),
+                                  }
+                                : r
+                            )
+                          )
+                        }}
+                        disabled={busy}
+                      />
+                    </label>
+                  ) : null}
+                </div>
+              ) : null}
+              </div>
+            )
+            })
           )}
 
           <div className="flex flex-wrap items-end gap-3 border-t border-outline-variant/50 pt-4">

@@ -20,6 +20,8 @@ export interface CodePanelProps {
   environmentSource: string
   compileError?: string | null
   onFluentChange?: (value: string | undefined) => void
+  onBeautifyFluent?: () => void | Promise<void>
+  beautifyBusy?: boolean
 }
 
 const EDITOR_TABS: { id: CodeEditorTab; label: string }[] = [
@@ -48,6 +50,8 @@ export function CodePanel({
   environmentSource,
   compileError,
   onFluentChange,
+  onBeautifyFluent,
+  beautifyBusy = false,
 }: CodePanelProps) {
   const readOnlyValue =
     formatTab === "json" ? json : formatTab === "toon" ? toon : formatTab === "mermaid" ? mermaid : ""
@@ -93,6 +97,15 @@ export function CodePanel({
               {label}
             </button>
           ))}
+          <button
+            type="button"
+            onClick={() => void onBeautifyFluent?.()}
+            disabled={formatTab !== "fluent" || beautifyBusy || !onBeautifyFluent}
+            className="ml-auto rounded border border-outline-variant/80 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-on-surface-variant hover:border-outline hover:text-on-surface disabled:cursor-not-allowed disabled:opacity-40"
+            title="Format Fluent source (expand accepts / returns schemas)"
+          >
+            {beautifyBusy ? "Beautifying…" : "Beautify"}
+          </button>
         </div>
       ) : (
         <p className="border-b border-outline-variant/60 px-4 py-2 font-mono text-[10px] uppercase tracking-wider text-outline">

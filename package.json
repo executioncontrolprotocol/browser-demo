@@ -16,6 +16,11 @@
     "preview": "vite preview",
     "test": "vitest run",
     "secrets:scan": "secretlint \"**/*\"",
+    "check:no-file-deps": "node scripts/check-no-file-deps.mjs",
+    "link:ecp": "node scripts/link-ecp-packages.mjs",
+    "link:host": "node scripts/link-host-example.mjs",
+    "link:vendor": "node scripts/link-vendor-extensions.mjs",
+    "dev:linked": "node scripts/dev-linked.mjs",
     "supabase:push": "supabase db push",
     "supabase:status": "supabase migration list",
     "prepare": "husky"
@@ -67,5 +72,17 @@
   },
   "optionalDependencies": {
     "@rollup/rollup-linux-x64-gnu": "4.61.1"
+  },
+  "peerDependencies": {
+    "@executioncontrolprotocol/fal": "^0.1.0",
+    "@executioncontrolprotocol/image-sharp": "^0.1.0"
+  },
+  "peerDependenciesMeta": {
+    "@executioncontrolprotocol/fal": {
+      "optional": true
+    },
+    "@executioncontrolprotocol/image-sharp": {
+      "optional": true
+    }
   }
 }

@@ -12,27 +12,30 @@ import {
 import type {
   EnvironmentDescriptor,
   HarnessInvokeResult,
+  RunResult,
   StepNode,
   ValidationResult,
   WorkflowManifest,
 } from "@executioncontrolprotocol/types"
-import type { Ecp } from "@executioncontrolprotocol/core"
+import type { Ecp, CapabilityBlobStore } from "@executioncontrolprotocol/core"
 import { compileWorkflowSource } from "@executioncontrolprotocol/core/browser"
 import type {
   ReactFlowDocument,
   ReactFlowIoData,
   ReactFlowStepData,
 } from "@executioncontrolprotocol/format-reactflow"
-import { findStepById, rewriteWorkflowAsRefs, type StepConfigureSavePayload } from "./lib/step-configure.js"
+import { findStepById, replaceStepById, rewriteWorkflowAsRefs, type StepConfigureSavePayload } from "./lib/step-configure.js"
 import {
   OUTPUT_HANDLE_ID,
   applyPortConnection,
   removePortBinding,
+  resolveAcceptsConnectionKey,
   resolvePortConnection,
 } from "./lib/step-connect.js"
 import {
   WORKFLOW_ACCEPTS_NODE_ID,
   WORKFLOW_RETURNS_NODE_ID,
+  applyAcceptsConnection,
   applyReturnsConnection,
   ioFieldsFromSchema,
   renameAcceptsProperty,
@@ -40,6 +43,7 @@ import {
   removeReturnsProperty,
   schemaFromIoFields,
   workflowIoPatchOps,
+  withNormalizedFileAccepts,
   withWorkflowIoSchema,
   workflowContract,
 } from "./lib/workflow-io.js"
@@ -50,6 +54,7 @@ import { FirstRunModal } from "./components/FirstRunModal.js"
 import { VaultSetupModal } from "./components/VaultSetupModal.js"
 import { VaultUnlockModal } from "./components/VaultUnlockModal.js"
 import { ReactFlowCanvas } from "./components/ReactFlowCanvas.js"
+import { RunResultModal, type RunModalMode } from "./components/RunResultModal.js"
 import { StepConfigureDialog } from "./components/StepConfigureDialog.js"
 import { IoConfigureDialog, type IoConfigureSavePayload } from "./components/IoConfigureDialog.js"
 import { StatusFooter } from "./components/StatusFooter.js"
@@ -61,6 +66,7 @@ import { readAvailability } from "@executioncontrolprotocol/chrome-ai"
 import { useViewLayout } from "./hooks/useViewLayout.js"
 import { installEsbuildWasmUrl } from "./lib/esbuild-wasm-bootstrap.js"
 import { createDemoAppEnvironment } from "./lib/demo-environment.js"
+import { capabilityExecutionMap } from "./lib/capability-execution-badge.js"
 import { shouldBlockForVault } from "./lib/vault-gate.js"
 import {
   harnessInvokeChatError,
@@ -81,6 +87,10 @@ import {
   logFluentSyncSkipped,
   logFluentSyncStart,
 } from "./lib/fluent-edit-debug.js"
+import {
+  beautifyFluentWorkflowSource,
+  shouldBeautifyFluentSource,
+} from "./lib/fluent-beautify.js"
 import { columnWidthClass } from "./lib/view-layout.js"
 import {
   harnessCapabilityId,
@@ -111,6 +121,11 @@ import {
   WORKFLOW_QUICK_STARTS,
   shouldShowWorkflowQuickStarts,
 } from "./lib/workflow-quick-starts.js"
+import {
+  emitRunProgressFailed,
+  isFailedRunResult,
+  syncRunProgressFromResult,
+} from "./lib/run-progress-sync.js"
 import type { CodeEditorTab, FormatTab } from "./types/workspace.js"
 
 const EMPTY_MERMAID = "flowchart TD\n  empty[No workflow]"
@@ -168,10 +183,14 @@ export function App() {
   const [reactflow, setReactflow] = useState("")
   const [prompt, setPrompt] = useState("")
   const [compileError, setCompileError] = useState<string | null>(null)
+  const [beautifyBusy, setBeautifyBusy] = useState(false)
   const [runOutput, setRunOutput] = useState("")
   const [runPublicOutput, setRunPublicOutput] = useState("")
   const [runBusy, setRunBusy] = useState(false)
-  const [runOverlayOpen, setRunOverlayOpen] = useState(false)
+  const [runModalOpen, setRunModalOpen] = useState(false)
+  const [runModalMode, setRunModalMode] = useState<RunModalMode>("inspect")
+  const [lastRunResult, setLastRunResult] = useState<unknown>(null)
+  const lastRunBlobs = useRef<CapabilityBlobStore | undefined>(undefined)
   const [configureStepId, setConfigureStepId] = useState<string | null>(null)
   const [configureBusy, setConfigureBusy] = useState(false)
   const [configureError, setConfigureError] = useState<string | null>(null)
@@ -480,6 +499,7 @@ export function App() {
       sourceHandle: string
       targetHandle: string
       valueSchema?: Record<string, unknown>
+      targetRequired?: boolean
     }) => {
       if (!manifest) return
 
@@ -499,10 +519,66 @@ export function App() {
             workflowContract(manifest).returns,
             sourceAs,
             connection.targetHandle,
-            connection.valueSchema
+            connection.valueSchema,
+            connection.sourceHandle
           )
         )
         const error = await patchWorkflowMeta(next)
+        if (error) setChatStatus(error)
+        return
+      }
+
+      if (connection.sourceStepId === WORKFLOW_ACCEPTS_NODE_ID) {
+        const target = findStepById(manifest.steps, connection.targetStepId)
+        if (!target) {
+          setChatStatus("Step not found in workflow")
+          return
+        }
+
+        const acceptsKey = resolveAcceptsConnectionKey(
+          connection.sourceHandle,
+          connection.targetHandle
+        )
+        if (!acceptsKey) {
+          setChatStatus("Missing accepts parameter name")
+          return
+        }
+
+        const resolved = resolvePortConnection({
+          sourceAs: acceptsKey,
+          sourceHandle: OUTPUT_HANDLE_ID,
+          targetHandle: connection.targetHandle,
+        })
+        if (!resolved.ok) {
+          setChatStatus(resolved.error)
+          return
+        }
+
+        const next = withWorkflowIoSchema(
+          manifest,
+          "accepts",
+          applyAcceptsConnection(
+            workflowContract(manifest).accepts,
+            connection.sourceHandle,
+            connection.targetHandle,
+            connection.valueSchema,
+            connection.targetRequired
+          )
+        )
+        const nextTarget = findStepById(next.steps, connection.targetStepId)
+        if (!nextTarget) {
+          setChatStatus("Step not found in workflow")
+          return
+        }
+        const nextWithStep: WorkflowManifest = {
+          ...next,
+          steps: replaceStepById(
+            next.steps,
+            connection.targetStepId,
+            applyPortConnection(nextTarget, resolved.paramName, resolved.refPath)
+          ),
+        }
+        const error = await patchWorkflowMeta(nextWithStep)
         if (error) setChatStatus(error)
         return
       }
@@ -513,14 +589,8 @@ export function App() {
         return
       }
 
-      const sourceAs =
-        connection.sourceStepId === WORKFLOW_ACCEPTS_NODE_ID
-          ? connection.sourceHandle
-          : findStepById(manifest.steps, connection.sourceStepId)?.as
-      const sourceHandle =
-        connection.sourceStepId === WORKFLOW_ACCEPTS_NODE_ID
-          ? OUTPUT_HANDLE_ID
-          : connection.sourceHandle
+      const sourceAs = findStepById(manifest.steps, connection.sourceStepId)?.as
+      const sourceHandle = connection.sourceHandle
 
       const resolved = resolvePortConnection({
         sourceAs,
@@ -865,31 +935,77 @@ export function App() {
     [layout]
   )
 
-  const onRun = async (input?: Record<string, unknown>) => {
+  const onBeautifyFluent = useCallback(async () => {
+    if (!shouldBeautifyFluentSource(fluent)) return
+    setBeautifyBusy(true)
+    try {
+      if (compileTimer.current) clearTimeout(compileTimer.current)
+      compileGeneration.current += 1
+
+      const result = await beautifyFluentWorkflowSource(fluent)
+      if (!result.ok) {
+        setCompileError(result.error)
+        return
+      }
+
+      setCompileError(null)
+      setFluent(result.fluent)
+      setFluentEditorKey((key) => key + 1)
+      await syncFromManifestRef.current(result.manifest, {
+        refreshFluent: false,
+        ...(result.validation ? { validation: result.validation } : {}),
+      })
+    } catch (err) {
+      setCompileError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setBeautifyBusy(false)
+    }
+  }, [fluent])
+
+  const onRun = async (input?: Record<string, unknown>, blobs?: CapabilityBlobStore) => {
     if (!ecp || !manifest) return
     setRunBusy(true)
+    setRunModalOpen(false)
     setRunOutput("")
     setRunPublicOutput("")
+    lastRunBlobs.current = blobs
     layout.ensureWorkflowVisible()
+    let result: RunResult | undefined
     try {
-      const result = await ecp.run(manifest, input ? { input } : undefined)
+      result = (await ecp.run(withNormalizedFileAccepts(manifest), {
+        ...(input ? { input } : {}),
+        ...(blobs ? { blobs } : {}),
+      })) as RunResult
+      setLastRunResult(result)
       setRunOutput(JSON.stringify(result, null, 2))
-      const output = (result as { output?: Record<string, unknown> }).output
+      const output = result.output
       setRunPublicOutput(output ? JSON.stringify(output, null, 2) : "")
-      setRunOverlayOpen(true)
+      if (!isFailedRunResult(result)) {
+        setRunModalMode("output")
+        setRunModalOpen(true)
+      }
     } catch (err) {
-      setRunOutput(err instanceof Error ? err.message : String(err))
-      setRunOverlayOpen(true)
+      const message = err instanceof Error ? err.message : String(err)
+      setLastRunResult({ error: message })
+      setRunOutput(message)
+      emitRunProgressFailed()
     } finally {
+      if (result) syncRunProgressFromResult(result)
       setRunBusy(false)
     }
+  }
+
+  const onRunFromModal = (input?: Record<string, unknown>, blobs?: CapabilityBlobStore) => {
+    setRunModalOpen(false)
+    void onRun(input, blobs)
   }
 
   const onExecute = () => {
     if (!manifest) return
     const accepts = workflowContract(manifest).accepts
     if (ioFieldsFromSchema(accepts).length > 0) {
-      setRunOverlayOpen(true)
+      setRunModalMode("input")
+      setRunModalOpen(true)
       return
     }
     void onRun()
@@ -932,15 +1048,14 @@ export function App() {
             {layout.views.workflow ? (
               <ReactFlowCanvas
                 reactflowJson={reactflow}
-                runOutput={runOutput}
                 runBusy={runBusy}
-                runOverlayOpen={runOverlayOpen}
-                onCloseRunOverlay={() => setRunOverlayOpen(false)}
-                onOpenRunOverlay={() => setRunOverlayOpen(true)}
-                onRun={onRun}
+                onOpenRunModal={() => {
+                  setRunModalMode("inspect")
+                  setRunModalOpen(true)
+                }}
                 hasWorkflow={hasWorkflow}
-                acceptsSchema={manifest ? workflowContract(manifest).accepts : undefined}
-                runPublicOutput={runPublicOutput || undefined}
+                capabilityExecution={capabilityExecutionMap(descriptor)}
+                hostPaired={Boolean(descriptor?.remoteInvoke?.url)}
                 onConfigureStep={onConfigureStep}
                 onConnectPorts={onConnectPorts}
                 onDisconnectPorts={onDisconnectPorts}
@@ -960,6 +1075,8 @@ export function App() {
                 environmentSource={environmentSource}
                 compileError={compileError}
                 onFluentChange={onFluentChange}
+                onBeautifyFluent={onBeautifyFluent}
+                beautifyBusy={beautifyBusy}
               />
             ) : null}
           </WorkspaceColumn>
@@ -970,6 +1087,22 @@ export function App() {
         validation={validation}
         chromeInstallUi={chromeInstallUi}
         chromeInstallState={chromeInstallState}
+      />
+
+      <RunResultModal
+        open={runModalOpen}
+        onClose={() => setRunModalOpen(false)}
+        mode={runModalMode}
+        runResult={lastRunResult}
+        runOutputJson={runOutput}
+        runPublicOutput={runPublicOutput || undefined}
+        bridge={bridgeSettings}
+        blobs={lastRunBlobs.current}
+        runBusy={runBusy}
+        onRun={onRunFromModal}
+        hasWorkflow={hasWorkflow}
+        acceptsSchema={manifest ? workflowContract(manifest).accepts : undefined}
+        filePickerEnabled={Boolean(descriptor?.remoteInvoke?.url)}
       />
 
       {showProviderModal ? (

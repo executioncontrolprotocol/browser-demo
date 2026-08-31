@@ -14,7 +14,7 @@ const PROVIDER_CAPABILITY: Record<ProviderMode, string> = {
   "chrome-ai": "@executioncontrolprotocol/chrome-ai.generate",
   openai: "@executioncontrolprotocol/openai.generate",
   claude: "@executioncontrolprotocol/claude.generate",
-  ollama: "@browser-demo/bridge-ollama.generate",
+  ollama: "@executioncontrolprotocol/ollama.generate",
 }
 
 const HARNESS_CAPABILITY: Record<HarnessMode, string> = {

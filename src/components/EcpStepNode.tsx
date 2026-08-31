@@ -1,6 +1,7 @@
 import { useContext, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react"
 import { Handle, Position, useConnection, type NodeProps } from "@xyflow/react"
 import type { ReactFlowPort, ReactFlowStepData } from "@executioncontrolprotocol/format-reactflow"
+import { useSyncNodeHandles } from "../hooks/useSyncNodeHandles.js"
 import { portsAreCompatible } from "../lib/step-connect.js"
 import { ReactFlowConfigureContext } from "./reactflow-configure-context.js"
 
@@ -8,6 +9,10 @@ import { ReactFlowConfigureContext } from "./reactflow-configure-context.js"
 export interface EcpStepNodeData extends ReactFlowStepData {
   /** Extra CSS class for run status. */
   statusClass?: string
+  /** Failure message for hover tooltip when the step failed. */
+  errorMessage?: string
+  /** Host/mixed execution badge. */
+  hostBadge?: string
   /** Input port ids that have an incoming data edge. */
   connectedTargetHandles?: string[]
   /** Output port ids that have an outgoing data edge. */
@@ -49,8 +54,15 @@ export function EcpStepNode({ id, data }: NodeProps) {
   const onConfigureStep = useContext(ReactFlowConfigureContext)
   const statusClass = step.statusClass ?? ""
   const showConfigure = Boolean(onConfigureStep)
+  const showErrorBadge = statusClass.includes("ecp-rf-node--failed") && Boolean(step.errorMessage)
   const connectedTargets = new Set(step.connectedTargetHandles ?? [])
   const connectedSources = new Set(step.connectedSourceHandles ?? [])
+
+  useSyncNodeHandles(
+    id,
+    step.inputs.map((port) => port.id),
+    step.outputs.map((port) => port.id)
+  )
 
   const connection = useConnection()
   const dragFromOutput =
@@ -83,21 +95,39 @@ export function EcpStepNode({ id, data }: NodeProps) {
           {step.as ? (
             <div className="mt-1 font-mono text-[10px] text-primary-fixed">as {step.as}</div>
           ) : null}
+          {step.hostBadge ? (
+            <div className="mt-1 font-mono text-[10px] text-on-surface-variant">{step.hostBadge}</div>
+          ) : null}
         </div>
-        {showConfigure ? (
-          <button
-            type="button"
-            className="nodrag nopan nowheel relative z-10 shrink-0 cursor-pointer rounded border border-outline-variant bg-surface-container-high px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wide text-on-surface-variant hover:border-outline hover:text-on-surface"
-            onPointerDown={stopCanvasGesture}
-            onMouseDown={stopCanvasGesture}
-            onClick={(e) => {
-              e.stopPropagation()
-              onConfigureStep?.(id)
-            }}
-          >
-            Configure
-          </button>
-        ) : null}
+        <div className="flex shrink-0 items-start gap-1">
+          {showErrorBadge ? (
+            <div className="ecp-rf-node-error-wrap nodrag nopan nowheel">
+              <span
+                className="ecp-rf-node-error-badge material-symbols-outlined"
+                aria-hidden="true"
+              >
+                warning
+              </span>
+              <div className="ecp-rf-node-error-popover" role="tooltip">
+                {step.errorMessage}
+              </div>
+            </div>
+          ) : null}
+          {showConfigure ? (
+            <button
+              type="button"
+              className="nodrag nopan nowheel relative z-10 shrink-0 cursor-pointer rounded border border-outline-variant bg-surface-container-high px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wide text-on-surface-variant hover:border-outline hover:text-on-surface"
+              onPointerDown={stopCanvasGesture}
+              onMouseDown={stopCanvasGesture}
+              onClick={(e) => {
+                e.stopPropagation()
+                onConfigureStep?.(id)
+              }}
+            >
+              Configure
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <div className="flex flex-col gap-1">

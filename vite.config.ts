@@ -28,7 +28,17 @@ export default defineConfig({
     browserPromptLoaderPlugin({ corePromptsDir: corePrompts, stubDir }),
     react(),
   ],
-  server: { port: 5173 },
+  server: {
+    port: 5173,
+    // Linked `file:` / npm-link packages live outside browser-demo (core + extensions monorepos).
+    fs: {
+      allow: [
+        appRoot,
+        join(appRoot, "../executioncontrolprotocol"),
+        join(appRoot, "../extensions"),
+      ],
+    },
+  },
   resolve: {
     dedupe: [
       "@executioncontrolprotocol/core",
@@ -81,18 +91,17 @@ export default defineConfig({
         find: "node:util",
         replacement: aliasPath(stubDir, "node-empty.ts"),
       },
-      // Native Node only — image-sharp cannot run in the browser bundle.
-      {
-        find: "sharp",
-        replacement: aliasPath(stubDir, "sharp-stub.ts"),
-      },
     ],
   },
   optimizeDeps: {
+    // Prebundle CJS `@fal-ai/client` so named ESM imports work.
+    include: ["@fal-ai/client"],
     exclude: [
       "@executioncontrolprotocol/core",
       "@executioncontrolprotocol/browser",
       "@executioncontrolprotocol/chrome-ai",
+      "@executioncontrolprotocol/fal",
+      "@executioncontrolprotocol/image-sharp",
       "@executioncontrolprotocol/format-mermaid",
       "@executioncontrolprotocol/format-reactflow",
       "@executioncontrolprotocol/format-toon",

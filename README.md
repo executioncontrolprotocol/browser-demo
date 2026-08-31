@@ -23,9 +23,11 @@ Prefer the real SDK whenever it can run in the browser:
 | Extension | Browser runtime | Notes |
 | --------- | --------------- | ----- |
 | `@executioncontrolprotocol/fal` | **Yes** — official `@fal-ai/client` | Configure `apiKey` via `browser("FAL_KEY")` (vault / secrets). Vite prebundles the CJS client (`optimizeDeps.include`). |
-| `@executioncontrolprotocol/image-sharp` | **Author only** | Native `sharp` cannot load in the browser; Vite aliases it to a stub that fails at step run. Execute the same manifest on Node. |
+| `@executioncontrolprotocol/image-sharp` | **Catalog + host hop** | Bound in the demo env (browser catalog only; no native `sharp`). Steps hop to `ecp up --env …` that binds Sharp on the host. Bare `ecp up` (Ollama-only) is not enough. |
 
-Do not stub browser-capable HTTP clients. Stub only packages that are impossible in the browser (native addons) or Node builtins pulled in transitively (`node:fs`, …).
+Local unpublished dogfood (required until these packages are on npm): from this app run `npm run link:vendor` (or manually `npm link` from `packages/fal` / `packages/image-sharp` in the extensions repo). Never commit `file:` deps. They stay optional peers so registry `npm ci` stays clean. Host example for Sharp: [extensions/examples/04-image-prep](https://github.com/executioncontrolprotocol/extensions/tree/main/examples/04-image-prep) — `ecp up --env environment.ts --open-url http://localhost:5173/`.
+
+Do not stub browser-capable HTTP clients. Native addons belong on the package `browser` export, not a Vite alias.
 
 See monorepo [AGENTS.md](https://github.com/executioncontrolprotocol/executioncontrolprotocol/blob/main/AGENTS.md) for compile vs runtime vs app boundaries.
 
@@ -243,13 +245,33 @@ npm run eval:matrix
 | Type errors in demo after ECP API change | Rebuild ECP, then `npm run typecheck` here; update demo imports if the API moved |
 | Linked package still shows old behavior | Confirm link targets built `dist/` (`npm run build` in ECP); restart `npm run dev` |
 | `npm install` fails on `@executioncontrolprotocol/*` | Publish packages or complete `npm link` setup above |
-| `Harness prompt fixture not found: intent-classification` | Ensure `@executioncontrolprotocol/harnesses-browser-*` is `>=0.10.1` (0.10.0 had a bad `import.meta.glob` path). Reinstall from the lockfile; use `npm link` for local unpublished packages, never `file:` in `package.json`. |
-
-Never put `"file:..."` in `package.json`. For local ECP packages, use `npm link` only.
+| `Harness prompt fixture not found: intent-classification` | Ensure `@executioncontrolprotocol/harnesses-browser-*` is `>=0.10.1` (0.10.0 had a bad `import.meta.glob` path). Reinstall from the lockfile; use `npm link` for local unpublished packages — never `file:` deps. |
 
 ## Local ECP development (`npm link`) — summary
 
-When developing ECP and the demo side-by-side, link local built packages instead of pulling from npm. See [Rebuild workspace from scratch](#rebuild-workspace-from-scratch-after-large-ecp-changes) for the full procedure.
+When developing ECP and the demo side-by-side, link local built packages instead of pulling from npm.
+
+**One command** (rebuild, link, vendor extensions, host example, restart Vite + `ecp up`):
+
+```sh
+npm run dev:linked
+```
+
+Opens **ECP up** and **Vite** in separate terminal windows (Windows/macOS) so the pairing token and demo URL stay visible. On Linux, logs go to `.dev-logs/`.
+
+After small ECP edits, skip the monorepo rebuild:
+
+```sh
+npm run dev:linked -- --skip-build
+```
+
+Granular steps: `npm run link:ecp`, `npm run link:vendor`, `npm run link:host`, then `npm run dev`.
+
+Environment overrides: `ECP_ROOT`, `EXTENSIONS_ROOT`, `HOST_EXAMPLE_ROOT`, `ECP_HOST_PORT`, `VITE_PORT`.
+
+See [Rebuild workspace from scratch](#rebuild-workspace-from-scratch-after-large-ecp-changes) for manual steps and troubleshooting.
+
+**Never use `file:` package links** in `package.json` (CI and Pages resolve from the npm registry only). `npm run check:no-file-deps` enforces this on pre-commit and in CI.
 
 **Tips:**
 
@@ -280,7 +302,7 @@ Copy `.env.example` to `.env` and set `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUB
 
 ## CI
 
-[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on push and pull request to **`main`** and **`development`**. Jobs: **Secrets scan**, **Typecheck**, **Test**, and **Build**. It does not deploy.
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on push and pull request to **`main`** and **`development`**. Jobs: **Secrets scan** (includes `check:no-file-deps`), **Typecheck**, **Test**, and **Build**. It does not deploy.
 
 ## Deploy (GitHub Pages)
 

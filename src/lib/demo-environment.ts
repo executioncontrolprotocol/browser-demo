@@ -3,6 +3,7 @@ import {
   browser,
   createBrowserEnvironment,
   createEcp,
+  globalRegistry,
   harness,
   policy,
   registerBrowserHost,
@@ -23,6 +24,8 @@ import { registerChromeAiExtension } from "@executioncontrolprotocol/chrome-ai"
 import { registerOpenaiExtension } from "@executioncontrolprotocol/extension-openai"
 import { registerClaudeExtension } from "@executioncontrolprotocol/claude"
 import { registerOllamaExtension } from "@executioncontrolprotocol/extension-ollama"
+import { registerFalExtension } from "@executioncontrolprotocol/fal"
+import { registerImageSharpExtension } from "@executioncontrolprotocol/image-sharp"
 import { registerFormatEqlExtension } from "@executioncontrolprotocol/format-eql"
 import { registerFormatToonExtension } from "@executioncontrolprotocol/format-toon"
 import { registerFormatMermaidExtension } from "@executioncontrolprotocol/format-mermaid"
@@ -31,16 +34,13 @@ import "@executioncontrolprotocol/chrome-ai"
 import "@executioncontrolprotocol/extension-openai"
 import "@executioncontrolprotocol/claude"
 import "@executioncontrolprotocol/extension-ollama"
+import "@executioncontrolprotocol/fal"
+import "@executioncontrolprotocol/image-sharp"
 import "@executioncontrolprotocol/format-eql"
 import "@executioncontrolprotocol/format-toon"
 import "@executioncontrolprotocol/format-mermaid"
 import "@executioncontrolprotocol/format-reactflow"
 import { readOllamaSettings, type OllamaSettings } from "./ollama-settings.js"
-import {
-  BRIDGE_OLLAMA_EXTENSION_ID,
-  BRIDGE_OLLAMA_GENERATE_ID,
-  registerBridgeOllamaExtension,
-} from "./bridge-ollama-extension.js"
 import { readBridgeSettings, type BridgeSettings } from "./ecp-bridge.js"
 
 /** Options for {@link createDemoAppEnvironment}. */
@@ -61,33 +61,28 @@ export async function createDemoAppEnvironment(
   const ollama = options?.ollama ?? readOllamaSettings()
   const bridge = options?.bridge ?? readBridgeSettings()
 
-  await registerBrowserHost()
+  await registerBrowserHost(globalRegistry)
   registerBrowserNanoHarnesses()
   registerBrowserCodingHarnesses()
-  await registerChromeAiExtension()
-  await registerOpenaiExtension()
-  await registerClaudeExtension()
-  await registerOllamaExtension()
-  await registerBridgeOllamaExtension()
-  await registerFormatEqlExtension()
-  await registerFormatToonExtension()
-  await registerFormatMermaidExtension()
-  await registerFormatReactflowExtension()
+  await registerChromeAiExtension(globalRegistry)
+  await registerOpenaiExtension(globalRegistry)
+  await registerClaudeExtension(globalRegistry)
+  await registerOllamaExtension(globalRegistry)
+  await registerFalExtension(globalRegistry)
+  await registerImageSharpExtension(globalRegistry)
+  await registerFormatEqlExtension(globalRegistry)
+  await registerFormatToonExtension(globalRegistry)
+  await registerFormatMermaidExtension(globalRegistry)
+  await registerFormatReactflowExtension(globalRegistry)
 
+  // Formats stay registered for panel encode/decode (.uses(...)) but are not bound
+  // into the authoring environment — except format-reactflow, which must be bound
+  // so its lifecycle hooks drive canvas run progress (marching ants, node pulse).
   const env = createBrowserEnvironment("browser-demo-app")
-  env.addExtensionBinding("@executioncontrolprotocol/format-eql", {})
-  env.addExtensionBinding("@executioncontrolprotocol/format-toon", {})
-  env.addExtensionBinding("@executioncontrolprotocol/format-mermaid", {})
   env.addExtensionBinding("@executioncontrolprotocol/format-reactflow", {})
-  env.addExtensionBinding("@executioncontrolprotocol/format-json", {})
   env.addExtensionBinding("@executioncontrolprotocol/chrome-ai", {})
   env.addExtensionBinding("@executioncontrolprotocol/ollama", {
     baseURL: ollama.baseURL,
-    defaultModel: ollama.model,
-  })
-  env.addExtensionBinding(BRIDGE_OLLAMA_EXTENSION_ID, {
-    bridgeBaseURL: bridge.baseURL,
-    token: bridge.token,
     defaultModel: ollama.model,
   })
   env.addExtensionBinding("@executioncontrolprotocol/openai", {
@@ -102,7 +97,7 @@ export async function createDemoAppEnvironment(
       .uses("@executioncontrolprotocol/chrome-ai.generate")
       .with({ ...HARNESS_NANO_BINDING }),
     harness(BROWSER_CODING_HARNESS_ID, "Coding Harness")
-      .uses(BRIDGE_OLLAMA_GENERATE_ID)
+      .uses("@executioncontrolprotocol/ollama.generate")
       .with({ ...HARNESS_CODING_BINDING }),
   ])
 
@@ -114,6 +109,9 @@ export async function createDemoAppEnvironment(
         "@executioncontrolprotocol/claude",
         "@executioncontrolprotocol/ollama",
         "@browser-demo/bridge-ollama",
+        "@executioncontrolprotocol/fal",
+        "@executioncontrolprotocol/image-sharp",
+        "@executioncontrolprotocol/azure-blob-storage",
         "@executioncontrolprotocol/browser",
         "@customer/*",
       ],
@@ -122,6 +120,11 @@ export async function createDemoAppEnvironment(
       allowAutoBind: true,
     }),
   ])
+
+  const token = bridge.token.trim()
+  if (token) {
+    env.withRemoteInvoke({ url: bridge.baseURL, token })
+  }
 
   const ecp = await createEcp(env, { exposeGlobal: true })
   await warmBrowserWorkflowCompile()

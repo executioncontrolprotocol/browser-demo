@@ -273,6 +273,11 @@
       0 16px 48px rgb(0 0 0 / 0.35);
   }
 
+  /** Match Workflow state overlay width (`max-w-2xl`). */
+  .modal-panel--run-output {
+    width: min(42rem, 92vw);
+  }
+
   .modal-panel-header {
     position: relative;
     flex-shrink: 0;
@@ -548,6 +553,57 @@
     box-shadow: 0 0 8px color-mix(in srgb, var(--color-error) 30%, transparent);
   }
 
+  .ecp-rf-node-error-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .ecp-rf-node-error-badge {
+    font-size: 1rem;
+    line-height: 1;
+    color: var(--color-error);
+    cursor: help;
+  }
+
+  .ecp-rf-node-error-popover {
+    position: absolute;
+    top: calc(100% + 0.35rem);
+    right: 0;
+    z-index: 40;
+    width: max-content;
+    max-width: min(280px, 70vw);
+    padding: 0.625rem 0.75rem;
+    border-radius: 0.5rem;
+    border: 1px solid color-mix(in srgb, var(--color-error) 35%, var(--color-outline-variant));
+    background-color: var(--color-surface-container);
+    color: var(--color-on-surface-variant);
+    font-family: "Hanken Grotesk", system-ui, sans-serif;
+    font-size: 0.75rem;
+    font-weight: 400;
+    letter-spacing: 0.01em;
+    line-height: 1.35;
+    text-transform: none;
+    box-shadow:
+      0 0 12px color-mix(in srgb, var(--color-error) 18%, transparent),
+      0 8px 24px rgb(0 0 0 / 0.35);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-4px);
+    pointer-events: none;
+    transition:
+      opacity 0.15s ease,
+      visibility 0.15s ease,
+      transform 0.15s ease;
+  }
+
+  .ecp-rf-node-error-wrap:hover .ecp-rf-node-error-popover,
+  .ecp-rf-node-error-wrap:focus-within .ecp-rf-node-error-popover {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+  }
+
   .ecp-rf-node--io {
     border-style: dashed;
   }
@@ -626,17 +682,18 @@
     animation: none !important;
   }
 
+  .react-flow__edge.ecp-rf-edge--failed path {
+    stroke: var(--color-error) !important;
+    stroke-width: 2.5;
+    stroke-dasharray: none !important;
+    animation: none !important;
+  }
+
   .react-flow__edge.selected path.react-flow__edge-path,
   .react-flow__edge.ecp-rf-edge--selected path.react-flow__edge-path {
     stroke: var(--color-primary) !important;
     stroke-width: 3 !important;
     opacity: 1 !important;
-  }
-
-  /* Labels/controls must sit above edge SVGs (selected edges elevate to ~1000)
-     or the interaction stroke steals clicks from the mid-path ellipsis. */
-  .react-flow__edgelabel-renderer {
-    z-index: 1001;
   }
 
   .ecp-rf-edge-menu-btn {
@@ -652,8 +709,9 @@
     color: var(--color-on-surface-variant);
     cursor: pointer;
     pointer-events: all;
-    z-index: 1;
-    box-shadow: 0 1px 2px color-mix(in srgb, var(--color-background) 50%, transparent);
+    box-shadow:
+      0 0 0 3px var(--color-surface-container-high),
+      0 1px 2px color-mix(in srgb, var(--color-background) 50%, transparent);
   }
 
   .ecp-rf-edge-menu-btn:hover {
@@ -729,4 +787,15 @@
   .react-flow__minimap.ecp-rf-minimap svg {
     background: var(--color-surface-container-low);
   }
+}
+
+/* Route selection stacking — unlayered so it wins over @xyflow/react style.css. */
+.node-canvas .react-flow__edge.selected,
+.node-canvas .react-flow__edge.ecp-rf-edge--selected {
+  z-index: 1000 !important;
+}
+
+.node-canvas .react-flow__edgelabel-renderer,
+.node-canvas .react-flow__viewport-portal {
+  z-index: 1010 !important;
 }
