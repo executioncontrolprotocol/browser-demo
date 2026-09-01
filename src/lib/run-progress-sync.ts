@@ -63,6 +63,28 @@ export function isFailedRunResult(result: unknown): boolean {
   return run?.status === "failed" || run?.status === "cancelled"
 }
 
+/** Human-readable failure lines for modal / footer display. @category Demo */
+export function collectRunFailureMessages(result: unknown): string[] {
+  if (!result || typeof result !== "object") return []
+  if ("error" in result && typeof (result as { error?: unknown }).error === "string") {
+    return [(result as { error: string }).error]
+  }
+  const runResult = result as RunResult
+  const messages: string[] = []
+  for (const [stepId, record] of Object.entries(runResult.history ?? {})) {
+    if (record.status !== "failed") continue
+    const message = stepErrorMessage(record)
+    messages.push(message ? `${stepId}: ${message}` : `${stepId}: failed`)
+  }
+  if (
+    messages.length === 0 &&
+    (runResult.run?.status === "failed" || runResult.run?.status === "cancelled")
+  ) {
+    messages.push(`Run ${runResult.run.status}`)
+  }
+  return messages
+}
+
 /** Emit terminal failed run progress when no {@link RunResult} is available. @category Demo */
 export function emitRunProgressFailed(runId?: string): void {
   reactFlowRunProgress.emitDone({ runId, outcome: "failed" })

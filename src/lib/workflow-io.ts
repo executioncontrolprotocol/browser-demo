@@ -9,7 +9,7 @@ import {
   WORKFLOW_RETURNS_NODE_ID,
 } from "@executioncontrolprotocol/format-reactflow"
 import type { StepNode, WorkflowManifest, WorkflowNode } from "@executioncontrolprotocol/types"
-import { rewriteWorkflowAsRefs } from "./step-configure.js"
+import { enumOptionsFromValueSchema, rewriteWorkflowAsRefs } from "./step-configure.js"
 import { OUTPUT_HANDLE_ID } from "./step-connect.js"
 import { WORKFLOW_FILE_VALUE_SCHEMA } from "./run-form-files.js"
 
@@ -230,6 +230,68 @@ export function runFormPortsFromAccepts(
     required: field.required,
     valueSchema: field.valueSchema,
   }))
+}
+
+function isBareTypeSchema(schema: Record<string, unknown>): boolean {
+  const keys = Object.keys(schema)
+  return keys.length === 0 || (keys.length === 1 && keys[0] === "type")
+}
+
+function mergeAcceptsPropertySchema(
+  manifestSchema: Record<string, unknown>,
+  portSchema: Record<string, unknown>
+): Record<string, unknown> {
+  const manifestEnum = enumOptionsFromValueSchema(manifestSchema)
+  const portEnum = enumOptionsFromValueSchema(portSchema)
+  if (!manifestEnum && portEnum) {
+    return { ...manifestSchema, ...portSchema }
+  }
+  if (
+    isBareTypeSchema(manifestSchema) &&
+    Object.keys(portSchema).length > Object.keys(manifestSchema).length
+  ) {
+    return { ...portSchema, type: manifestSchema.type ?? portSchema.type }
+  }
+  return manifestSchema
+}
+
+/**
+ * Merge richer `valueSchema` hints from the projected Inputs node when manifest
+ * `accepts` properties are coarse (e.g. wired before enum metadata landed).
+ * @category Demo
+ */
+export function enrichAcceptsSchemaFromReactFlow(
+  accepts: Record<string, unknown> | undefined,
+  reactflowJson: string | undefined
+): Record<string, unknown> | undefined {
+  if (!accepts || !reactflowJson?.trim()) return accepts
+  let doc: ReactFlowDocument
+  try {
+    doc = JSON.parse(reactflowJson) as ReactFlowDocument
+  } catch {
+    return accepts
+  }
+  const ioNode = doc.nodes.find((n) => n.id === WORKFLOW_ACCEPTS_NODE_ID && n.type === "ecp-io")
+  if (!ioNode) return accepts
+  const outputs = (ioNode.data as ReactFlowIoData).outputs ?? []
+  const props = accepts.properties
+  if (!isRecord(props)) return accepts
+
+  let changed = false
+  const nextProps: Record<string, unknown> = { ...props }
+  for (const port of outputs) {
+    if (!port.name || !port.valueSchema || !isRecord(nextProps[port.name])) continue
+    const merged = mergeAcceptsPropertySchema(
+      nextProps[port.name] as Record<string, unknown>,
+      port.valueSchema
+    )
+    if (merged !== nextProps[port.name]) {
+      nextProps[port.name] = merged
+      changed = true
+    }
+  }
+  if (!changed) return accepts
+  return { ...accepts, properties: nextProps }
 }
 
 function fieldFromConnection(

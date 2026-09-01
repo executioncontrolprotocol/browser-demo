@@ -3,6 +3,10 @@ import type { CapabilityBlobStore } from "@executioncontrolprotocol/core"
 import type { BridgeSettings } from "../lib/ecp-bridge.js"
 import { collectFinalOutputMediaRefs } from "../lib/run-media-refs.js"
 import {
+  collectRunFailureMessages,
+  isFailedRunResult,
+} from "../lib/run-progress-sync.js"
+import {
   resolveMediaPreview,
   type ResolvedMediaPreview,
 } from "../lib/resolve-media-preview.js"
@@ -106,19 +110,16 @@ export function RunResultModal({
   filePickerEnabled = false,
 }: RunResultModalProps) {
   const mediaRefs = useMemo(() => collectFinalOutputMediaRefs(runResult), [runResult])
+  const failureMessages = useMemo(() => collectRunFailureMessages(runResult), [runResult])
+  const failed = isFailedRunResult(runResult)
   const [previews, setPreviews] = useState<ResolvedMediaPreview[]>([])
-  const [jsonOpen, setJsonOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const showInput = mode === "input" || mode === "inspect"
   const showOutput = mode === "output" || mode === "inspect"
   const hasResult = Boolean(runOutputJson)
 
   useEffect(() => {
-    if (!open) {
-      setJsonOpen(false)
-      return
-    }
-    if (!showOutput) {
+    if (!open || !showOutput) {
       setPreviews([])
       setLoading(false)
       return
@@ -195,6 +196,19 @@ export function RunResultModal({
             />
           ) : null}
 
+          {showOutput && failed && failureMessages.length > 0 ? (
+            <section className="space-y-2">
+              <p className="font-mono text-label uppercase tracking-wide text-error">Errors</p>
+              <ul className="space-y-1 rounded border border-error/40 bg-error/5 p-3">
+                {failureMessages.map((message) => (
+                  <li key={message} className="font-mono text-label text-error whitespace-pre-wrap">
+                    {message}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+
           {showOutput && hasResult ? (
             <section className="space-y-3">
               <p className="font-mono text-label uppercase tracking-wide text-on-surface-variant">
@@ -249,18 +263,12 @@ export function RunResultModal({
 
           {showOutput ? (
             <section>
-              <button
-                type="button"
-                className="mb-2 font-mono text-label uppercase tracking-wide text-on-surface-variant hover:text-on-surface"
-                onClick={() => setJsonOpen((v) => !v)}
-              >
-                {jsonOpen ? "Hide full state JSON" : "Show full state JSON"}
-              </button>
-              {jsonOpen ? (
-                <pre className="max-h-[30vh] overflow-auto rounded border border-outline-variant/50 bg-surface-container-lowest p-3 font-mono text-label text-on-surface-variant whitespace-pre-wrap">
-                  {runOutputJson || "Run output will appear here."}
-                </pre>
-              ) : null}
+              <p className="mb-2 font-mono text-label uppercase tracking-wide text-on-surface-variant">
+                Full state
+              </p>
+              <pre className="max-h-[30vh] overflow-auto rounded border border-outline-variant/50 bg-surface-container-lowest p-3 font-mono text-label text-on-surface-variant whitespace-pre-wrap">
+                {runOutputJson || "Run output will appear here."}
+              </pre>
             </section>
           ) : null}
         </div>

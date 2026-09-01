@@ -37,6 +37,7 @@ import {
   WORKFLOW_RETURNS_NODE_ID,
   applyAcceptsConnection,
   applyReturnsConnection,
+  enrichAcceptsSchemaFromReactFlow,
   ioFieldsFromSchema,
   renameAcceptsProperty,
   renameReturnsProperty,
@@ -122,6 +123,7 @@ import {
   shouldShowWorkflowQuickStarts,
 } from "./lib/workflow-quick-starts.js"
 import {
+  collectRunFailureMessages,
   emitRunProgressFailed,
   isFailedRunResult,
   syncRunProgressFromResult,
@@ -980,15 +982,16 @@ export function App() {
       setRunOutput(JSON.stringify(result, null, 2))
       const output = result.output
       setRunPublicOutput(output ? JSON.stringify(output, null, 2) : "")
-      if (!isFailedRunResult(result)) {
-        setRunModalMode("output")
-        setRunModalOpen(true)
-      }
+      setRunModalMode(isFailedRunResult(result) ? "inspect" : "output")
+      setRunModalOpen(true)
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
       setLastRunResult({ error: message })
       setRunOutput(message)
+      setRunPublicOutput("")
       emitRunProgressFailed()
+      setRunModalMode("inspect")
+      setRunModalOpen(true)
     } finally {
       if (result) syncRunProgressFromResult(result)
       setRunBusy(false)
@@ -1013,6 +1016,13 @@ export function App() {
 
   const chatBlocked = (showProviderModal && chromeInstallUi === "dialog") || vaultGate === "locked"
   const hasWorkflow = manifest !== null
+  const runAcceptsSchema = useMemo(
+    () =>
+      manifest
+        ? enrichAcceptsSchemaFromReactFlow(workflowContract(manifest).accepts, reactflow)
+        : undefined,
+    [manifest, reactflow]
+  )
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background">
@@ -1101,7 +1111,7 @@ export function App() {
         runBusy={runBusy}
         onRun={onRunFromModal}
         hasWorkflow={hasWorkflow}
-        acceptsSchema={manifest ? workflowContract(manifest).accepts : undefined}
+        acceptsSchema={runAcceptsSchema}
         filePickerEnabled={Boolean(descriptor?.remoteInvoke?.url)}
       />
 
