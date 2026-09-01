@@ -55,15 +55,8 @@ if (skipInstall) {
 } else {
   run("npm", ["ci"], extensionsRoot)
 }
-for (const name of PACKAGES) {
-  const distEntry = path.join(extensionsRoot, "packages", name, "dist", "index.js")
-  if (existsSync(distEntry)) {
-    console.log(`Using existing build for @executioncontrolprotocol/${name}`)
-    continue
-  }
-  run("npm", ["run", "build", "-w", `@executioncontrolprotocol/${name}`], extensionsRoot)
-}
 
+// Vendor packages compile against @executioncontrolprotocol/core/types from browser-demo.
 for (const peer of SHARED_PEERS) {
   const peerTarget = path.join(demoRoot, "node_modules", ...peer.split("/"))
   if (!existsSync(peerTarget)) {
@@ -80,6 +73,15 @@ for (const peer of SHARED_PEERS) {
     )
     ensureSymlink(peerLink, peerTarget)
   }
+}
+
+for (const name of PACKAGES) {
+  const distEntry = path.join(extensionsRoot, "packages", name, "dist", "index.js")
+  if (existsSync(distEntry)) {
+    console.log(`Using existing build for @executioncontrolprotocol/${name}`)
+    continue
+  }
+  run("npm", ["run", "build", "-w", `@executioncontrolprotocol/${name}`], extensionsRoot)
 }
 
 for (const name of PACKAGES) {

@@ -123,7 +123,6 @@ import {
   shouldShowWorkflowQuickStarts,
 } from "./lib/workflow-quick-starts.js"
 import {
-  collectRunFailureMessages,
   emitRunProgressFailed,
   isFailedRunResult,
   syncRunProgressFromResult,

@@ -1,6 +1,9 @@
 set -e
 npm install
 git add package-lock.json
+if [ -f "../extensions/package.json" ] || [ -n "$EXTENSIONS_ROOT" ]; then
+  npm run link:vendor -- --skip-install
+fi
 npx lint-staged
 npm run check:no-file-deps
 npm run lint
