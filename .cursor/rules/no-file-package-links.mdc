@@ -1,15 +1,13 @@
 ---
-description: Never use file: package links; use npm link for local unpublished packages
+description: Never use file: or link: package specs; use link:ecp / link:vendor for local unpublished packages
 alwaysApply: true
 ---
 
 # No `file:` package links
 
-- **Never** put `"file:..."` in any `package.json` dependency field (`dependencies`, `devDependencies`, `peerDependencies`, `optionalDependencies`).
-- `file:` breaks CI, GitHub Pages, and consumer installs that lack the sibling path.
-- Local unpublished packages: build the package, then `npm link` from the package directory and `npm link <name>` in this app (or `npm run link:vendor` for fal + image-sharp).
-- Declaring unpublished packages as optional `peerDependencies` is fine; never put them in `dependencies` with `file:`.
-- After they publish to npm, move them to `dependencies` with a registry range and drop the CI link step.
-- Committed ranges must be registry versions (e.g. `"^0.12.0"`).
-- Do not document `file:` as a temporary alternative in README or rules.
-- Pre-commit / CI: `npm run check:no-file-deps`.
+- **Never** put `"file:..."` or `"link:..."` in any `package.json` dependency field.
+- `file:` / `link:` break CI, GitHub Pages, and consumer installs that lack the sibling path.
+- Local unpublished packages: `pnpm run link:ecp` and `pnpm run link:vendor` (or `pnpm run dev:linked`).
+- Declaring unpublished packages as optional `peerDependencies` is fine; use `catalog:ecp` ranges, not path specs.
+- Committed ranges must be registry/catalog versions (e.g. `catalog:ecp`).
+- Pre-commit / CI: `pnpm run check:no-file-deps`.

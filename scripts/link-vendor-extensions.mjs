@@ -53,7 +53,7 @@ console.log(`Linking vendor extensions from ${extensionsRoot}`)
 if (skipInstall) {
   console.log("Skipping extensions npm ci (--skip-install)")
 } else {
-  run("npm", ["ci"], extensionsRoot)
+  run("pnpm", ["install", "--frozen-lockfile"], extensionsRoot)
 }
 
 // Vendor packages compile against @executioncontrolprotocol/core/types from browser-demo.
@@ -81,7 +81,7 @@ for (const name of PACKAGES) {
     console.log(`Using existing build for @executioncontrolprotocol/${name}`)
     continue
   }
-  run("npm", ["run", "build", "-w", `@executioncontrolprotocol/${name}`], extensionsRoot)
+  run("pnpm", ["run", "build", "--filter", `@executioncontrolprotocol/${name}`], extensionsRoot)
 }
 
 for (const name of PACKAGES) {
