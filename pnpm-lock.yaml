@@ -181,6 +181,9 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 4.1.11(vite@6.4.3(jiti@1.21.7)(yaml@2.9.0))
+      yaml:
+        specifier: ^2.9.0
+        version: 2.9.0
     optionalDependencies:
       '@rollup/rollup-linux-x64-gnu':
         specifier: 4.61.1
@@ -4391,8 +4394,7 @@ snapshots:
 
   yallist@3.1.1: {}
 
-  yaml@2.9.0:
-    optional: true
+  yaml@2.9.0: {}
 
   zod@3.25.76: {}
 

@@ -32,7 +32,7 @@ jobs:
       - name: Install from registry (main track)
         working-directory: browser-demo
         run: pnpm run ci:setup
-      - name: Forbid file: package links
+      - name: "Forbid file: package links"
         working-directory: browser-demo
         run: pnpm run check:no-file-deps
       - name: Build for GitHub Pages

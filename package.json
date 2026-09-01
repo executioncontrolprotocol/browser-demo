@@ -11,7 +11,7 @@
   "scripts": {
     "dev": "vite",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "pnpm run typecheck",
+    "lint": "pnpm run typecheck && pnpm run lint:yaml",
     "build": "pnpm run typecheck && vite build",
     "build:pages": "vite build",
     "preview": "vite preview",
@@ -19,6 +19,7 @@
     "check": "pnpm run lint && pnpm run secrets:scan && pnpm run check:no-file-deps && pnpm test && pnpm run build",
     "secrets:scan": "secretlint \"**/*\"",
     "check:no-file-deps": "node scripts/check-no-file-deps.mjs",
+    "lint:yaml": "node scripts/lint-yaml.mjs",
     "link:ecp": "node scripts/link-ecp-packages.mjs",
     "link:host": "node scripts/link-host-example.mjs",
     "link:vendor": "node scripts/link-vendor-extensions.mjs",
@@ -31,6 +32,9 @@
   "lint-staged": {
     "*": [
       "secretlint --no-glob"
+    ],
+    "*.{yml,yaml}": [
+      "node scripts/lint-yaml.mjs"
     ]
   },
   "dependencies": {
@@ -71,7 +75,8 @@
     "tailwindcss": "^3.4.19",
     "typescript": "catalog:",
     "vite": "^6.4.3",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "yaml": "^2.9.0"
   },
   "optionalDependencies": {
     "@rollup/rollup-linux-x64-gnu": "4.61.1"

@@ -33,7 +33,7 @@ jobs:
           cache-dependency-path: browser-demo/pnpm-lock.yaml
       - working-directory: browser-demo
         run: pnpm install --frozen-lockfile
-      - name: Forbid file: package links
+      - name: "Forbid file: package links"
         working-directory: browser-demo
         run: pnpm run check:no-file-deps
       - name: Secretlint (working tree)
