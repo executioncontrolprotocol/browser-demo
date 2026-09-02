@@ -125,6 +125,26 @@ function linkPackagesIntoConsumer(packageNames) {
   }
 }
 
+function linkCorePeersForExtensions() {
+  const vendorPackages = ["fal", "image-sharp"]
+  const peers = ["@executioncontrolprotocol/core", "@executioncontrolprotocol/types"]
+  for (const peer of peers) {
+    const peerTarget = corePackageDir(peer)
+    const rootLink = path.join(extensionsRoot, "node_modules", ...peer.split("/"))
+    ensureSymlink(rootLink, peerTarget)
+    for (const name of vendorPackages) {
+      const pkgPeerLink = path.join(
+        extensionsRoot,
+        "packages",
+        name,
+        "node_modules",
+        ...peer.split("/")
+      )
+      ensureSymlink(pkgPeerLink, peerTarget)
+    }
+  }
+}
+
 function parseLinkList() {
   const raw = process.env.CI_LINK_PACKAGES ?? ""
   const explicit = raw
@@ -178,11 +198,7 @@ if (needsExtensions) {
     process.exit(1)
   }
   installDependencies(extensionsRoot)
-  for (const peer of ["@executioncontrolprotocol/core", "@executioncontrolprotocol/types"]) {
-    const peerTarget = path.join(ecpRoot, "packages", peer.split("/")[1])
-    const peerLink = path.join(extensionsRoot, "node_modules", ...peer.split("/"))
-    ensureSymlink(peerLink, peerTarget)
-  }
+  linkCorePeersForExtensions()
   runPackageScript(extensionsRoot, "build")
 }
 
