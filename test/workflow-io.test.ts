@@ -7,6 +7,7 @@ import {
   WORKFLOW_RETURNS_NODE_ID,
   applyAcceptsConnection,
   applyReturnsConnection,
+  enrichAcceptsSchemaFromReactFlow,
   ensureAcceptsPlaceholder,
   ensureReturnsNode,
   ioFieldsFromSchema,
@@ -517,5 +518,40 @@ describe("applyAcceptsConnection", () => {
     expect(ports).toHaveLength(1)
     expect(editorKindForPort(ports[0]!)).toBe("boolean")
     expect(step.input).toEqual({ enabled: { $ref: "state.enabled" } })
+  })
+
+  it("enriches accepts enum hints from projected Inputs node ports", () => {
+    const accepts = applyAcceptsConnection(
+      undefined,
+      ACCEPTS_PLACEHOLDER_HANDLE,
+      "mode",
+      { type: "string" }
+    )
+    const doc: ReactFlowDocument = {
+      nodes: [
+        {
+          id: WORKFLOW_ACCEPTS_NODE_ID,
+          type: "ecp-io",
+          position: { x: 0, y: 0 },
+          data: {
+            label: "Inputs",
+            kind: "accepts",
+            inputs: [],
+            outputs: [
+              {
+                id: "mode",
+                name: "mode",
+                typeLabel: "string!",
+                valueSchema: { type: "string", enum: ["fast", "slow"] },
+              },
+            ],
+          },
+        },
+      ],
+      edges: [],
+    }
+    const enriched = enrichAcceptsSchemaFromReactFlow(accepts, JSON.stringify(doc))
+    const ports = runFormPortsFromAccepts(enriched)
+    expect(editorKindForPort(ports[0]!)).toBe("enum-radio")
   })
 })

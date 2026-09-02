@@ -1,5 +1,6 @@
 import { defineConfig } from "vite"
 import react from "@vitejs/plugin-react"
+import { existsSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { dirname, join } from "node:path"
 import { browserPromptLoaderPlugin } from "./vite-browser-prompts-plugin.js"
@@ -30,6 +31,9 @@ export default defineConfig({
   ],
   server: {
     port: 5173,
+    // Bind IPv4 + IPv6 so http://localhost:5173/ works on Windows (default [::1]-only breaks).
+    host: true,
+    strictPort: true,
     // Linked `file:` / npm-link packages live outside browser-demo (core + extensions monorepos).
     fs: {
       allow: [
@@ -94,8 +98,10 @@ export default defineConfig({
     ],
   },
   optimizeDeps: {
-    // Prebundle CJS `@fal-ai/client` so named ESM imports work.
-    include: ["@fal-ai/client"],
+    // Prebundle CJS `@fal-ai/client` when the optional fal vendor package is linked.
+    include: existsSync(join(appRoot, "node_modules", "@fal-ai", "client", "package.json"))
+      ? ["@fal-ai/client"]
+      : [],
     exclude: [
       "@executioncontrolprotocol/core",
       "@executioncontrolprotocol/browser",

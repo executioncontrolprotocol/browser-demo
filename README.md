@@ -25,7 +25,7 @@ Prefer the real SDK whenever it can run in the browser:
 | `@executioncontrolprotocol/fal` | **Yes** — official `@fal-ai/client` | Configure `apiKey` via `browser("FAL_KEY")` (vault / secrets). Vite prebundles the CJS client (`optimizeDeps.include`). |
 | `@executioncontrolprotocol/image-sharp` | **Catalog + host hop** | Bound in the demo env (browser catalog only; no native `sharp`). Steps hop to `ecp up --env …` that binds Sharp on the host. Bare `ecp up` (Ollama-only) is not enough. |
 
-Local unpublished dogfood (required until these packages are on npm): from this app run `npm run link:vendor` (or manually `npm link` from `packages/fal` / `packages/image-sharp` in the extensions repo). Never commit `file:` deps. They stay optional peers so registry `npm ci` stays clean. Host example for Sharp: [extensions/examples/04-image-prep](https://github.com/executioncontrolprotocol/extensions/tree/main/examples/04-image-prep) — `ecp up --env environment.ts --open-url http://localhost:5173/`.
+Local unpublished dogfood: `pnpm run link:vendor` (junction-links `fal` and `image-sharp` from the extensions repo). Never commit `file:` deps. They stay optional peers so registry `pnpm install` stays clean. Host example for Sharp: [extensions/examples/04-image-prep](https://github.com/executioncontrolprotocol/extensions/tree/main/examples/04-image-prep) — `ecp up --env environment.ts --open-url http://localhost:5173/`.
 
 Do not stub browser-capable HTTP clients. Native addons belong on the package `browser` export, not a Vite alias.
 
@@ -36,225 +36,57 @@ See monorepo [AGENTS.md](https://github.com/executioncontrolprotocol/executionco
 | Requirement | Notes |
 | ----------- | ----- |
 | **Node.js >= 22** | Enforced in `package.json` `engines` |
+| **pnpm** | `packageManager` is pinned in `package.json` |
 | **Chrome** (recommended) | Default provider uses Chrome built-in AI (`@executioncontrolprotocol/chrome-ai`) |
 | **Ollama** (optional) | Local models via `ecp up` — option enabled when daemon `/health` reports `ollamaReachable` |
 | **ECP CLI `ecp up`** (for Ollama) | Loopback daemon on port 3090; paste pairing token in the demo |
 | **ECP monorepo clone** (local dev only) | Sibling checkout — see [Repository layout](#repository-layout) |
 
-Optional: [Ollama](https://ollama.com/) with `gemma3:1b` / `qwen2.5-coder:1.5b` for harness evals in the ECP repo (`npm run eval:matrix` / `eval:matrix:coding`).
+Optional: [Ollama](https://ollama.com/) with `gemma3:1b` / `qwen2.5-coder:1.5b` for harness evals in the ECP repo (`pnpm run eval:matrix` / `eval:matrix:coding`).
 
 ## Repository layout
 
-For side-by-side development, clone both repos under the same parent directory:
+For side-by-side development, clone repos under the same parent directory:
 
 ```text
 your-workspace/
   executioncontrolprotocol/   # ECP monorepo (protocol + packages)
-  browser-demo/               # this app (GitHub: executioncontrolprotocol/browser-demo)
+  extensions/                 # vendor extensions (optional; for fal / image-sharp)
+  browser-demo/               # this app
 ```
 
 Paths below assume `browser-demo` is a sibling of `executioncontrolprotocol`. Adjust if your folder names differ.
-
-## npm dependencies
-
-| Package | Role |
-| ------- | ---- |
-| [`@executioncontrolprotocol/browser`](https://www.npmjs.com/package/@executioncontrolprotocol/browser) | Browser runtime host |
-| [`@executioncontrolprotocol/core`](https://www.npmjs.com/package/@executioncontrolprotocol/core) | Fluent API, browser compile (`@executioncontrolprotocol/core/browser`) |
-| [`@executioncontrolprotocol/types`](https://www.npmjs.com/package/@executioncontrolprotocol/types) | Protocol types |
-| `@executioncontrolprotocol/harnesses-browser-nano` | EQL harness (Chrome AI path) |
-| `@executioncontrolprotocol/harnesses-browser-coding` | Fluent/TS harness (Ollama path) |
-| Providers / formats | Chrome AI, Ollama, OpenAI, Claude, fal, TOON, Mermaid, EQL — **direct** app deps |
-
-> **Note:** `@executioncontrolprotocol/*` packages must be published to npm (or linked locally — see below) before `npm install` succeeds.
 
 ## Quick start (published npm)
 
 Use this when you are **not** changing ECP package source.
 
 ```sh
-npm install
+pnpm install
 cp .env.example .env   # optional — Supabase prompt logging
-npm run dev
+pnpm run dev
 ```
 
 Open the URL Vite prints (default `http://localhost:5173`).
 
 ```sh
-npm run build
-npm test
-npm run lint
+pnpm run build
+pnpm test
+pnpm run lint
 ```
 
-(`npm run lint` runs `typecheck`; Husky pre-commit runs `npm install`, stages `package-lock.json`, secretlint, then lint.)
+(`pnpm run lint` runs `typecheck`; Husky pre-commit runs secretlint, then lint.)
 
-Harness evals (Ollama `gemma3:1b`) run from the [ECP monorepo](https://github.com/executioncontrolprotocol/executioncontrolprotocol): `npm run eval:matrix`. The demo app uses the same **chat** multi-shot harness (`HARNESS_TASKS.CHAT`) as the matrix.
+Harness evals (Ollama `gemma3:1b`) run from the [ECP monorepo](https://github.com/executioncontrolprotocol/executioncontrolprotocol): `pnpm run eval:matrix`. The demo app uses the same **chat** multi-shot harness (`HARNESS_TASKS.CHAT`) as the matrix.
 
-## Rebuild workspace from scratch (after large ECP changes)
+## Local ECP development
 
-Use this workflow when you have pulled or built **large feature changes** in the ECP monorepo and the demo shows stale behavior, type errors, or missing exports. `npm link` serves built `dist/` output — a full rebuild is required after substantive protocol changes.
+When developing ECP and the demo side-by-side, junction-link local built packages instead of pulling from npm.
 
-### 1. Stop duplicate Vite dev servers
-
-Only one dev server should listen on port 5173. If you started `npm run dev` in multiple terminals, stop extras first.
-
-**Windows (PowerShell):**
-
-```powershell
-Get-CimInstance Win32_Process |
-  Where-Object { $_.CommandLine -match 'vite\\bin\\vite' } |
-  ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
-```
-
-**macOS / Linux:**
+**One command** (rebuild core, link packages, vendor extensions, host example, restart Vite + `ecp up`):
 
 ```sh
-pkill -f 'vite/bin/vite' || true
-```
-
-Or press `Ctrl+C` in each terminal running `npm run dev`.
-
-### 2. Clean and rebuild the ECP monorepo
-
-```sh
-cd ../executioncontrolprotocol
-
-npm run clean          # removes packages/*/dist and tsconfig.tsbuildinfo
-npm install            # from repo root only — never inside individual packages
-npm run build          # tsc -b (types → core → extensions → browser → …)
-npm run generate:schema
-```
-
-**Windows (PowerShell)** — use `;` instead of `&&` when chaining:
-
-```powershell
-Set-Location ..\executioncontrolprotocol
-npm run clean; npm install; npm run build; npm run generate:schema
-Set-Location ..\browser-demo
-npm run dev
-```
-
-**Verify `dist/` exists** before starting the demo (linked packages point at source trees, not prebuilt npm tarballs):
-
-```powershell
-# should print True
-Test-Path ..\executioncontrolprotocol\packages\runtimes\browser\dist\index.js
-```
-
-If that prints `False` after `npm run build`, force a full emit:
-
-```sh
-cd ../executioncontrolprotocol
-npx tsc -b tsconfig.build.json --force
-npm run generate:schema
-```
-
-Optional but recommended after large changes:
-
-```sh
-npm run check          # build + schema + lint + unit + integration + e2e
-```
-
-For a **hard reset** when installs are corrupted:
-
-```sh
-# Windows PowerShell
-Remove-Item -Recurse -Force node_modules
-# macOS / Linux: rm -rf node_modules
-
-npm install
-npm run build
-npm run generate:schema
-```
-
-### 3. Link local ECP packages into this app
-
-Skip this section if you use published npm versions only. After every ECP rebuild, linked packages pick up new `dist/` automatically — you do **not** need to re-run `npm link`, only `npm run build` in ECP.
-
-<details>
-<summary>First-time <code>npm link</code> setup (expand)</summary>
-
-Register packages globally in **dependency order** (link points at each package's `dist/`):
-
-```sh
-cd ../executioncontrolprotocol
-
-cd packages/types && npm link
-cd ../core && npm link
-cd ../policies && npm link
-cd ../extensions/format-eql && npm link
-cd ../extensions/format-mermaid && npm link
-cd ../extensions/format-reactflow && npm link
-cd ../extensions/format-toon && npm link
-cd ../extensions/chrome-ai && npm link
-cd ../extensions/openai && npm link
-cd ../extensions/claude && npm link
-cd ../extensions/browser-secrets && npm link
-cd ../harnesses/browser-nano && npm link
-cd ../../runtimes/browser && npm link
-```
-
-Consume linked packages in the demo:
-
-```sh
-cd ../../browser-demo
-
-npm link @executioncontrolprotocol/types @executioncontrolprotocol/core @executioncontrolprotocol/policies \
-  @executioncontrolprotocol/format-eql @executioncontrolprotocol/format-mermaid @executioncontrolprotocol/format-reactflow \
-  @executioncontrolprotocol/format-toon \
-  @executioncontrolprotocol/chrome-ai @executioncontrolprotocol/extension-openai @executioncontrolprotocol/claude \
-  @executioncontrolprotocol/browser-secrets @executioncontrolprotocol/harnesses-browser-nano \
-  @executioncontrolprotocol/browser
-```
-
-</details>
-
-### 4. Refresh the browser demo and start dev
-
-```sh
-cd ../browser-demo
-
-# optional hard reset of demo install
-# Remove-Item -Recurse -Force node_modules   # Windows
-# rm -rf node_modules                        # macOS / Linux
-
-npm install
-npm run dev
-```
-
-Open `http://localhost:5173`. If the page still looks stale, hard-refresh the browser (`Ctrl+Shift+R` / `Cmd+Shift+R`) or clear site data for localhost.
-
-### 5. Verify (optional)
-
-```sh
-# in browser-demo
-npm run typecheck
-npm test
-
-# in executioncontrolprotocol (with Ollama running)
-npm run eval:matrix
-```
-
-### Troubleshooting
-
-| Symptom | Fix |
-| ------- | --- |
-| `Failed to resolve entry for package "@executioncontrolprotocol/browser"` | ECP `dist/` is missing — `npm link` junction points at the package folder but Vite needs `dist/index.js`. Run `npm run clean && npm run build` in ECP (or `npx tsc -b tsconfig.build.json --force`). Verify with `Test-Path ...\browser\dist\index.js`. |
-| Port 5173 already in use | Kill extra Vite processes (step 1); Vite may fall back to 5174+ if 5173 is taken |
-| `is not a function` / missing export at runtime | ECP `dist/` is stale — rerun `npm run build` in `executioncontrolprotocol` |
-| Type errors in demo after ECP API change | Rebuild ECP, then `npm run typecheck` here; update demo imports if the API moved |
-| Linked package still shows old behavior | Confirm link targets built `dist/` (`npm run build` in ECP); restart `npm run dev` |
-| `npm install` fails on `@executioncontrolprotocol/*` | Publish packages or complete `npm link` setup above |
-| `Harness prompt fixture not found: intent-classification` | Ensure `@executioncontrolprotocol/harnesses-browser-*` is `>=0.10.1` (0.10.0 had a bad `import.meta.glob` path). Reinstall from the lockfile; use `npm link` for local unpublished packages — never `file:` deps. |
-
-## Local ECP development (`npm link`) — summary
-
-When developing ECP and the demo side-by-side, link local built packages instead of pulling from npm.
-
-**One command** (rebuild, link, vendor extensions, host example, restart Vite + `ecp up`):
-
-```sh
-npm run dev:linked
+pnpm run dev:linked
 ```
 
 Opens **ECP up** and **Vite** in separate terminal windows (Windows/macOS) so the pairing token and demo URL stay visible. On Linux, logs go to `.dev-logs/`.
@@ -262,31 +94,45 @@ Opens **ECP up** and **Vite** in separate terminal windows (Windows/macOS) so th
 After small ECP edits, skip the monorepo rebuild:
 
 ```sh
-npm run dev:linked -- --skip-build
+pnpm run dev:linked -- --skip-build
 ```
 
-Granular steps: `npm run link:ecp`, `npm run link:vendor`, `npm run link:host`, then `npm run dev`.
+Granular steps:
+
+```sh
+# 1. Build sibling core (from ../executioncontrolprotocol)
+pnpm install && pnpm run build
+
+# 2. Link ECP packages into this app
+pnpm run link:ecp
+
+# 3. Optional: link vendor extensions (fal, image-sharp)
+pnpm run link:vendor
+
+# 4. Optional: link host example for image-sharp E2E
+pnpm run link:host
+
+# 5. Start dev server
+pnpm run dev
+```
 
 Environment overrides: `ECP_ROOT`, `EXTENSIONS_ROOT`, `HOST_EXAMPLE_ROOT`, `ECP_HOST_PORT`, `VITE_PORT`.
 
-See [Rebuild workspace from scratch](#rebuild-workspace-from-scratch-after-large-ecp-changes) for manual steps and troubleshooting.
-
-**Never use `file:` package links** in `package.json` (CI and Pages resolve from the npm registry only). `npm run check:no-file-deps` enforces this on pre-commit and in CI.
+**Never use `file:` package links** in `package.json` (CI and Pages resolve from the npm registry only). `pnpm run check:no-file-deps` enforces this on pre-commit and in CI.
 
 **Tips:**
 
-- Re-run `npm run build` (and `npm run generate:schema` when types change) in ECP after every package source change.
-- Link all packages `@executioncontrolprotocol/browser` depends on — not just the three direct demo imports.
-- Restore registry versions when finished:
+- Re-run `pnpm run build` (and `pnpm run generate:schema` when types change) in ECP after every package source change.
+- Linked packages point at built `dist/` — rebuild core after substantive protocol changes, then restart `pnpm run dev`.
+- Restore registry versions when finished: delete junctions under `node_modules/@executioncontrolprotocol/` and run `pnpm install`.
 
-```sh
-npm unlink @executioncontrolprotocol/types @executioncontrolprotocol/core @executioncontrolprotocol/policies \
-  @executioncontrolprotocol/format-eql @executioncontrolprotocol/format-mermaid @executioncontrolprotocol/format-toon \
-  @executioncontrolprotocol/chrome-ai @executioncontrolprotocol/extension-openai @executioncontrolprotocol/claude \
-  @executioncontrolprotocol/browser-secrets @executioncontrolprotocol/harnesses-browser-nano \
-  @executioncontrolprotocol/browser
-npm install
-```
+| Symptom | Fix |
+| ------- | --- |
+| `Failed to resolve entry for package "@executioncontrolprotocol/browser"` | ECP `dist/` is missing — run `pnpm run build` in the core monorepo |
+| Port 5173 already in use | Stop extra Vite processes; Vite may fall back to 5174+ |
+| `is not a function` / missing export at runtime | ECP `dist/` is stale — rebuild core, restart dev |
+| Type errors after ECP API change | Rebuild core, then `pnpm run typecheck` here |
+| `pnpm install` fails on `@executioncontrolprotocol/*` | Publish packages or run `pnpm run link:ecp` |
 
 ## Supabase prompt logging
 
@@ -295,14 +141,19 @@ User chat prompts are logged to `ecp_browser_demo_prompts`. See [`supabase/READM
 ```sh
 npx supabase login
 npx supabase link --project-ref <your-project-ref>
-npm run supabase:push
+pnpm run supabase:push
 ```
 
 Copy `.env.example` to `.env` and set `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`.
 
-## CI
+## CI (two-track)
 
-[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on push and pull request to **`main`** and **`development`**. Jobs: **Secrets scan** (includes `check:no-file-deps`), **Typecheck**, **Test**, and **Build**. It does not deploy.
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on push and pull request to **`main`** and **`development`**.
+
+- **`main`:** `pnpm install --frozen-lockfile` against **published** `@executioncontrolprotocol/*` from npm. Jobs: secrets scan, typecheck, test, build.
+- **`development` (and PRs not targeting `main`):** CI checks out sibling [core](https://github.com/executioncontrolprotocol/executioncontrolprotocol) and [extensions](https://github.com/executioncontrolprotocol/extensions) at `development`, runs `pnpm run ci:setup` (build + link), then typecheck / test / build.
+
+It does not deploy.
 
 ## Deploy (GitHub Pages)
 
@@ -320,12 +171,12 @@ Deploys on push to **`main`** via [`.github/workflows/pages.yml`](.github/workfl
 Local production build (same as Pages):
 
 ```sh
-npm run build:pages
+pnpm run build:pages
 ```
 
 For a subdirectory deploy, set `VITE_BASE=/your-subpath/` before building.
 
-Requires `@executioncontrolprotocol/*@^0.13.0` from npm (or `npm link` to a local build) so browser `core/compile` exports `compileHarnessArtifactSource` (used by the coding harness).
+Requires `@executioncontrolprotocol/*@^0.13.0` from npm (or `pnpm run link:ecp` to a local build) so browser `core/compile` exports `compileHarnessArtifactSource` (used by the coding harness).
 
 ## Spec
 

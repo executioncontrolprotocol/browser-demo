@@ -161,7 +161,7 @@ Demo-generated workflows may reference `@executioncontrolprotocol/chrome-ai.gene
 
 Store `FAL_KEY` in the encrypted vault (Settings → encrypted API keys) alongside OpenAI and Claude keys. Harness authoring summaries include required vs optional fields from each capability schema so models can propose valid `WITH` blocks.
 
-Local unpublished `@executioncontrolprotocol/image-sharp` / `fal`: build the extensions monorepo, `npm link` each package, then `npm link @executioncontrolprotocol/fal @executioncontrolprotocol/image-sharp` here (optional peers in `package.json`; never `file:`).
+Local unpublished `@executioncontrolprotocol/image-sharp` / `fal`: build the extensions monorepo, then `pnpm run link:vendor` in browser-demo (optional peers in `package.json`; never `file:`).
 
 Reference workflow: [`examples/03-fal-chain/workflow.ts`](https://github.com/executioncontrolprotocol/executioncontrolprotocol/blob/main/examples/03-fal-chain/workflow.ts) in the protocol repo.
 

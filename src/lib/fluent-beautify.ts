@@ -1,4 +1,4 @@
-import { renderWorkflowToFluent, workflow } from "@executioncontrolprotocol/core/browser"
+import { renderWorkflowToFluent } from "@executioncontrolprotocol/core/browser"
 import type { ValidationResult, WorkflowManifest } from "@executioncontrolprotocol/types"
 
 /** Same guard as compile-on-edit: skip placeholder / empty editor source. */

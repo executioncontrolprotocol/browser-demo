@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest"
+import { toAuthoringEnvironmentDescriptor } from "@executioncontrolprotocol/core"
 import { createDemoAppEnvironment } from "../src/lib/demo-environment.js"
+
+const WORKFLOW_PROVIDER_EXTENSIONS = [
+  "@executioncontrolprotocol/chrome-ai",
+  "@executioncontrolprotocol/claude",
+  "@executioncontrolprotocol/fal",
+  "@executioncontrolprotocol/image-sharp",
+  "@executioncontrolprotocol/ollama",
+  "@executioncontrolprotocol/openai",
+] as const
 
 describe("createDemoAppEnvironment", () => {
   it("binds chrome-ai.generate, ollama.generate, and not @executioncontrolprotocol/test.*", async () => {
@@ -30,22 +40,36 @@ describe("createDemoAppEnvironment", () => {
     expect(encoded.success).toBe(true)
   })
 
-  it("binds fal and image-sharp as host workflow inventory (chrome-ai stays local)", async () => {
+  it("binds workflow providers and excludes format/browser/bridge from authoring inventory", async () => {
     const { descriptor } = await createDemoAppEnvironment()
     const chrome = descriptor.capabilities.find(
       (c) => c.id === "@executioncontrolprotocol/chrome-ai.generate"
     )
     expect(chrome?.execution).toBe("local")
-    expect(descriptor.extensions.some((e) => e.id === "@executioncontrolprotocol/fal")).toBe(true)
-    expect(descriptor.extensions.some((e) => e.id === "@executioncontrolprotocol/image-sharp")).toBe(
-      true
-    )
+    for (const id of WORKFLOW_PROVIDER_EXTENSIONS) {
+      expect(descriptor.extensions.some((e) => e.id === id)).toBe(true)
+    }
     const fal = descriptor.capabilities.find((c) => c.id === "@executioncontrolprotocol/fal.generate")
     expect(fal?.execution).toBe("host")
     const sharp = descriptor.capabilities.find(
       (c) => c.id === "@executioncontrolprotocol/image-sharp.inspect"
     )
     expect(sharp?.execution).toBe("host")
+
+    const authoring = toAuthoringEnvironmentDescriptor(descriptor)
+    expect(authoring.extensions.map((e) => e.id).sort()).toEqual([...WORKFLOW_PROVIDER_EXTENSIONS])
+    expect(authoring.extensions.some((e) => e.id.includes("/format-"))).toBe(false)
+    expect(authoring.extensions.some((e) => e.id.startsWith("@executioncontrolprotocol/browser-"))).toBe(
+      false
+    )
+    expect(authoring.extensions.some((e) => e.id.startsWith("@browser-demo/"))).toBe(false)
+    expect(authoring.capabilities.some((c) => c.id.includes("/format-"))).toBe(false)
+    expect(authoring.capabilities.map((c) => c.id)).toContain(
+      "@executioncontrolprotocol/chrome-ai.generate"
+    )
+    expect(authoring.capabilities.map((c) => c.id)).toContain(
+      "@executioncontrolprotocol/fal.generate"
+    )
   })
 
   it("binds remoteInvoke from pairing without including the token", async () => {

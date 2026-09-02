@@ -5,6 +5,7 @@ import {
   emitRunProgressFailed,
   historyStatusToCanvas,
   isFailedRunResult,
+  collectRunFailureMessages,
   stepErrorMessage,
   syncRunProgressFromResult,
 } from "../src/lib/run-progress-sync.js"
@@ -42,6 +43,23 @@ describe("run-progress-sync", () => {
         run: { id: "r1", status: "completed" },
       } satisfies RunResult)
     ).toBe(false)
+  })
+
+  it("collects failure messages from thrown errors and step history", () => {
+    expect(collectRunFailureMessages({ error: "boom" })).toEqual(["boom"])
+    expect(
+      collectRunFailureMessages({
+        schema: "@executioncontrolprotocol.run.result",
+        version: "1.0",
+        run: { id: "r1", status: "failed" },
+        history: {
+          echo: {
+            status: "failed",
+            diagnostics: [{ severity: "error", code: "STEP_FAILED", message: "capability failed" }],
+          },
+        },
+      })
+    ).toEqual(["echo: capability failed"])
   })
 
   it("syncs terminal history to the progress bus", () => {
