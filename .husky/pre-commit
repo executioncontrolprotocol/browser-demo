@@ -1,7 +1,11 @@
 set -e
 if git diff --cached --name-only | grep -qE '^(pnpm-lock\.yaml|package\.json|pnpm-workspace\.yaml)$'; then
-  pnpm install
-  git add pnpm-lock.yaml
+  pnpm run link:ecp 2>/dev/null || true
+  if pnpm install; then
+    git add pnpm-lock.yaml
+  else
+    echo "pnpm install skipped: catalog range not on npm yet (publish core first or use link:ecp)."
+  fi
 fi
 if [ -f "../extensions/package.json" ] || [ -n "$EXTENSIONS_ROOT" ]; then
   pnpm run link:vendor -- --skip-install
