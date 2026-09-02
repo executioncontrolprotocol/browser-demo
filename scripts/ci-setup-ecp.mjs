@@ -50,6 +50,38 @@ function ensureSymlink(linkPath, targetPath) {
   symlinkSync(targetPath, linkPath, linkType)
 }
 
+/** @returns {"pnpm" | "npm"} */
+function detectPackageManager(repoRoot) {
+  if (existsSync(path.join(repoRoot, "pnpm-lock.yaml"))) return "pnpm"
+  if (existsSync(path.join(repoRoot, "package-lock.json"))) return "npm"
+  const pkgPath = path.join(repoRoot, "package.json")
+  if (existsSync(pkgPath)) {
+    const pkg = JSON.parse(readFileSync(pkgPath, "utf8"))
+    if (typeof pkg.packageManager === "string" && pkg.packageManager.startsWith("pnpm")) {
+      return "pnpm"
+    }
+  }
+  return "npm"
+}
+
+function installDependencies(repoRoot) {
+  const pm = detectPackageManager(repoRoot)
+  if (pm === "pnpm") {
+    run("pnpm", ["install", "--frozen-lockfile"], repoRoot)
+    return
+  }
+  run("npm", ["ci"], repoRoot)
+}
+
+function runPackageScript(repoRoot, scriptName) {
+  const pm = detectPackageManager(repoRoot)
+  if (pm === "pnpm") {
+    run("pnpm", ["run", scriptName], repoRoot)
+    return
+  }
+  run("npm", ["run", scriptName], repoRoot)
+}
+
 /** @param {string} pkgName e.g. @executioncontrolprotocol/core */
 function corePackageDir(pkgName) {
   const segment = pkgName.split("/")[1]
@@ -131,9 +163,9 @@ if (!existsSync(path.join(ecpRoot, "package.json"))) {
   process.exit(1)
 }
 
-run("pnpm", ["install", "--frozen-lockfile"], ecpRoot)
-run("pnpm", ["run", "build"], ecpRoot)
-run("pnpm", ["run", "generate:schema"], ecpRoot)
+installDependencies(ecpRoot)
+runPackageScript(ecpRoot, "build")
+runPackageScript(ecpRoot, "generate:schema")
 
 const linkPackages = parseLinkList()
 const needsExtensions = linkPackages.some(
@@ -145,13 +177,13 @@ if (needsExtensions) {
     console.error(`Extensions repo not found at ${extensionsRoot}. Set EXTENSIONS_ROOT.`)
     process.exit(1)
   }
-  run("pnpm", ["install", "--frozen-lockfile"], extensionsRoot)
+  installDependencies(extensionsRoot)
   for (const peer of ["@executioncontrolprotocol/core", "@executioncontrolprotocol/types"]) {
     const peerTarget = path.join(ecpRoot, "packages", peer.split("/")[1])
     const peerLink = path.join(extensionsRoot, "node_modules", ...peer.split("/"))
     ensureSymlink(peerLink, peerTarget)
   }
-  run("pnpm", ["run", "build"], extensionsRoot)
+  runPackageScript(extensionsRoot, "build")
 }
 
 run("pnpm", ["install", "--frozen-lockfile"])
