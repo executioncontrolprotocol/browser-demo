@@ -105,7 +105,7 @@ function ensureExtensionsDeps() {
   const zodPkg = path.join(extensionsRoot, "node_modules", "zod", "package.json")
   if (!existsSync(zodPkg)) {
     console.log("\nExtensions node_modules missing zod — running npm install…")
-    run("npm", ["install"], extensionsRoot)
+    run("pnpm", ["install"], extensionsRoot)
   }
 }
 
@@ -176,10 +176,10 @@ function main() {
   }
 
   if (!skipBuild) {
-    run("npm", ["run", "build"], ecpRoot)
-    run("npm", ["run", "generate:schema"], ecpRoot)
+    run("pnpm", ["run", "build"], ecpRoot)
+    run("pnpm", ["run", "generate:schema"], ecpRoot)
     if (existsSync(path.join(extensionsRoot, "package.json"))) {
-      run("npm", ["run", "build", "-w", "@executioncontrolprotocol/image-sharp"], extensionsRoot)
+      run("pnpm", ["run", "build", "--filter", "@executioncontrolprotocol/image-sharp"], extensionsRoot)
     }
   }
 
@@ -237,7 +237,7 @@ function main() {
 
   if (!noVite) {
     console.log(`\nStarting Vite on port ${vitePort}…`)
-    spawnInOwnTerminal("Vite", "npm", ["run", "dev", "--", "--port", vitePort, "--strictPort"], demoRoot)
+    spawnInOwnTerminal("Vite", "pnpm", ["run", "dev", "--", "--port", vitePort, "--strictPort"], demoRoot)
   }
 
   console.log("\nDev stack starting.")
@@ -249,7 +249,7 @@ function main() {
     console.log(`  Demo:  http://127.0.0.1:${vitePort}/`)
     console.log("  If the page 404s, close old Vite terminals and re-run dev:linked.")
   }
-  console.log("\nRe-run after ECP changes: npm run dev:linked -- --skip-build")
+  console.log("\nRe-run after ECP changes: pnpm run dev:linked -- --skip-build")
 }
 
 main()

@@ -18,37 +18,29 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           path: browser-demo
-      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
         with:
-          repository: executioncontrolprotocol/extensions
-          path: extensions
-      - uses: actions/setup-node@v4
+          version: 10.12.1
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: |
-            browser-demo/package-lock.json
-            extensions/package-lock.json
-      - working-directory: browser-demo
-        run: npm ci
+          cache: pnpm
+          cache-dependency-path: browser-demo/pnpm-lock.yaml
+      - name: Install from registry (main track)
+        working-directory: browser-demo
+        run: pnpm run ci:setup
       - name: "Forbid file: package links"
         working-directory: browser-demo
-        run: npm run check:no-file-deps
-      - name: Link unpublished vendor extensions
-        working-directory: browser-demo
-        env:
-          EXTENSIONS_ROOT: ${{ github.workspace }}/extensions
-        run: npm run link:vendor
+        run: pnpm run check:no-file-deps
       - name: Build for GitHub Pages
         working-directory: browser-demo
         env:
-          # Custom domain serves at / (not /browser-demo/). Override with VITE_BASE if needed.
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
-        run: npm run build:pages
+        run: pnpm run build:pages
       - uses: actions/upload-pages-artifact@v3
         with:
           path: browser-demo/dist

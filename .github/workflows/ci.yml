@@ -1,5 +1,7 @@
 # Verify-only: secrets scan, typecheck, test, and build.
-# Does not deploy. GitHub Pages stays on push to main (pages.yml).
+# development: checkout core + extensions @ development, link, then check.
+# main: registry install only (published packages).
+
 name: ci
 
 on:
@@ -21,26 +23,28 @@ jobs:
         with:
           fetch-depth: 0
           path: browser-demo
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.1
       - uses: actions/setup-node@v5
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: browser-demo/package-lock.json
+          cache: pnpm
+          cache-dependency-path: browser-demo/pnpm-lock.yaml
       - working-directory: browser-demo
-        run: npm ci
+        run: pnpm install --frozen-lockfile
       - name: "Forbid file: package links"
         working-directory: browser-demo
-        run: npm run check:no-file-deps
+        run: pnpm run check:no-file-deps
       - name: Secretlint (working tree)
         working-directory: browser-demo
-        run: npm run secrets:scan
+        run: pnpm run secrets:scan
       - name: Install gitleaks
         env:
           GITLEAKS_VERSION: "8.24.3"
         run: |
           curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
             | tar -xz -C /usr/local/bin gitleaks
-          gitleaks version
       - name: Gitleaks (git history)
         working-directory: browser-demo
         run: gitleaks detect --source . --redact --verbose --config .gitleaks.toml
@@ -48,86 +52,116 @@ jobs:
   typecheck:
     name: Typecheck
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
         with:
           path: browser-demo
-      - uses: actions/checkout@v5
+      - name: Checkout core (development track)
+        if: github.ref != 'refs/heads/main' && github.base_ref != 'main'
+        uses: actions/checkout@v5
+        with:
+          repository: executioncontrolprotocol/executioncontrolprotocol
+          ref: development
+          path: executioncontrolprotocol
+      - name: Checkout extensions (development track)
+        if: github.ref != 'refs/heads/main' && github.base_ref != 'main'
+        uses: actions/checkout@v5
         with:
           repository: executioncontrolprotocol/extensions
+          ref: development
           path: extensions
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.1
       - uses: actions/setup-node@v5
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: |
-            browser-demo/package-lock.json
-            extensions/package-lock.json
-      - working-directory: browser-demo
-        run: npm ci
-      - name: Link unpublished vendor extensions
+          cache: pnpm
+          cache-dependency-path: browser-demo/pnpm-lock.yaml
+      - name: Setup dependencies (two-track)
         working-directory: browser-demo
         env:
+          ECP_ROOT: ${{ github.workspace }}/executioncontrolprotocol
           EXTENSIONS_ROOT: ${{ github.workspace }}/extensions
-        run: npm run link:vendor
+        run: pnpm run ci:setup
       - working-directory: browser-demo
-        run: npm run typecheck
+        run: pnpm run typecheck
 
   test:
     name: Test
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
         with:
           path: browser-demo
-      - uses: actions/checkout@v5
+      - name: Checkout core (development track)
+        if: github.ref != 'refs/heads/main' && github.base_ref != 'main'
+        uses: actions/checkout@v5
+        with:
+          repository: executioncontrolprotocol/executioncontrolprotocol
+          ref: development
+          path: executioncontrolprotocol
+      - name: Checkout extensions (development track)
+        if: github.ref != 'refs/heads/main' && github.base_ref != 'main'
+        uses: actions/checkout@v5
         with:
           repository: executioncontrolprotocol/extensions
+          ref: development
           path: extensions
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.1
       - uses: actions/setup-node@v5
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: |
-            browser-demo/package-lock.json
-            extensions/package-lock.json
-      - working-directory: browser-demo
-        run: npm ci
-      - name: Link unpublished vendor extensions
+          cache: pnpm
+          cache-dependency-path: browser-demo/pnpm-lock.yaml
+      - name: Setup dependencies (two-track)
         working-directory: browser-demo
         env:
+          ECP_ROOT: ${{ github.workspace }}/executioncontrolprotocol
           EXTENSIONS_ROOT: ${{ github.workspace }}/extensions
-        run: npm run link:vendor
+        run: pnpm run ci:setup
       - working-directory: browser-demo
-        run: npm test
+        run: pnpm test
 
   build:
     name: Build
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
         with:
           path: browser-demo
-      - uses: actions/checkout@v5
+      - name: Checkout core (development track)
+        if: github.ref != 'refs/heads/main' && github.base_ref != 'main'
+        uses: actions/checkout@v5
+        with:
+          repository: executioncontrolprotocol/executioncontrolprotocol
+          ref: development
+          path: executioncontrolprotocol
+      - name: Checkout extensions (development track)
+        if: github.ref != 'refs/heads/main' && github.base_ref != 'main'
+        uses: actions/checkout@v5
         with:
           repository: executioncontrolprotocol/extensions
+          ref: development
           path: extensions
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.1
       - uses: actions/setup-node@v5
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: |
-            browser-demo/package-lock.json
-            extensions/package-lock.json
-      - working-directory: browser-demo
-        run: npm ci
-      - name: Link unpublished vendor extensions
+          cache: pnpm
+          cache-dependency-path: browser-demo/pnpm-lock.yaml
+      - name: Setup dependencies (two-track)
         working-directory: browser-demo
         env:
+          ECP_ROOT: ${{ github.workspace }}/executioncontrolprotocol
           EXTENSIONS_ROOT: ${{ github.workspace }}/extensions
-        run: npm run link:vendor
+        run: pnpm run ci:setup
       - working-directory: browser-demo
-        run: npm run build
+        run: pnpm run build

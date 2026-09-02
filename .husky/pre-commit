@@ -1,9 +1,11 @@
 set -e
-npm install
-git add package-lock.json
-if [ -f "../extensions/package.json" ] || [ -n "$EXTENSIONS_ROOT" ]; then
-  npm run link:vendor -- --skip-install
+if git diff --cached --name-only | grep -qE '^(pnpm-lock\.yaml|package\.json|pnpm-workspace\.yaml)$'; then
+  pnpm install
+  git add pnpm-lock.yaml
 fi
-npx lint-staged
-npm run check:no-file-deps
-npm run lint
+if [ -f "../extensions/package.json" ] || [ -n "$EXTENSIONS_ROOT" ]; then
+  pnpm run link:vendor -- --skip-install
+fi
+pnpm exec lint-staged
+pnpm run check:no-file-deps
+pnpm run lint

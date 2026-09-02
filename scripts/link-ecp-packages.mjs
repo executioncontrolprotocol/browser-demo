@@ -108,7 +108,8 @@ function main() {
       continue
     }
     if (!existsSync(path.join(src, "dist"))) {
-      console.warn(`Warning: ${name} has no dist/ — run npm run build in ECP first`)
+      console.error(`Missing dist/ for ${name} — run pnpm build in ECP first`)
+      process.exit(1)
     }
     const dest = path.join(linkTarget, "node_modules", ...name.split("/"))
     ensureSymlink(dest, src)
