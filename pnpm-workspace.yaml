@@ -8,6 +8,8 @@ catalog:
 
 catalogs:
   ecp:
+    "@executioncontrolprotocol/adobe-firefly-services": ^0.13.2
+    "@executioncontrolprotocol/azure-blob-storage": ^0.13.2
     "@executioncontrolprotocol/browser": ^0.13.2
     "@executioncontrolprotocol/chrome-ai": ^0.13.2
     "@executioncontrolprotocol/claude": ^0.13.2

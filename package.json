@@ -82,10 +82,18 @@
     "@rollup/rollup-linux-x64-gnu": "4.61.1"
   },
   "peerDependencies": {
+    "@executioncontrolprotocol/adobe-firefly-services": "catalog:ecp",
+    "@executioncontrolprotocol/azure-blob-storage": "catalog:ecp",
     "@executioncontrolprotocol/fal": "catalog:ecp",
     "@executioncontrolprotocol/image-sharp": "catalog:ecp"
   },
   "peerDependenciesMeta": {
+    "@executioncontrolprotocol/adobe-firefly-services": {
+      "optional": true
+    },
+    "@executioncontrolprotocol/azure-blob-storage": {
+      "optional": true
+    },
     "@executioncontrolprotocol/fal": {
       "optional": true
     },
@@ -94,3 +102,4 @@
     }
   }
 }
+

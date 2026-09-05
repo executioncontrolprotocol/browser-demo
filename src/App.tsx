@@ -119,6 +119,12 @@ import {
   type BridgeSettings,
 } from "./lib/ecp-bridge.js"
 import {
+  parseDemoEnvPresetQuery,
+  readDemoEnvPreset,
+  storeDemoEnvPreset,
+  type DemoEnvPreset,
+} from "./lib/demo-env-preset.js"
+import {
   WORKFLOW_QUICK_STARTS,
   shouldShowWorkflowQuickStarts,
 } from "./lib/workflow-quick-starts.js"
@@ -160,6 +166,16 @@ export function App() {
   const [bridgeSettings, setBridgeSettings] = useState<BridgeSettings>(() =>
     consumeBridgeQueryParams()
   )
+  const [demoEnvPreset, setDemoEnvPreset] = useState<DemoEnvPreset>(() => {
+    const fromQuery = parseDemoEnvPresetQuery(
+      typeof window !== "undefined" ? window.location.search : ""
+    )
+    if (fromQuery) {
+      storeDemoEnvPreset(fromQuery)
+      return fromQuery
+    }
+    return readDemoEnvPreset()
+  })
   const [ollamaBridgeAvailable, setOllamaBridgeAvailable] = useState(false)
   const [ollamaBridgeHint, setOllamaBridgeHint] = useState(
     "Checking for local ecp up daemon…"
@@ -215,21 +231,31 @@ export function App() {
 
   const widthClass = columnWidthClass(layout.paired)
 
-  const reloadEcp = useCallback(async (nextOllama?: OllamaSettings, nextBridge?: BridgeSettings) => {
-    if (ecpRef.current) {
-      await ecpRef.current.terminate()
-    }
-    const settings = nextOllama ?? readOllamaSettings()
-    const bridge = nextBridge ?? readBridgeSettings()
-    const { ecp: operational, descriptor: desc } = await createDemoAppEnvironment({
-      ollama: settings,
-      bridge,
-    })
-    ecpRef.current = operational
-    setEcp(operational)
-    setDescriptor(desc)
-    return operational
-  }, [])
+  const reloadEcp = useCallback(
+    async (
+      nextOllama?: OllamaSettings,
+      nextBridge?: BridgeSettings,
+      nextPreset?: DemoEnvPreset
+    ) => {
+      if (ecpRef.current) {
+        await ecpRef.current.terminate()
+      }
+      const settings = nextOllama ?? readOllamaSettings()
+      const bridge = nextBridge ?? readBridgeSettings()
+      const preset = nextPreset ?? readDemoEnvPreset()
+      const { ecp: operational, descriptor: desc } = await createDemoAppEnvironment({
+        ollama: settings,
+        bridge,
+        preset,
+      })
+      ecpRef.current = operational
+      setEcp(operational)
+      setDescriptor(desc)
+      setDemoEnvPreset(preset)
+      return operational
+    },
+    []
+  )
 
   const refreshBridgeDetect = useCallback(async (baseURL?: string) => {
     const result = await detectEcpBridge(baseURL ?? readBridgeSettings().baseURL)
@@ -269,6 +295,7 @@ export function App() {
     const { ecp: operational, descriptor: desc } = await createDemoAppEnvironment({
       ollama: readOllamaSettings(),
       bridge: readBridgeSettings(),
+      preset: readDemoEnvPreset(),
     })
     ecpRef.current = operational
     setEcp(operational)
@@ -748,17 +775,20 @@ export function App() {
     setAssistantMode("authoring")
     setShowProviderModal(false)
     storeBridgeSettings(bridgeSettings)
+    storeDemoEnvPreset(demoEnvPreset)
     if (nextOllama) {
       storeOllamaSettings(nextOllama)
       setOllamaSettings(nextOllama)
-      void reloadEcp(nextOllama, bridgeSettings).then(() => {
+      void reloadEcp(nextOllama, bridgeSettings, demoEnvPreset).then(() => {
         const resolved = resolveDemoSession(mode)
-        setChatStatus(`Ready (${mode} / ${resolved.harness}).`)
+        setChatStatus(`Ready (${mode} / ${resolved.harness} / ${demoEnvPreset}).`)
       })
       return
     }
-    const resolved = resolveDemoSession(mode)
-    setChatStatus(`Ready (${mode} / ${resolved.harness}).`)
+    void reloadEcp(undefined, bridgeSettings, demoEnvPreset).then(() => {
+      const resolved = resolveDemoSession(mode)
+      setChatStatus(`Ready (${mode} / ${resolved.harness} / ${demoEnvPreset}).`)
+    })
   }
 
   const onExplore = () => {
@@ -1131,6 +1161,8 @@ export function App() {
             setBridgeSettings(next)
             void refreshBridgeDetect(next.baseURL)
           }}
+          demoEnvPreset={demoEnvPreset}
+          onDemoEnvPresetChange={setDemoEnvPreset}
           onRequestVaultSetup={() => {
             setShowProviderModal(false)
             setShowVaultSetup(true)

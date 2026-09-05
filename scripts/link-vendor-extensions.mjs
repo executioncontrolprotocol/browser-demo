@@ -13,7 +13,7 @@ import { existsSync, mkdirSync, rmSync, symlinkSync } from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 
-const PACKAGES = ["fal", "image-sharp"]
+const PACKAGES = ["fal", "image-sharp", "azure-blob-storage", "adobe-firefly-services"]
 const SHARED_PEERS = ["@executioncontrolprotocol/core", "@executioncontrolprotocol/types"]
 
 const demoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
