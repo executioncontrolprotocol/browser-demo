@@ -210,6 +210,36 @@ export async function invokeViaBridge<T = unknown>(
   throw new Error(`Bridge invoke failed: ${res.status}`)
 }
 
+/**
+ * Fetch host `describe()` through `ecp up` (`GET /v1/describe`).
+ */
+export async function describeViaBridge(
+  settings: BridgeSettings,
+  signal?: AbortSignal
+): Promise<import("@executioncontrolprotocol/types").EnvironmentDescriptor> {
+  const root = settings.baseURL.replace(/\/$/, "").trim()
+  if (!root) throw new Error("Bridge base URL is required")
+  if (!settings.token.trim()) throw new Error("Bridge pairing token is required")
+
+  const res = await fetch(`${root}/v1/describe`, {
+    method: "GET",
+    signal,
+    headers: {
+      Authorization: `Bearer ${settings.token.trim()}`,
+    },
+  })
+
+  if (res.status === 401) {
+    throw new Error("Bridge unauthorized — check the pairing token from `ecp up`")
+  }
+
+  if (!res.ok) {
+    throw new Error(`Bridge describe failed: ${res.status}`)
+  }
+
+  return (await res.json()) as import("@executioncontrolprotocol/types").EnvironmentDescriptor
+}
+
 /** List Ollama models via the local daemon. */
 export async function listModelsViaBridge(
   settings: BridgeSettings,

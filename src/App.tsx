@@ -115,9 +115,14 @@ import {
   consumeBridgeQueryParams,
   readBridgeSettings,
   storeBridgeSettings,
+  describeViaBridge,
   type BridgeDetectResult,
   type BridgeSettings,
 } from "./lib/ecp-bridge.js"
+import {
+  checkHostMixedCompatibility,
+  mergeValidationResults,
+} from "./lib/host-compatibility.js"
 import {
   parseDemoEnvPresetQuery,
   readDemoEnvPreset,
@@ -188,6 +193,7 @@ export function App() {
   const [chromeInstallUi, setChromeInstallUi] = useState<ChromeInstallUi>("idle")
   const [manifest, setManifest] = useState<WorkflowManifest | null>(null)
   const [validation, setValidation] = useState<ValidationResult | null>(null)
+  const [hostCompat, setHostCompat] = useState<ValidationResult | null>(null)
   const [descriptor, setDescriptor] = useState<EnvironmentDescriptor | null>(null)
   const [editorTab, setEditorTab] = useState<CodeEditorTab>("workflow")
   const [formatTab, setFormatTab] = useState<FormatTab>("fluent")
@@ -229,6 +235,42 @@ export function App() {
     [descriptor]
   )
 
+  const footerValidation = useMemo(
+    () => mergeValidationResults(validation, hostCompat),
+    [validation, hostCompat]
+  )
+
+  const refreshHostCompat = useCallback(
+    async (desc: EnvironmentDescriptor | null, bridge: BridgeSettings) => {
+      if (!desc?.remoteInvoke?.url || !bridge.token.trim()) {
+        setHostCompat(null)
+        return
+      }
+      try {
+        const hostDesc = await describeViaBridge(bridge)
+        setHostCompat(checkHostMixedCompatibility(desc, hostDesc))
+      } catch (err) {
+        setHostCompat({
+          schema: "@executioncontrolprotocol.validation.result",
+          version: "1.0",
+          valid: false,
+          errors: [
+            {
+              code: "HOST_DESCRIBE_FAILED",
+              message:
+                err instanceof Error
+                  ? err.message
+                  : "Could not fetch host describe — check ecp up pairing.",
+              severity: "error",
+            },
+          ],
+          warnings: [],
+        })
+      }
+    },
+    []
+  )
+
   const widthClass = columnWidthClass(layout.paired)
 
   const reloadEcp = useCallback(
@@ -252,9 +294,10 @@ export function App() {
       setEcp(operational)
       setDescriptor(desc)
       setDemoEnvPreset(preset)
+      await refreshHostCompat(desc, bridge)
       return operational
     },
-    []
+    [refreshHostCompat]
   )
 
   const refreshBridgeDetect = useCallback(async (baseURL?: string) => {
@@ -300,6 +343,7 @@ export function App() {
     ecpRef.current = operational
     setEcp(operational)
     setDescriptor(desc)
+    await refreshHostCompat(desc, readBridgeSettings())
 
     const bridgeDetect = await refreshBridgeDetect()
     const bridgeOk = isOllamaBridgeUsable(bridgeDetect)
@@ -350,7 +394,7 @@ export function App() {
 
     setProviderMode(modalMode)
     setShowProviderModal(true)
-  }, [setChatStatus, refreshBridgeDetect, startPolling])
+  }, [setChatStatus, refreshBridgeDetect, startPolling, refreshHostCompat])
 
   useEffect(() => {
     installEsbuildWasmUrl()
@@ -1123,7 +1167,7 @@ export function App() {
       </main>
 
       <StatusFooter
-        validation={validation}
+        validation={footerValidation}
         chromeInstallUi={chromeInstallUi}
         chromeInstallState={chromeInstallState}
       />
