@@ -10,7 +10,15 @@ import {
   resolveMediaPreview,
   type ResolvedMediaPreview,
 } from "../lib/resolve-media-preview.js"
+import {
+  filterUnmappedMediaRefs,
+  formatOutputDebugJson,
+  mappedMediaPathPrefixes,
+} from "../lib/run-output-view.js"
+import { runFormPortsFromReturns } from "../lib/workflow-io.js"
+import { MediaPreview } from "./MediaPreview.js"
 import { RunInputForm } from "./RunInputForm.js"
+import { RunOutputView } from "./RunOutputView.js"
 
 /** Which sections the workflow state modal shows. @category Demo */
 export type RunModalMode = "input" | "output" | "inspect"
@@ -27,6 +35,8 @@ export interface RunResultModalProps {
   runOutputJson: string
   /** Optional `result.output` JSON. */
   runPublicOutput?: string
+  /** Workflow `returns` schema for mapped output. */
+  returnsSchema?: Record<string, unknown>
   bridge?: BridgeSettings
   blobs?: CapabilityBlobStore
   runBusy: boolean
@@ -34,49 +44,6 @@ export interface RunResultModalProps {
   hasWorkflow: boolean
   acceptsSchema?: Record<string, unknown>
   filePickerEnabled?: boolean
-}
-
-function MediaPreview({ item }: { item: ResolvedMediaPreview }) {
-  if (item.error) {
-    return <p className="text-label text-error">{item.error}</p>
-  }
-  if (!item.url) {
-    return <p className="text-label text-on-surface-variant">No preview available.</p>
-  }
-  switch (item.previewKind) {
-    case "image":
-      return (
-        <img
-          src={item.url}
-          alt={item.name || item.path}
-          className="max-h-64 max-w-full rounded border border-outline-variant/40 object-contain"
-        />
-      )
-    case "video":
-      return (
-        <video
-          src={item.url}
-          controls
-          className="max-h-64 max-w-full rounded border border-outline-variant/40"
-        />
-      )
-    case "audio":
-      return <audio src={item.url} controls className="w-full" />
-    case "pdf":
-      return (
-        <iframe
-          title={item.name || item.path}
-          src={item.url}
-          className="h-64 w-full rounded border border-outline-variant/40 bg-surface-container-lowest"
-        />
-      )
-    default:
-      return (
-        <p className="font-mono text-label text-on-surface-variant">
-          {item.mediaType} · use Open to view in the browser
-        </p>
-      )
-  }
 }
 
 function titleForMode(mode: RunModalMode): string {
@@ -90,6 +57,11 @@ function titleForMode(mode: RunModalMode): string {
   }
 }
 
+function outputFromRunResult(runResult: unknown): unknown {
+  if (!runResult || typeof runResult !== "object") return undefined
+  return (runResult as { output?: unknown }).output
+}
+
 /**
  * Workflow state modal: input-only, output-only, or full inspect.
  * @category Demo
@@ -101,6 +73,7 @@ export function RunResultModal({
   runResult,
   runOutputJson,
   runPublicOutput,
+  returnsSchema,
   bridge,
   blobs,
   runBusy,
@@ -109,7 +82,24 @@ export function RunResultModal({
   acceptsSchema,
   filePickerEnabled = false,
 }: RunResultModalProps) {
-  const mediaRefs = useMemo(() => collectFinalOutputMediaRefs(runResult), [runResult])
+  const mappedOutput = useMemo(() => {
+    const fromResult = outputFromRunResult(runResult)
+    if (fromResult !== undefined) return fromResult
+    if (!runPublicOutput) return undefined
+    try {
+      return JSON.parse(runPublicOutput) as unknown
+    } catch {
+      return undefined
+    }
+  }, [runResult, runPublicOutput])
+
+  const returnPorts = useMemo(() => runFormPortsFromReturns(returnsSchema), [returnsSchema])
+  const allMediaRefs = useMemo(() => collectFinalOutputMediaRefs(runResult), [runResult])
+  const mediaRefs = useMemo(() => {
+    const prefixes = mappedMediaPathPrefixes(returnPorts, mappedOutput)
+    return filterUnmappedMediaRefs(allMediaRefs, prefixes)
+  }, [allMediaRefs, returnPorts, mappedOutput])
+
   const failureMessages = useMemo(() => collectRunFailureMessages(runResult), [runResult])
   const failed = isFailedRunResult(runResult)
   const [previews, setPreviews] = useState<ResolvedMediaPreview[]>([])
@@ -117,6 +107,7 @@ export function RunResultModal({
   const showInput = mode === "input" || mode === "inspect"
   const showOutput = mode === "output" || mode === "inspect"
   const hasResult = Boolean(runOutputJson)
+  const debugOutputJson = runPublicOutput || formatOutputDebugJson(mappedOutput)
 
   useEffect(() => {
     if (!open || !showOutput) {
@@ -210,14 +201,23 @@ export function RunResultModal({
           ) : null}
 
           {showOutput && hasResult ? (
+            <section>
+              <RunOutputView
+                returnsSchema={returnsSchema}
+                output={mappedOutput}
+                bridge={bridge}
+                blobs={blobs}
+              />
+            </section>
+          ) : null}
+
+          {showOutput && hasResult && mediaRefs.length > 0 ? (
             <section className="space-y-3">
               <p className="font-mono text-label uppercase tracking-wide text-on-surface-variant">
-                Media
+                Other media
               </p>
               {loading ? (
                 <p className="text-label text-on-surface-variant">Loading previews…</p>
-              ) : mediaRefs.length === 0 ? (
-                <p className="text-label text-on-surface-variant">No media in workflow output.</p>
               ) : (
                 <ul className="space-y-4">
                   {previews.map((item) => (
@@ -250,26 +250,26 @@ export function RunResultModal({
             </section>
           ) : null}
 
-          {showOutput && runPublicOutput ? (
-            <section>
-              <p className="mb-2 font-mono text-label uppercase tracking-wide text-on-surface-variant">
-                Output
-              </p>
-              <pre className="max-h-[20vh] overflow-auto rounded border border-outline-variant/50 bg-surface-container-lowest p-3 font-mono text-label text-on-surface-variant whitespace-pre-wrap">
-                {runPublicOutput}
+          {showOutput && debugOutputJson ? (
+            <details className="rounded border border-outline-variant/40 bg-surface-container-lowest">
+              <summary className="cursor-pointer px-3 py-2 font-mono text-label uppercase tracking-wide text-on-surface-variant">
+                Debug JSON
+              </summary>
+              <pre className="max-h-[20vh] overflow-auto border-t border-outline-variant/40 p-3 font-mono text-label text-on-surface-variant whitespace-pre-wrap">
+                {debugOutputJson}
               </pre>
-            </section>
+            </details>
           ) : null}
 
           {showOutput ? (
-            <section>
-              <p className="mb-2 font-mono text-label uppercase tracking-wide text-on-surface-variant">
+            <details className="rounded border border-outline-variant/40 bg-surface-container-lowest">
+              <summary className="cursor-pointer px-3 py-2 font-mono text-label uppercase tracking-wide text-on-surface-variant">
                 Full state
-              </p>
-              <pre className="max-h-[30vh] overflow-auto rounded border border-outline-variant/50 bg-surface-container-lowest p-3 font-mono text-label text-on-surface-variant whitespace-pre-wrap">
+              </summary>
+              <pre className="max-h-[30vh] overflow-auto border-t border-outline-variant/40 p-3 font-mono text-label text-on-surface-variant whitespace-pre-wrap">
                 {runOutputJson || "Run output will appear here."}
               </pre>
-            </section>
+            </details>
           ) : null}
         </div>
         <footer className="modal-panel-footer">

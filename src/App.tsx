@@ -1060,7 +1060,7 @@ export function App() {
           void autoTroubleshootAfterFailure(result)
         } else {
           setAutoTroubleshootRound(0)
-          appendAgent(formatChatRunSuccessMessage(result))
+          appendAgent(formatChatRunSuccessMessage(result), { runOutput: true })
         }
       } else {
         setRunModalMode(isFailedRunResult(result) ? "inspect" : "output")
@@ -1215,6 +1215,14 @@ export function App() {
         : undefined,
     [manifest, reactflow]
   )
+  const runReturnsSchema = useMemo(
+    () => (manifest ? workflowContract(manifest).returns : undefined),
+    [manifest]
+  )
+  const runMappedOutput = useMemo(() => {
+    if (!lastRunResult || typeof lastRunResult !== "object") return undefined
+    return (lastRunResult as { output?: unknown }).output
+  }, [lastRunResult])
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background">
@@ -1248,6 +1256,10 @@ export function App() {
             runBusy={runBusy}
             hasWorkflow={hasWorkflow}
             acceptsSchema={runAcceptsSchema}
+            returnsSchema={runReturnsSchema}
+            runOutputValue={runMappedOutput}
+            bridge={bridgeSettings}
+            runBlobs={lastRunBlobs.current}
             filePickerEnabled={Boolean(descriptor?.remoteInvoke?.url)}
             runFormDrafts={runFormDrafts}
           />
@@ -1306,6 +1318,7 @@ export function App() {
         runResult={lastRunResult}
         runOutputJson={runOutput}
         runPublicOutput={runPublicOutput || undefined}
+        returnsSchema={runReturnsSchema}
         bridge={bridgeSettings}
         blobs={lastRunBlobs.current}
         runBusy={runBusy}

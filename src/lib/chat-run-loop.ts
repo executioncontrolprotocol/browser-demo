@@ -52,28 +52,16 @@ export function canAutoTroubleshoot(round: number, max = CHAT_AUTO_TROUBLESHOOT_
 
 /**
  * Build a short conversational success line after a chat-initiated run.
+ * Rich field values are rendered separately in chat via the run output view.
  * @category Demo
  */
 export function formatChatRunSuccessMessage(result: unknown): string {
   if (!result || typeof result !== "object") {
-    return "The workflow run completed."
+    return "Run completed."
   }
   const run = (result as { run?: { status?: string } }).run
   const status = run?.status ?? "completed"
-  const output = (result as { output?: unknown }).output
-  if (output === undefined || output === null) {
-    return `Run ${status}.`
-  }
-  let preview: string
-  try {
-    preview = typeof output === "string" ? output : JSON.stringify(output)
-  } catch {
-    preview = String(output)
-  }
-  if (preview.length > 160) {
-    preview = `${preview.slice(0, 157)}...`
-  }
-  return `Run ${status}. Output: ${preview}`
+  return status === "completed" ? "Run completed." : `Run ${status}.`
 }
 
 /**

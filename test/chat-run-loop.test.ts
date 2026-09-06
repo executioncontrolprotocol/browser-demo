@@ -37,7 +37,7 @@ describe("chat-run-loop auto-troubleshoot", () => {
 })
 
 describe("chat-run-loop messages", () => {
-  it("formats success with output preview", () => {
+  it("formats success without embedding output JSON", () => {
     const msg = formatChatRunSuccessMessage({
       schema: "@executioncontrolprotocol.run.result",
       version: "1.0",
@@ -45,7 +45,7 @@ describe("chat-run-loop messages", () => {
       output: { echo: "hello" },
     })
     expect(msg.toLowerCase()).toContain("completed")
-    expect(msg).toContain("hello")
+    expect(msg).not.toContain("hello")
   })
 
   it("formats failure from error wrapper", () => {

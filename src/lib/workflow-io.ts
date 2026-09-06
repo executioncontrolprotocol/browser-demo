@@ -232,6 +232,13 @@ export function runFormPortsFromAccepts(
   }))
 }
 
+/** Ports used by the read-only run output view (same mapping as accepts). */
+export function runFormPortsFromReturns(
+  schema: Record<string, unknown> | undefined
+): ReactFlowPort[] {
+  return runFormPortsFromAccepts(schema)
+}
+
 function isBareTypeSchema(schema: Record<string, unknown>): boolean {
   const keys = Object.keys(schema)
   return keys.length === 0 || (keys.length === 1 && keys[0] === "type")

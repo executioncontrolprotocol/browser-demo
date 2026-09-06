@@ -1,9 +1,11 @@
 import { useEffect, useRef } from "react"
 import type { CapabilityBlobStore } from "@executioncontrolprotocol/core"
+import type { BridgeSettings } from "../lib/ecp-bridge.js"
 import type { WorkflowQuickStart } from "../lib/workflow-quick-starts.js"
 import type { ChatMessage } from "../types/workspace.js"
 import { PanelHeader } from "./PanelHeader.js"
 import { RunInputForm } from "./RunInputForm.js"
+import { RunOutputView } from "./RunOutputView.js"
 
 /** Props for {@link ChatPanel}. */
 export interface ChatPanelProps {
@@ -30,6 +32,12 @@ export interface ChatPanelProps {
   runBusy?: boolean
   hasWorkflow?: boolean
   acceptsSchema?: Record<string, unknown>
+  /** Workflow `returns` schema for embedded run output. */
+  returnsSchema?: Record<string, unknown>
+  /** Latest `result.output` for messages flagged `runOutput`. */
+  runOutputValue?: unknown
+  bridge?: BridgeSettings
+  runBlobs?: CapabilityBlobStore
   filePickerEnabled?: boolean
   /** Prefill drafts for the in-chat run form. */
   runFormDrafts?: Record<string, string>
@@ -55,6 +63,10 @@ export function ChatPanel({
   runBusy = false,
   hasWorkflow = false,
   acceptsSchema,
+  returnsSchema,
+  runOutputValue,
+  bridge,
+  runBlobs,
   filePickerEnabled = false,
   runFormDrafts,
 }: ChatPanelProps) {
@@ -134,6 +146,17 @@ export function ChatPanel({
                           acceptsSchema={acceptsSchema}
                           filePickerEnabled={filePickerEnabled}
                           initialDrafts={runFormDrafts}
+                        />
+                      </div>
+                    ) : null}
+                    {m.runOutput ? (
+                      <div className={m.text || m.runForm ? "mt-3" : undefined}>
+                        <RunOutputView
+                          returnsSchema={returnsSchema}
+                          output={runOutputValue}
+                          bridge={bridge}
+                          blobs={runBlobs}
+                          compact
                         />
                       </div>
                     ) : null}

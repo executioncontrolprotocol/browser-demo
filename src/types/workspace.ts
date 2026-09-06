@@ -37,4 +37,6 @@ export interface ChatMessage {
   offerRun?: boolean
   /** When true, embed the run input form in this agent bubble. */
   runForm?: boolean
+  /** When true, embed the schema-mapped run output view in this agent bubble. */
+  runOutput?: boolean
 }

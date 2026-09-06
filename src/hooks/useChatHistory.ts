@@ -20,6 +20,7 @@ export interface AppendAgentOptions {
   variant?: "normal" | "error"
   offerRun?: boolean
   runForm?: boolean
+  runOutput?: boolean
 }
 
 /** Chat history and status helpers. */
@@ -47,6 +48,7 @@ export function useChatHistory(initialMode: AssistantMode = "authoring") {
         variant: options?.variant ?? "normal",
         ...(options?.offerRun ? { offerRun: true } : {}),
         ...(options?.runForm ? { runForm: true } : {}),
+        ...(options?.runOutput ? { runOutput: true } : {}),
       },
     ])
   }, [])
