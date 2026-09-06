@@ -81,7 +81,8 @@ for (const name of PACKAGES) {
     console.log(`Using existing build for @executioncontrolprotocol/${name}`)
     continue
   }
-  run("pnpm", ["run", "build", "--filter", `@executioncontrolprotocol/${name}`], extensionsRoot)
+  // --filter must precede the script name; otherwise tsc receives --filter as a build option.
+  run("pnpm", ["--filter", `@executioncontrolprotocol/${name}`, "run", "build"], extensionsRoot)
 }
 
 for (const name of PACKAGES) {

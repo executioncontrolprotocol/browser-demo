@@ -1,7 +1,9 @@
 import { useEffect, useRef } from "react"
+import type { CapabilityBlobStore } from "@executioncontrolprotocol/core"
 import type { WorkflowQuickStart } from "../lib/workflow-quick-starts.js"
 import type { ChatMessage } from "../types/workspace.js"
 import { PanelHeader } from "./PanelHeader.js"
+import { RunInputForm } from "./RunInputForm.js"
 
 /** Props for {@link ChatPanel}. */
 export interface ChatPanelProps {
@@ -19,6 +21,18 @@ export interface ChatPanelProps {
   showQuickStarts?: boolean
   quickStarts?: WorkflowQuickStart[]
   onQuickStartClick?: (prompt: string) => void
+  /** Confirm an offer-run chip. */
+  onOfferRunConfirm?: () => void
+  /** Decline an offer-run chip. */
+  onOfferRunDecline?: () => void
+  /** Run from an embedded chat form. */
+  onChatRun?: (input?: Record<string, unknown>, blobs?: CapabilityBlobStore) => void
+  runBusy?: boolean
+  hasWorkflow?: boolean
+  acceptsSchema?: Record<string, unknown>
+  filePickerEnabled?: boolean
+  /** Prefill drafts for the in-chat run form. */
+  runFormDrafts?: Record<string, string>
 }
 
 /** Full-height chat column (Logic Assistant). */
@@ -35,6 +49,14 @@ export function ChatPanel({
   showQuickStarts = false,
   quickStarts = [],
   onQuickStartClick,
+  onOfferRunConfirm,
+  onOfferRunDecline,
+  onChatRun,
+  runBusy = false,
+  hasWorkflow = false,
+  acceptsSchema,
+  filePickerEnabled = false,
+  runFormDrafts,
 }: ChatPanelProps) {
   const messageEndRef = useRef<HTMLDivElement>(null)
 
@@ -44,6 +66,9 @@ export function ChatPanel({
   }, [busy, messages])
 
   if (!visible) return null
+
+  const offerPending =
+    !busy && messages.some((m) => m.role === "agent" && m.offerRun === true)
 
   return (
     <section
@@ -91,14 +116,48 @@ export function ChatPanel({
                         : "border-outline-variant/30 bg-surface-container-high"
                     }`}
                   >
-                    <p
-                      className={`chat-bubble-text text-body ${
-                        m.variant === "error" ? "text-on-error-container" : "text-on-surface"
-                      }`}
-                    >
-                      {m.text}
-                    </p>
+                    {m.text ? (
+                      <p
+                        className={`chat-bubble-text text-body ${
+                          m.variant === "error" ? "text-on-error-container" : "text-on-surface"
+                        }`}
+                      >
+                        {m.text}
+                      </p>
+                    ) : null}
+                    {m.runForm && onChatRun ? (
+                      <div className={m.text ? "mt-3" : undefined}>
+                        <RunInputForm
+                          runBusy={runBusy}
+                          onRun={onChatRun}
+                          hasWorkflow={hasWorkflow}
+                          acceptsSchema={acceptsSchema}
+                          filePickerEnabled={filePickerEnabled}
+                          initialDrafts={runFormDrafts}
+                        />
+                      </div>
+                    ) : null}
                   </div>
+                  {m.offerRun && offerPending ? (
+                    <div className="flex min-w-0 flex-wrap gap-2">
+                      <button
+                        type="button"
+                        disabled={disabled || busy || runBusy}
+                        onClick={() => onOfferRunConfirm?.()}
+                        className="rounded-lg border border-primary/40 bg-primary/15 px-2.5 py-2 text-label text-on-surface transition-colors hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Yes, run it
+                      </button>
+                      <button
+                        type="button"
+                        disabled={disabled || busy || runBusy}
+                        onClick={() => onOfferRunDecline?.()}
+                        className="rounded-lg border border-outline-variant/30 bg-surface-container-high px-2.5 py-2 text-label text-on-surface transition-colors hover:border-primary/40 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Not now
+                      </button>
+                    </div>
+                  ) : null}
                   {attachQuickStarts ? (
                     <div className="flex min-w-0 flex-col gap-1.5">
                       <p className="text-label text-on-surface-variant">Quickstart:</p>

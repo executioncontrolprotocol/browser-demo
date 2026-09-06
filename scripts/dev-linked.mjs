@@ -11,7 +11,7 @@
  * Environment:
  *   ECP_ROOT          — path to executioncontrolprotocol monorepo (default: ../executioncontrolprotocol)
  *   EXTENSIONS_ROOT   — path to extensions monorepo (default: ../extensions)
- *   HOST_EXAMPLE_ROOT — path to ecp up example (default: $EXTENSIONS_ROOT/examples/04-image-prep)
+ *   HOST_EXAMPLE_ROOT — path to ecp up example (default: ./host)
  *   ECP_HOST_PORT     — ecp up port (default: 3090)
  *   VITE_PORT         — Vite port (default: 5173)
  */
@@ -25,10 +25,7 @@ const ecpRoot = path.resolve(process.env.ECP_ROOT ?? path.join(demoRoot, "..", "
 const extensionsRoot = path.resolve(
   process.env.EXTENSIONS_ROOT ?? path.join(demoRoot, "..", "extensions")
 )
-const hostRoot = path.resolve(
-  process.env.HOST_EXAMPLE_ROOT ??
-    path.join(extensionsRoot, "examples", "04-image-prep")
-)
+const hostRoot = path.resolve(process.env.HOST_EXAMPLE_ROOT ?? path.join(demoRoot, "host"))
 const hostPort = process.env.ECP_HOST_PORT ?? "3090"
 const vitePort = process.env.VITE_PORT ?? "5173"
 
@@ -179,7 +176,9 @@ function main() {
     run("pnpm", ["run", "build"], ecpRoot)
     run("pnpm", ["run", "generate:schema"], ecpRoot)
     if (existsSync(path.join(extensionsRoot, "package.json"))) {
-      run("pnpm", ["run", "build", "--filter", "@executioncontrolprotocol/image-sharp"], extensionsRoot)
+      // --filter must precede the script name; otherwise tsc receives --filter as a build option.
+      run("pnpm", ["--filter", "@executioncontrolprotocol/image-sharp", "run", "build"], extensionsRoot)
+      run("pnpm", ["--filter", "@executioncontrolprotocol/fal", "run", "build"], extensionsRoot)
     }
   }
 

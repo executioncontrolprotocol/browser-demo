@@ -7,6 +7,7 @@ import {
 import {
   HARNESS_TASKS as NANO_HARNESS_TASKS,
   chatResultAnswer,
+  chatResultSuggestedAction,
   chatResultWorkflow,
 } from "@executioncontrolprotocol/harnesses-browser-nano"
 import type {
@@ -17,6 +18,7 @@ import type {
   ValidationResult,
   WorkflowManifest,
 } from "@executioncontrolprotocol/types"
+import { toHarnessRunContext } from "@executioncontrolprotocol/types"
 import type { Ecp, CapabilityBlobStore } from "@executioncontrolprotocol/core"
 import { compileWorkflowSource } from "@executioncontrolprotocol/core/browser"
 import type {
@@ -138,6 +140,14 @@ import {
   isFailedRunResult,
   syncRunProgressFromResult,
 } from "./lib/run-progress-sync.js"
+import {
+  CHAT_TROUBLESHOOT_PROMPT,
+  canAutoTroubleshoot,
+  formatChatRunFailureMessage,
+  formatChatRunSuccessMessage,
+  isHarnessRunResultDocument,
+  resolvePendingOfferAction,
+} from "./lib/chat-run-loop.js"
 import type { CodeEditorTab, FormatTab } from "./types/workspace.js"
 
 const EMPTY_MERMAID = "flowchart TD\n  empty[No workflow]"
@@ -161,6 +171,7 @@ export function App() {
     appendAgent,
     appendAgentError,
     appendUser,
+    clearOfferRunFlags,
     setGuidedWelcome,
   } = useChatHistory(assistantMode)
   const [ecp, setEcp] = useState<Ecp | null>(null)
@@ -219,6 +230,10 @@ export function App() {
   const [configureError, setConfigureError] = useState<string | null>(null)
   const [chatBusy, setChatBusy] = useState(false)
   const [conversationSummary, setConversationSummary] = useState<string | undefined>()
+  const [pendingOfferRun, setPendingOfferRun] = useState(false)
+  const [autoTroubleshootRound, setAutoTroubleshootRound] = useState(0)
+  const [lastChatRunInput, setLastChatRunInput] = useState<Record<string, unknown> | undefined>()
+  const [runFormDrafts, setRunFormDrafts] = useState<Record<string, string> | undefined>()
   const compileTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const compileGeneration = useRef(0)
   const syncFromManifestRef = useRef<
@@ -855,6 +870,10 @@ export function App() {
   const runChat = async (userRequest: string) => {
     if (!ecp) return
     const { provider, harness } = resolveDemoSession(providerMode)
+    const runContext =
+      isHarnessRunResultDocument(lastRunResult) && manifest
+        ? toHarnessRunContext(lastRunResult as RunResult, manifest)
+        : undefined
     const invoked = await ecp
       .invoke(harnessCapabilityId(harness))
       .uses(providerCapabilityId(provider))
@@ -863,6 +882,7 @@ export function App() {
         message: userRequest,
         ...(manifest ? { manifest } : {}),
         ...(conversationSummary ? { conversationSummary } : {}),
+        ...(runContext ? { runContext } : {}),
         ...(provider === "ollama" ? { model: ollamaSettings.model } : {}),
       })
       .process()
@@ -888,28 +908,81 @@ export function App() {
       if (!hadWorkflow) layout.onFirstWorkflow()
       else layout.openWorkspace()
       const val = harnessValidation as { valid?: boolean } | undefined
-      const msg =
-        val?.valid === false
+      const answer =
+        chatResultAnswer(harnessResult) ??
+        (val?.valid === false
           ? "Workflow updated but has validation issues. See console for raw model output."
-          : "Updated workflow."
-      setChatStatus(msg)
-      appendAgent(msg)
-      setConversationSummary(`User: ${userRequest}\nAssistant: ${msg}`)
+          : "I updated the workflow. Want me to run it?")
+      const offerRun = chatResultSuggestedAction(harnessResult) === "offer-run"
+      setChatStatus(offerRun ? "Offer run" : "Ready")
+      clearOfferRunFlags()
+      appendAgent(answer, { offerRun })
+      setPendingOfferRun(offerRun)
+      setConversationSummary(`User: ${userRequest}\nAssistant: ${answer.slice(0, 200)}`)
       return
     }
 
     const answer = chatResultAnswer(harnessResult)
     if (answer) {
+      clearOfferRunFlags()
+      setPendingOfferRun(false)
       appendAgent(answer)
       setChatStatus(assistantMode === "guided" ? "Guided mode" : "Ready")
       setConversationSummary(`User: ${userRequest}\nAssistant: ${answer.slice(0, 200)}`)
     }
   }
 
+  const showChatRunForm = () => {
+    clearOfferRunFlags()
+    setPendingOfferRun(false)
+    const drafts: Record<string, string> = {}
+    if (lastChatRunInput) {
+      for (const [key, value] of Object.entries(lastChatRunInput)) {
+        drafts[key] =
+          typeof value === "string" ? value : JSON.stringify(value, null, 2)
+      }
+    }
+    setRunFormDrafts(Object.keys(drafts).length > 0 ? drafts : undefined)
+    appendAgent("Provide any run inputs, then click Run workflow.", { runForm: true })
+  }
+
+  const onOfferRunConfirm = () => {
+    appendUser("Yes, run it")
+    showChatRunForm()
+  }
+
+  const onOfferRunDecline = () => {
+    appendUser("Not now")
+    clearOfferRunFlags()
+    setPendingOfferRun(false)
+    appendAgent("Okay — say when you want to run it, or ask for another change.")
+  }
+
   const submitMessage = async (userRequest: string) => {
     const text = userRequest.trim()
     if (!ecp || !text) return
-    appendUser(text)
+
+    if (pendingOfferRun) {
+      const action = resolvePendingOfferAction(text)
+      appendUser(text)
+      if (action === "confirm") {
+        showChatRunForm()
+        setPrompt("")
+        return
+      }
+      if (action === "decline") {
+        clearOfferRunFlags()
+        setPendingOfferRun(false)
+        appendAgent("Okay — say when you want to run it, or ask for another change.")
+        setPrompt("")
+        return
+      }
+      clearOfferRunFlags()
+      setPendingOfferRun(false)
+    } else {
+      appendUser(text)
+    }
+
     void logUserPrompt(text, {
       assistantMode,
       providerMode,
@@ -934,6 +1007,102 @@ export function App() {
   const onSubmit = () => {
     void submitMessage(prompt)
     setPrompt("")
+  }
+
+  const autoTroubleshootAfterFailure = async (result: unknown) => {
+    if (!canAutoTroubleshoot(autoTroubleshootRound)) {
+      appendAgent(
+        `${formatChatRunFailureMessage(result)} I reached the automatic fix limit — describe the change you want, or inspect the canvas.`
+      )
+      return
+    }
+    appendAgent(`${formatChatRunFailureMessage(result)} I will try to fix the workflow.`)
+    setAutoTroubleshootRound((n) => n + 1)
+    setChatBusy(true)
+    try {
+      await runChat(CHAT_TROUBLESHOOT_PROMPT)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      appendAgentError(msg)
+    } finally {
+      setChatBusy(false)
+    }
+  }
+
+  const onRun = async (
+    input?: Record<string, unknown>,
+    blobs?: CapabilityBlobStore,
+    options?: { source?: "modal" | "chat" }
+  ) => {
+    if (!ecp || !manifest) return
+    const fromChat = options?.source === "chat"
+    setRunBusy(true)
+    setRunModalOpen(false)
+    setRunOutput("")
+    setRunPublicOutput("")
+    lastRunBlobs.current = blobs
+    if (fromChat && input) {
+      setLastChatRunInput(input)
+    }
+    layout.ensureWorkflowVisible()
+    let result: RunResult | undefined
+    try {
+      result = (await ecp.run(withNormalizedFileAccepts(manifest), {
+        ...(input ? { input } : {}),
+        ...(blobs ? { blobs } : {}),
+      })) as RunResult
+      setLastRunResult(result)
+      setRunOutput(JSON.stringify(result, null, 2))
+      const output = result.output
+      setRunPublicOutput(output ? JSON.stringify(output, null, 2) : "")
+      if (fromChat) {
+        if (isFailedRunResult(result)) {
+          void autoTroubleshootAfterFailure(result)
+        } else {
+          setAutoTroubleshootRound(0)
+          appendAgent(formatChatRunSuccessMessage(result))
+        }
+      } else {
+        setRunModalMode(isFailedRunResult(result) ? "inspect" : "output")
+        setRunModalOpen(true)
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      const errorResult = { error: message }
+      setLastRunResult(errorResult)
+      setRunOutput(message)
+      setRunPublicOutput("")
+      emitRunProgressFailed()
+      if (fromChat) {
+        void autoTroubleshootAfterFailure(errorResult)
+      } else {
+        setRunModalMode("inspect")
+        setRunModalOpen(true)
+      }
+    } finally {
+      if (result) syncRunProgressFromResult(result)
+      setRunBusy(false)
+    }
+  }
+
+  const onRunFromModal = (input?: Record<string, unknown>, blobs?: CapabilityBlobStore) => {
+    setRunModalOpen(false)
+    void onRun(input, blobs, { source: "modal" })
+  }
+
+  const onRunFromChat = (input?: Record<string, unknown>, blobs?: CapabilityBlobStore) => {
+    void onRun(input, blobs, { source: "chat" })
+  }
+
+  const onExecute = () => {
+    if (!manifest) return
+    const accepts = workflowContract(manifest).accepts
+    if (ioFieldsFromSchema(accepts).length > 0) {
+      setRunModalMode("input")
+      setRunModalOpen(true)
+      return
+    }
+    void onRun(undefined, undefined, { source: "modal" })
   }
 
   const onFluentChange = useCallback(
@@ -1037,56 +1206,6 @@ export function App() {
     }
   }, [fluent])
 
-  const onRun = async (input?: Record<string, unknown>, blobs?: CapabilityBlobStore) => {
-    if (!ecp || !manifest) return
-    setRunBusy(true)
-    setRunModalOpen(false)
-    setRunOutput("")
-    setRunPublicOutput("")
-    lastRunBlobs.current = blobs
-    layout.ensureWorkflowVisible()
-    let result: RunResult | undefined
-    try {
-      result = (await ecp.run(withNormalizedFileAccepts(manifest), {
-        ...(input ? { input } : {}),
-        ...(blobs ? { blobs } : {}),
-      })) as RunResult
-      setLastRunResult(result)
-      setRunOutput(JSON.stringify(result, null, 2))
-      const output = result.output
-      setRunPublicOutput(output ? JSON.stringify(output, null, 2) : "")
-      setRunModalMode(isFailedRunResult(result) ? "inspect" : "output")
-      setRunModalOpen(true)
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      setLastRunResult({ error: message })
-      setRunOutput(message)
-      setRunPublicOutput("")
-      emitRunProgressFailed()
-      setRunModalMode("inspect")
-      setRunModalOpen(true)
-    } finally {
-      if (result) syncRunProgressFromResult(result)
-      setRunBusy(false)
-    }
-  }
-
-  const onRunFromModal = (input?: Record<string, unknown>, blobs?: CapabilityBlobStore) => {
-    setRunModalOpen(false)
-    void onRun(input, blobs)
-  }
-
-  const onExecute = () => {
-    if (!manifest) return
-    const accepts = workflowContract(manifest).accepts
-    if (ioFieldsFromSchema(accepts).length > 0) {
-      setRunModalMode("input")
-      setRunModalOpen(true)
-      return
-    }
-    void onRun()
-  }
-
   const chatBlocked = (showProviderModal && chromeInstallUi === "dialog") || vaultGate === "locked"
   const hasWorkflow = manifest !== null
   const runAcceptsSchema = useMemo(
@@ -1123,6 +1242,14 @@ export function App() {
             showQuickStarts={shouldShowWorkflowQuickStarts(chatMessages)}
             quickStarts={WORKFLOW_QUICK_STARTS}
             onQuickStartClick={(text) => void submitMessage(text)}
+            onOfferRunConfirm={onOfferRunConfirm}
+            onOfferRunDecline={onOfferRunDecline}
+            onChatRun={onRunFromChat}
+            runBusy={runBusy}
+            hasWorkflow={hasWorkflow}
+            acceptsSchema={runAcceptsSchema}
+            filePickerEnabled={Boolean(descriptor?.remoteInvoke?.url)}
+            runFormDrafts={runFormDrafts}
           />
         ) : null}
 

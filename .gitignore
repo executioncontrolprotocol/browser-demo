@@ -1,4 +1,6 @@
 node_modules/
+host/node_modules/
+host/package-lock.json
 dist/
 .dev-logs/
 *.tsbuildinfo
