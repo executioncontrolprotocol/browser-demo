@@ -10,10 +10,10 @@ function nextId(): string {
 }
 
 const GUIDED_WELCOME =
-  "Welcome to the ECP Graph Editor. I can build workflows, answer ECP questions, and explain what is registered in this environment. Try: What is ECP? or create a demo echo workflow."
+  "Welcome to the ECP Graph Editor. I can build workflows, answer ECP questions, and explain what is registered in this environment. Try: What is ECP? or pick a Chrome AI quickstart below."
 
 const AUTHORING_WELCOME =
-  "Describe a workflow to create or patch, or ask what I can do in this environment."
+  "Describe a workflow to create or patch, or pick a Chrome AI quickstart below."
 
 /** Options when appending an agent chat message. */
 export interface AppendAgentOptions {

@@ -121,14 +121,20 @@ function spawnInOwnTerminal(title, command, args, cwd) {
   const cmdLine = [resolvedCommand, ...args].map(quoteCmdArg).join(" ")
 
   if (process.platform === "win32") {
-    const inner = `cd /d ${quoteCmdArg(cwd)} && ${cmdLine}`
-    const result = spawnSync("cmd.exe", ["/c", "start", title, "cmd", "/k", inner], {
+    // `start` requires a quoted window title. spawn argv form only auto-quotes args
+    // that contain spaces, so title "Vite" becomes bare `Vite` and is run as the
+    // command (PATH vite.cmd gets `cmd /k …` as args and never cds). Use shell:true
+    // so `start "Vite"` keeps its quotes (Node's CreateProcess escaping would turn
+    // them into `\"` inside a single `/c` argument and hang).
+    const windowTitle = String(title).replace(/"/g, "")
+    const line = `start "${windowTitle}" /D ${quoteCmdArg(cwd)} cmd /k ${quoteCmdArg(cmdLine)}`
+    const child = spawn(line, {
+      shell: true,
       stdio: "ignore",
-      windowsHide: true,
+      detached: true,
+      windowsHide: false,
     })
-    if (result.status !== 0) {
-      console.warn(`Could not open "${title}" terminal (exit ${result.status ?? "unknown"}).`)
-    }
+    child.unref()
     return
   }
 
@@ -236,7 +242,14 @@ function main() {
 
   if (!noVite) {
     console.log(`\nStarting Vite on port ${vitePort}…`)
-    spawnInOwnTerminal("Vite", "pnpm", ["run", "dev", "--", "--port", vitePort, "--strictPort"], demoRoot)
+    // Prefer `pnpm exec vite` over `pnpm run dev -- --port` so the `--` separator is
+    // not forwarded into Vite's argv (which makes Vite ignore `--port` and bind 5173).
+    spawnInOwnTerminal(
+      "Vite",
+      "pnpm",
+      ["exec", "vite", "--port", vitePort, "--strictPort"],
+      demoRoot
+    )
   }
 
   console.log("\nDev stack starting.")
