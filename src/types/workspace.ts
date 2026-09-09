@@ -35,6 +35,8 @@ export interface ChatMessage {
   variant?: "normal" | "error"
   /** When true, show Yes / Not now chips to confirm running the workflow. */
   offerRun?: boolean
+  /** When true, show Yes / Not now chips to confirm probing discovery state. */
+  offerProbe?: boolean
   /** When true, embed the run input form in this agent bubble. */
   runForm?: boolean
   /** When true, embed the schema-mapped run output view in this agent bubble. */

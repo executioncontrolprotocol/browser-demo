@@ -19,6 +19,7 @@ const AUTHORING_WELCOME =
 export interface AppendAgentOptions {
   variant?: "normal" | "error"
   offerRun?: boolean
+  offerProbe?: boolean
   runForm?: boolean
   runOutput?: boolean
 }
@@ -47,6 +48,7 @@ export function useChatHistory(initialMode: AssistantMode = "authoring") {
         text,
         variant: options?.variant ?? "normal",
         ...(options?.offerRun ? { offerRun: true } : {}),
+        ...(options?.offerProbe ? { offerProbe: true } : {}),
         ...(options?.runForm ? { runForm: true } : {}),
         ...(options?.runOutput ? { runOutput: true } : {}),
       },
@@ -63,6 +65,12 @@ export function useChatHistory(initialMode: AssistantMode = "authoring") {
     )
   }, [])
 
+  const clearOfferProbeFlags = useCallback(() => {
+    setMessages((prev) =>
+      prev.map((m) => (m.offerProbe ? { ...m, offerProbe: false } : m))
+    )
+  }, [])
+
   const setGuidedWelcome = useCallback(() => {
     setMessages([{ id: nextId(), role: "agent", text: GUIDED_WELCOME }])
   }, [])
@@ -75,6 +83,7 @@ export function useChatHistory(initialMode: AssistantMode = "authoring") {
     appendAgent,
     appendAgentError,
     clearOfferRunFlags,
+    clearOfferProbeFlags,
     setGuidedWelcome,
   }
 }

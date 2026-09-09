@@ -5,9 +5,12 @@ import {
   formatChatRunFailureMessage,
   formatChatRunSuccessMessage,
   isHarnessRunResultDocument,
+  isProbeOfferConfirm,
+  isProbeOfferDecline,
   isRunOfferConfirm,
   isRunOfferDecline,
   resolvePendingOfferAction,
+  resolvePendingProbeOfferAction,
 } from "../src/lib/chat-run-loop.js"
 
 describe("chat-run-loop confirm/decline", () => {
@@ -25,6 +28,27 @@ describe("chat-run-loop confirm/decline", () => {
   it("accepts declines", () => {
     expect(isRunOfferDecline("not now")).toBe(true)
     expect(resolvePendingOfferAction("no")).toBe("decline")
+  })
+})
+
+describe("chat-run-loop probe confirm/decline", () => {
+  it("confirms a pending probe offer", () => {
+    expect(isProbeOfferConfirm("yes")).toBe(true)
+    expect(resolvePendingProbeOfferAction("run it")).toBe("confirm")
+  })
+
+  it("declines a pending probe offer", () => {
+    expect(isProbeOfferDecline("not now")).toBe(true)
+    expect(resolvePendingProbeOfferAction("no")).toBe("decline")
+  })
+
+  it("allows a later run offer after probe confirmation", () => {
+    expect(resolvePendingProbeOfferAction("yes")).toBe("confirm")
+    expect(resolvePendingOfferAction("yes")).toBe("confirm")
+  })
+
+  it("cancels the probe offer for a new authoring request", () => {
+    expect(resolvePendingProbeOfferAction("yes, add a resize step")).toBe("cancel-and-chat")
   })
 })
 

@@ -43,6 +43,32 @@ export function resolvePendingOfferAction(message: string): PendingOfferAction {
 }
 
 /**
+ * True when the user message is a bare confirmation to run a probe.
+ * @category Demo
+ */
+export function isProbeOfferConfirm(message: string): boolean {
+  return CONFIRM_EXACT.test(message.trim())
+}
+
+/**
+ * True when the user message declines a probe offer.
+ * @category Demo
+ */
+export function isProbeOfferDecline(message: string): boolean {
+  return DECLINE_EXACT.test(message.trim())
+}
+
+/**
+ * Decide how to treat a user message when an offer-probe chip is pending.
+ * @category Demo
+ */
+export function resolvePendingProbeOfferAction(message: string): PendingOfferAction {
+  if (isProbeOfferConfirm(message)) return "confirm"
+  if (isProbeOfferDecline(message)) return "decline"
+  return "cancel-and-chat"
+}
+
+/**
  * Whether another auto-troubleshoot round is allowed.
  * @category Demo
  */

@@ -6,6 +6,16 @@ import { ECP_INTENT_VALUES, type EcpIntentValue } from "@executioncontrolprotoco
  */
 export function intentRoutesToAuthoring(intent: EcpIntentValue): boolean {
   return (
-    intent === ECP_INTENT_VALUES.WORKFLOW_CREATE || intent === ECP_INTENT_VALUES.WORKFLOW_PATCH
+    intent === ECP_INTENT_VALUES.WORKFLOW_CREATE ||
+    intent === ECP_INTENT_VALUES.WORKFLOW_PATCH ||
+    intent === ECP_INTENT_VALUES.WORKFLOW_PROBE
   )
+}
+
+/**
+ * True when a classified turn should clarify a completed workflow probe.
+ * @category Demo
+ */
+export function intentRoutesToClarify(intent: EcpIntentValue): boolean {
+  return intent === ECP_INTENT_VALUES.WORKFLOW_CLARIFY
 }

@@ -13,8 +13,10 @@ import {
 import type {
   EnvironmentDescriptor,
   HarnessInvokeResult,
+  ProbeContext,
   RunResult,
   StepNode,
+  TestSessionSnapshot,
   ValidationResult,
   WorkflowManifest,
 } from "@executioncontrolprotocol/types"
@@ -147,7 +149,12 @@ import {
   formatChatRunSuccessMessage,
   isHarnessRunResultDocument,
   resolvePendingOfferAction,
+  resolvePendingProbeOfferAction,
 } from "./lib/chat-run-loop.js"
+import {
+  formatProbeOptionsMessage,
+  runProbeSession,
+} from "./lib/probe-session.js"
 import type { CodeEditorTab, FormatTab } from "./types/workspace.js"
 
 const EMPTY_MERMAID = "flowchart TD\n  empty[No workflow]"
@@ -171,6 +178,7 @@ export function App() {
     appendAgent,
     appendAgentError,
     appendUser,
+    clearOfferProbeFlags,
     clearOfferRunFlags,
     setGuidedWelcome,
   } = useChatHistory(assistantMode)
@@ -231,6 +239,9 @@ export function App() {
   const [chatBusy, setChatBusy] = useState(false)
   const [conversationSummary, setConversationSummary] = useState<string | undefined>()
   const [pendingOfferRun, setPendingOfferRun] = useState(false)
+  const [pendingOfferProbe, setPendingOfferProbe] = useState(false)
+  const [probeContext, setProbeContext] = useState<ProbeContext | undefined>()
+  const [, setTestSessionSnapshot] = useState<TestSessionSnapshot | undefined>()
   const [autoTroubleshootRound, setAutoTroubleshootRound] = useState(0)
   const [lastChatRunInput, setLastChatRunInput] = useState<Record<string, unknown> | undefined>()
   const [runFormDrafts, setRunFormDrafts] = useState<Record<string, string> | undefined>()
@@ -883,6 +894,7 @@ export function App() {
         ...(manifest ? { manifest } : {}),
         ...(conversationSummary ? { conversationSummary } : {}),
         ...(runContext ? { runContext } : {}),
+        ...(probeContext ? { probeContext } : {}),
         ...(provider === "ollama" ? { model: ollamaSettings.model } : {}),
       })
       .process()
@@ -908,16 +920,26 @@ export function App() {
       if (!hadWorkflow) layout.onFirstWorkflow()
       else layout.openWorkspace()
       const val = harnessValidation as { valid?: boolean } | undefined
+      const suggestedAction = chatResultSuggestedAction(harnessResult)
       const answer =
         chatResultAnswer(harnessResult) ??
         (val?.valid === false
           ? "Workflow updated but has validation issues. See console for raw model output."
-          : "I updated the workflow. Want me to run it?")
-      const offerRun = chatResultSuggestedAction(harnessResult) === "offer-run"
-      setChatStatus(offerRun ? "Offer run" : "Ready")
+          : suggestedAction === "offer-probe"
+            ? "I built the discovery steps. Want me to inspect the available options?"
+            : "I updated the workflow. Want me to run it?")
+      const offerRun = suggestedAction === "offer-run"
+      const offerProbe = suggestedAction === "offer-probe"
+      setChatStatus(offerProbe ? "Offer probe" : offerRun ? "Offer run" : "Ready")
       clearOfferRunFlags()
-      appendAgent(answer, { offerRun })
+      clearOfferProbeFlags()
+      appendAgent(answer, { offerRun, offerProbe })
       setPendingOfferRun(offerRun)
+      setPendingOfferProbe(offerProbe)
+      if (offerProbe) {
+        setProbeContext(undefined)
+        setTestSessionSnapshot(undefined)
+      }
       setConversationSummary(`User: ${userRequest}\nAssistant: ${answer.slice(0, 200)}`)
       return
     }
@@ -925,7 +947,9 @@ export function App() {
     const answer = chatResultAnswer(harnessResult)
     if (answer) {
       clearOfferRunFlags()
+      clearOfferProbeFlags()
       setPendingOfferRun(false)
+      setPendingOfferProbe(false)
       appendAgent(answer)
       setChatStatus(assistantMode === "guided" ? "Guided mode" : "Ready")
       setConversationSummary(`User: ${userRequest}\nAssistant: ${answer.slice(0, 200)}`)
@@ -934,7 +958,9 @@ export function App() {
 
   const showChatRunForm = () => {
     clearOfferRunFlags()
+    clearOfferProbeFlags()
     setPendingOfferRun(false)
+    setPendingOfferProbe(false)
     const drafts: Record<string, string> = {}
     if (lastChatRunInput) {
       for (const [key, value] of Object.entries(lastChatRunInput)) {
@@ -958,11 +984,70 @@ export function App() {
     appendAgent("Okay — say when you want to run it, or ask for another change.")
   }
 
+  const runPendingProbe = async () => {
+    clearOfferProbeFlags()
+    setPendingOfferProbe(false)
+    if (!ecp || !manifest) {
+      appendAgent("I could not start the probe because there is no workflow to inspect.")
+      return
+    }
+
+    setChatBusy(true)
+    setChatStatus("Probing workflow")
+    try {
+      const result = await runProbeSession(ecp, manifest, lastChatRunInput)
+      if (!result) {
+        appendAgent("The workflow probe could not find or run a discovery step.")
+        setChatStatus("Ready")
+        return
+      }
+      setTestSessionSnapshot(result.snapshot)
+      setProbeContext(result.probeContext)
+      appendAgent(formatProbeOptionsMessage(result.probeContext))
+      setChatStatus("Probe complete")
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      appendAgentError(`The workflow probe failed: ${msg}`)
+      setChatStatus("Error")
+    } finally {
+      setChatBusy(false)
+    }
+  }
+
+  const onOfferProbeConfirm = () => {
+    appendUser("Yes, inspect it")
+    void runPendingProbe()
+  }
+
+  const onOfferProbeDecline = () => {
+    appendUser("Not now")
+    clearOfferProbeFlags()
+    setPendingOfferProbe(false)
+    appendAgent("Okay — ask me to inspect the workflow when you are ready.")
+  }
+
   const submitMessage = async (userRequest: string) => {
     const text = userRequest.trim()
     if (!ecp || !text) return
 
-    if (pendingOfferRun) {
+    if (pendingOfferProbe) {
+      const action = resolvePendingProbeOfferAction(text)
+      appendUser(text)
+      if (action === "confirm") {
+        await runPendingProbe()
+        setPrompt("")
+        return
+      }
+      if (action === "decline") {
+        clearOfferProbeFlags()
+        setPendingOfferProbe(false)
+        appendAgent("Okay — ask me to inspect the workflow when you are ready.")
+        setPrompt("")
+        return
+      }
+      clearOfferProbeFlags()
+      setPendingOfferProbe(false)
+    } else if (pendingOfferRun) {
       const action = resolvePendingOfferAction(text)
       appendUser(text)
       if (action === "confirm") {
@@ -1252,6 +1337,8 @@ export function App() {
             onQuickStartClick={(text) => void submitMessage(text)}
             onOfferRunConfirm={onOfferRunConfirm}
             onOfferRunDecline={onOfferRunDecline}
+            onOfferProbeConfirm={onOfferProbeConfirm}
+            onOfferProbeDecline={onOfferProbeDecline}
             onChatRun={onRunFromChat}
             runBusy={runBusy}
             hasWorkflow={hasWorkflow}
