@@ -135,7 +135,7 @@ export function editorKindForValueSchema(
   fieldName?: string,
   valueTitle?: string
 ): ConfigEditorKind {
-  if (isFileValueSchema(valueSchema, typeLabelFallback, fieldName)) {
+  if (isFileValueSchema(valueSchema, typeLabelFallback)) {
     return "file"
   }
 

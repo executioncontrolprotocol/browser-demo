@@ -106,10 +106,22 @@ function corePackageDir(pkgName) {
   throw new Error(`Cannot resolve core package path for ${pkgName}`)
 }
 
+/** Vendor packages live in the sibling extensions monorepo (not core). */
+const VENDOR_EXTENSION_PACKAGES = [
+  "@executioncontrolprotocol/adobe-firefly-services",
+  "@executioncontrolprotocol/azure-blob-storage",
+  "@executioncontrolprotocol/fal",
+  "@executioncontrolprotocol/image-sharp",
+]
+
+function isVendorExtensionPackage(name) {
+  return VENDOR_EXTENSION_PACKAGES.includes(name)
+}
+
 function linkPackagesIntoConsumer(packageNames) {
   for (const name of packageNames) {
     let src
-    if (name === "@executioncontrolprotocol/fal" || name === "@executioncontrolprotocol/image-sharp") {
+    if (isVendorExtensionPackage(name)) {
       const segment = name.split("/")[1]
       src = path.join(extensionsRoot, "packages", segment)
     } else {
@@ -126,7 +138,7 @@ function linkPackagesIntoConsumer(packageNames) {
 }
 
 function linkCorePeersForExtensions() {
-  const vendorPackages = ["fal", "image-sharp"]
+  const vendorPackages = VENDOR_EXTENSION_PACKAGES.map((name) => name.split("/")[1])
   const peers = ["@executioncontrolprotocol/core", "@executioncontrolprotocol/types"]
   for (const peer of peers) {
     const peerTarget = corePackageDir(peer)
@@ -188,9 +200,7 @@ runPackageScript(ecpRoot, "build")
 runPackageScript(ecpRoot, "generate:schema")
 
 const linkPackages = parseLinkList()
-const needsExtensions = linkPackages.some(
-  (n) => n === "@executioncontrolprotocol/fal" || n === "@executioncontrolprotocol/image-sharp"
-)
+const needsExtensions = linkPackages.some((n) => isVendorExtensionPackage(n))
 
 if (needsExtensions) {
   if (!existsSync(path.join(extensionsRoot, "package.json"))) {

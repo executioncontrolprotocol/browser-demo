@@ -13,7 +13,7 @@ import { existsSync, mkdirSync, rmSync, symlinkSync } from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 
-const PACKAGES = ["fal", "image-sharp"]
+const PACKAGES = ["fal", "image-sharp", "azure-blob-storage", "adobe-firefly-services"]
 const SHARED_PEERS = ["@executioncontrolprotocol/core", "@executioncontrolprotocol/types"]
 
 const demoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
@@ -81,7 +81,8 @@ for (const name of PACKAGES) {
     console.log(`Using existing build for @executioncontrolprotocol/${name}`)
     continue
   }
-  run("pnpm", ["run", "build", "--filter", `@executioncontrolprotocol/${name}`], extensionsRoot)
+  // --filter must precede the script name; otherwise tsc receives --filter as a build option.
+  run("pnpm", ["--filter", `@executioncontrolprotocol/${name}`, "run", "build"], extensionsRoot)
 }
 
 for (const name of PACKAGES) {

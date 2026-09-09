@@ -6,10 +6,6 @@ import {
 } from "@executioncontrolprotocol/core"
 import { FILE_REF_KINDS, fileRefValueSchemaHint, isFileRefKind } from "@executioncontrolprotocol/types"
 
-const FILE_FIELD_RE = /^(image|file|filePath|source|blob|photo|upload)$/i
-const LOCATOR_ONLY_FIELD_RE = /^(filePath|source)$/i
-const FILE_REF_FILE_FIELD_RE = /^(image|photo|file|blob|upload)$/i
-
 /**
  * Default `workflow.accepts` schema for the demo `file` type.
  * Values are FileRef file refs (`path: ecp://browser/<id>`), never base64 payloads.
@@ -44,29 +40,25 @@ export function isFileRefValueSchema(schema: Record<string, unknown> | undefined
 export const isImageRefValueSchema = isFileRefValueSchema
 
 /**
- * Whether this schema / label / name should use the file editor.
+ * Whether this schema / type label should use the file editor.
+ * Driven by type and schema hints only — never by property name.
  */
 export function isFileValueSchema(
   valueSchema: Record<string, unknown> | undefined,
   typeLabel?: string,
-  fieldName?: string
+  _fieldName?: string
 ): boolean {
   if (typeLabel && normalizeTypeLabel(typeLabel) === "file") return true
-  if (valueSchema) {
-    if (valueSchema["x-ecp-file"] === true) return true
-    if (typeof valueSchema.contentMediaType === "string" && valueSchema.contentMediaType.length > 0) {
-      return true
-    }
-    if (Array.isArray(valueSchema.contentMediaType) && valueSchema.contentMediaType.length > 0) {
-      return true
-    }
-    if (valueSchema.format === "binary" || valueSchema.format === "byte") return true
-    if (isFileRefValueSchema(valueSchema)) return true
+  if (!valueSchema) return false
+  if (valueSchema["x-ecp-file"] === true) return true
+  if (typeof valueSchema.contentMediaType === "string" && valueSchema.contentMediaType.length > 0) {
+    return true
   }
-  if (fieldName && FILE_FIELD_RE.test(fieldName)) {
-    const t = valueSchema?.type
-    if (t === undefined || t === "string" || isFileRefValueSchema(valueSchema)) return true
+  if (Array.isArray(valueSchema.contentMediaType) && valueSchema.contentMediaType.length > 0) {
+    return true
   }
+  if (valueSchema.format === "binary" || valueSchema.format === "byte") return true
+  if (isFileRefValueSchema(valueSchema)) return true
   return false
 }
 
@@ -78,7 +70,7 @@ export function isFilePort(port: {
   typeLabel: string
   valueSchema?: Record<string, unknown>
 }): boolean {
-  return isFileValueSchema(port.valueSchema, port.typeLabel, port.name)
+  return isFileValueSchema(port.valueSchema, port.typeLabel)
 }
 
 /** @deprecated Prefer {@link isFilePort}. */
@@ -87,7 +79,7 @@ export function isRunFormFilePort(port: ReactFlowPort): boolean {
 }
 
 /**
- * FileRef file refs for image/file accepts; plain locator strings for Azure `source` / `filePath`.
+ * FileRef encoding for typed file / FileRef schemas; locator strings for string+media hints.
  */
 export function filePortEncoding(port: {
   name: string
@@ -97,8 +89,6 @@ export function filePortEncoding(port: {
   if (isFileRefValueSchema(port.valueSchema)) return "file-ref-file"
   if (port.valueSchema?.["x-ecp-file"] === true) return "file-ref-file"
   if (normalizeTypeLabel(port.typeLabel) === "file") return "file-ref-file"
-  if (FILE_REF_FILE_FIELD_RE.test(port.name)) return "file-ref-file"
-  if (LOCATOR_ONLY_FIELD_RE.test(port.name)) return "locator"
   return "locator"
 }
 

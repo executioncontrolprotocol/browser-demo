@@ -20,6 +20,26 @@ function aliasPath(...segments: string[]): string {
   return join(...segments).replace(/\\/g, "/")
 }
 
+function optionalVendorAlias(pkg: string, stubFile: string) {
+  const pkgJson = join(appRoot, "node_modules", ...pkg.split("/"), "package.json")
+  if (existsSync(pkgJson)) return null
+  return {
+    find: pkg,
+    replacement: aliasPath(stubDir, stubFile),
+  }
+}
+
+const optionalVendorAliases = [
+  optionalVendorAlias(
+    "@executioncontrolprotocol/azure-blob-storage",
+    "optional-azure-blob-storage.ts",
+  ),
+  optionalVendorAlias(
+    "@executioncontrolprotocol/adobe-firefly-services",
+    "optional-adobe-firefly-services.ts",
+  ),
+].filter((a): a is NonNullable<typeof a> => a !== null)
+
 /** Deploy at domain root (custom domain). Override with VITE_BASE for a subpath. */
 const pagesBase = process.env.VITE_BASE?.trim() || "/"
 
@@ -50,6 +70,7 @@ export default defineConfig({
       "@executioncontrolprotocol/chrome-ai",
     ],
     alias: [
+      ...optionalVendorAliases,
       // Exact bare specifier only — do not break `esbuild-wasm/esbuild.wasm?url` or ESM subpaths.
       {
         find: /^esbuild-wasm$/,
@@ -108,6 +129,8 @@ export default defineConfig({
       "@executioncontrolprotocol/chrome-ai",
       "@executioncontrolprotocol/fal",
       "@executioncontrolprotocol/image-sharp",
+      "@executioncontrolprotocol/azure-blob-storage",
+      "@executioncontrolprotocol/adobe-firefly-services",
       "@executioncontrolprotocol/format-mermaid",
       "@executioncontrolprotocol/format-reactflow",
       "@executioncontrolprotocol/format-toon",

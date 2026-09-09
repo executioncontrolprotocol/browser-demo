@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Prepare extensions/examples/04-image-prep for `ecp up` against linked local packages.
+ * Prepare browser-demo/host for `ecp up` against linked local packages.
  */
 import { readFileSync, existsSync, mkdirSync, rmSync, symlinkSync } from "node:fs"
 import { spawnSync } from "node:child_process"
@@ -12,19 +12,23 @@ const ecpRoot = path.resolve(process.env.ECP_ROOT ?? path.join(demoRoot, "..", "
 const extensionsRoot = path.resolve(
   process.env.EXTENSIONS_ROOT ?? path.join(demoRoot, "..", "extensions")
 )
-const hostRoot = path.resolve(
-  process.env.HOST_EXAMPLE_ROOT ??
-    path.join(extensionsRoot, "examples", "04-image-prep")
-)
+const hostRoot = path.resolve(process.env.HOST_EXAMPLE_ROOT ?? path.join(demoRoot, "host"))
 const linkType = process.platform === "win32" ? "junction" : "dir"
 
+/** Core monorepo packages the host env imports (registry + linked). */
 const HOST_MONOREPO_PACKAGES = [
   "@executioncontrolprotocol/types",
   "@executioncontrolprotocol/core",
   "@executioncontrolprotocol/policies",
   "@executioncontrolprotocol/node",
   "@executioncontrolprotocol/cli",
+  "@executioncontrolprotocol/extension-openai",
+  "@executioncontrolprotocol/claude",
+  "@executioncontrolprotocol/extension-ollama",
 ]
+
+/** Vendor packages from the extensions monorepo. */
+const HOST_VENDOR_PACKAGES = ["image-sharp", "fal"]
 
 function run(command, args, cwd, env = process.env) {
   const result = spawnSync(command, args, {
@@ -66,6 +70,25 @@ function verifyHostBlobHopSupport() {
   }
 }
 
+function linkVendorPackage(name) {
+  const pkgRoot = path.join(extensionsRoot, "packages", name)
+  if (!existsSync(pkgRoot)) {
+    console.warn(`${name} not found at ${pkgRoot} — host may miss that extension`)
+    return
+  }
+  ensureSymlink(
+    path.join(hostRoot, "node_modules", "@executioncontrolprotocol", name),
+    pkgRoot
+  )
+  for (const peer of ["types", "core"]) {
+    ensureSymlink(
+      path.join(pkgRoot, "node_modules", "@executioncontrolprotocol", peer),
+      path.join(ecpRoot, "packages", peer)
+    )
+  }
+  console.log(`Linked @executioncontrolprotocol/${name} and peer deps for host`)
+}
+
 function main() {
   if (!existsSync(path.join(hostRoot, "environment.ts"))) {
     console.error(`Host example not found at ${hostRoot}. Set HOST_EXAMPLE_ROOT.`)
@@ -87,21 +110,8 @@ function main() {
     { ...process.env, ECP_ROOT: ecpRoot, LINK_TARGET: hostRoot }
   )
 
-  const imageSharpRoot = path.join(extensionsRoot, "packages", "image-sharp")
-  if (existsSync(imageSharpRoot)) {
-    ensureSymlink(
-      path.join(hostRoot, "node_modules", "@executioncontrolprotocol", "image-sharp"),
-      imageSharpRoot
-    )
-    for (const peer of ["types", "core"]) {
-      ensureSymlink(
-        path.join(imageSharpRoot, "node_modules", "@executioncontrolprotocol", peer),
-        path.join(ecpRoot, "packages", peer)
-      )
-    }
-    console.log("Linked @executioncontrolprotocol/image-sharp and peer deps for host")
-  } else {
-    console.warn(`image-sharp not found at ${imageSharpRoot} — host image steps may fail`)
+  for (const name of HOST_VENDOR_PACKAGES) {
+    linkVendorPackage(name)
   }
 
   verifyHostBlobHopSupport()

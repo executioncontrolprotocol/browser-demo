@@ -19,6 +19,8 @@ export interface RunInputFormProps {
   acceptsSchema?: Record<string, unknown>
   /** File picker requires a paired host for locator resolution / hops. */
   filePickerEnabled?: boolean
+  /** Optional draft strings keyed by accepts property name (chat prefill). */
+  initialDrafts?: Record<string, string>
 }
 
 /** Collects `accepts` input and runs the workflow. @category Demo */
@@ -28,6 +30,7 @@ export function RunInputForm({
   hasWorkflow,
   acceptsSchema,
   filePickerEnabled = false,
+  initialDrafts,
 }: RunInputFormProps) {
   const ports = useMemo(() => runFormPortsFromAccepts(acceptsSchema), [acceptsSchema])
   const [drafts, setDrafts] = useState<Record<string, string>>({})
@@ -37,12 +40,14 @@ export function RunInputForm({
   useEffect(() => {
     const next: Record<string, string> = {}
     for (const port of ports) {
-      next[port.name] = draftForPort(port, undefined)
+      const pref = initialDrafts?.[port.name]
+      next[port.name] =
+        typeof pref === "string" && pref.length > 0 ? pref : draftForPort(port, undefined)
     }
     setDrafts(next)
     setFieldErrors({})
     filesByLocator.current.clear()
-  }, [ports])
+  }, [ports, initialDrafts])
 
   const applyFile = async (port: ReactFlowPort, file: File) => {
     try {

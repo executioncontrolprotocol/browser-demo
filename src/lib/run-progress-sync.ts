@@ -71,6 +71,10 @@ export function collectRunFailureMessages(result: unknown): string[] {
   }
   const runResult = result as RunResult
   const messages: string[] = []
+  for (const issue of runResult.diagnostics ?? []) {
+    if (issue.severity === "warning" || issue.severity === "info") continue
+    if (issue.message) messages.push(issue.message)
+  }
   for (const [stepId, record] of Object.entries(runResult.history ?? {})) {
     if (record.status !== "failed") continue
     const message = stepErrorMessage(record)

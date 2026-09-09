@@ -62,6 +62,27 @@ describe("run-progress-sync", () => {
     ).toEqual(["echo: capability failed"])
   })
 
+  it("collects run-level returns validation diagnostics", () => {
+    expect(
+      collectRunFailureMessages({
+        schema: "@executioncontrolprotocol.run.result",
+        version: "1.0",
+        run: { id: "r1", status: "failed" },
+        output: { response: { text: "hi" } },
+        diagnostics: [
+          {
+            code: "WORKFLOW_RETURNS_INVALID",
+            message: "Workflow returns validation failed: Property 'response' expected type string",
+            severity: "error",
+            path: "workflow.returns",
+          },
+        ],
+      })
+    ).toEqual([
+      "Workflow returns validation failed: Property 'response' expected type string",
+    ])
+  })
+
   it("syncs terminal history to the progress bus", () => {
     const statuses: Array<{ stepId: string; status: string; message?: string }> = []
     let doneOutcome: string | undefined

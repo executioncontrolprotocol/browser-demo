@@ -10,10 +10,18 @@ function nextId(): string {
 }
 
 const GUIDED_WELCOME =
-  "Welcome to the ECP Graph Editor. I can build workflows, answer ECP questions, and explain what is registered in this environment. Try: What is ECP? or create a demo echo workflow."
+  "Welcome to the ECP Graph Editor. I can build workflows, answer ECP questions, and explain what is registered in this environment. Try: What is ECP? or pick a Chrome AI quickstart below."
 
 const AUTHORING_WELCOME =
-  "Describe a workflow to create or patch, or ask what I can do in this environment."
+  "Describe a workflow to create or patch, or pick a Chrome AI quickstart below."
+
+/** Options when appending an agent chat message. */
+export interface AppendAgentOptions {
+  variant?: "normal" | "error"
+  offerRun?: boolean
+  runForm?: boolean
+  runOutput?: boolean
+}
 
 /** Chat history and status helpers. */
 export function useChatHistory(initialMode: AssistantMode = "authoring") {
@@ -30,17 +38,43 @@ export function useChatHistory(initialMode: AssistantMode = "authoring") {
     setMessages((prev) => [...prev, { id: nextId(), role: "user", text }])
   }, [])
 
-  const appendAgent = useCallback((text: string) => {
-    setMessages((prev) => [...prev, { id: nextId(), role: "agent", text, variant: "normal" }])
+  const appendAgent = useCallback((text: string, options?: AppendAgentOptions) => {
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: nextId(),
+        role: "agent",
+        text,
+        variant: options?.variant ?? "normal",
+        ...(options?.offerRun ? { offerRun: true } : {}),
+        ...(options?.runForm ? { runForm: true } : {}),
+        ...(options?.runOutput ? { runOutput: true } : {}),
+      },
+    ])
   }, [])
 
   const appendAgentError = useCallback((text: string) => {
     setMessages((prev) => [...prev, { id: nextId(), role: "agent", text, variant: "error" }])
   }, [])
 
+  const clearOfferRunFlags = useCallback(() => {
+    setMessages((prev) =>
+      prev.map((m) => (m.offerRun ? { ...m, offerRun: false } : m))
+    )
+  }, [])
+
   const setGuidedWelcome = useCallback(() => {
     setMessages([{ id: nextId(), role: "agent", text: GUIDED_WELCOME }])
   }, [])
 
-  return { messages, status, setStatus, appendUser, appendAgent, appendAgentError, setGuidedWelcome }
+  return {
+    messages,
+    status,
+    setStatus,
+    appendUser,
+    appendAgent,
+    appendAgentError,
+    clearOfferRunFlags,
+    setGuidedWelcome,
+  }
 }

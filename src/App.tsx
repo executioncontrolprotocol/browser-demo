@@ -7,6 +7,7 @@ import {
 import {
   HARNESS_TASKS as NANO_HARNESS_TASKS,
   chatResultAnswer,
+  chatResultSuggestedAction,
   chatResultWorkflow,
 } from "@executioncontrolprotocol/harnesses-browser-nano"
 import type {
@@ -17,6 +18,7 @@ import type {
   ValidationResult,
   WorkflowManifest,
 } from "@executioncontrolprotocol/types"
+import { toHarnessRunContext } from "@executioncontrolprotocol/types"
 import type { Ecp, CapabilityBlobStore } from "@executioncontrolprotocol/core"
 import { compileWorkflowSource } from "@executioncontrolprotocol/core/browser"
 import type {
@@ -115,9 +117,20 @@ import {
   consumeBridgeQueryParams,
   readBridgeSettings,
   storeBridgeSettings,
+  describeViaBridge,
   type BridgeDetectResult,
   type BridgeSettings,
 } from "./lib/ecp-bridge.js"
+import {
+  checkHostMixedCompatibility,
+  mergeValidationResults,
+} from "./lib/host-compatibility.js"
+import {
+  parseDemoEnvPresetQuery,
+  readDemoEnvPreset,
+  storeDemoEnvPreset,
+  type DemoEnvPreset,
+} from "./lib/demo-env-preset.js"
 import {
   WORKFLOW_QUICK_STARTS,
   shouldShowWorkflowQuickStarts,
@@ -127,6 +140,14 @@ import {
   isFailedRunResult,
   syncRunProgressFromResult,
 } from "./lib/run-progress-sync.js"
+import {
+  CHAT_TROUBLESHOOT_PROMPT,
+  canAutoTroubleshoot,
+  formatChatRunFailureMessage,
+  formatChatRunSuccessMessage,
+  isHarnessRunResultDocument,
+  resolvePendingOfferAction,
+} from "./lib/chat-run-loop.js"
 import type { CodeEditorTab, FormatTab } from "./types/workspace.js"
 
 const EMPTY_MERMAID = "flowchart TD\n  empty[No workflow]"
@@ -150,6 +171,7 @@ export function App() {
     appendAgent,
     appendAgentError,
     appendUser,
+    clearOfferRunFlags,
     setGuidedWelcome,
   } = useChatHistory(assistantMode)
   const [ecp, setEcp] = useState<Ecp | null>(null)
@@ -160,6 +182,16 @@ export function App() {
   const [bridgeSettings, setBridgeSettings] = useState<BridgeSettings>(() =>
     consumeBridgeQueryParams()
   )
+  const [demoEnvPreset, setDemoEnvPreset] = useState<DemoEnvPreset>(() => {
+    const fromQuery = parseDemoEnvPresetQuery(
+      typeof window !== "undefined" ? window.location.search : ""
+    )
+    if (fromQuery) {
+      storeDemoEnvPreset(fromQuery)
+      return fromQuery
+    }
+    return readDemoEnvPreset()
+  })
   const [ollamaBridgeAvailable, setOllamaBridgeAvailable] = useState(false)
   const [ollamaBridgeHint, setOllamaBridgeHint] = useState(
     "Checking for local ecp up daemon…"
@@ -172,6 +204,7 @@ export function App() {
   const [chromeInstallUi, setChromeInstallUi] = useState<ChromeInstallUi>("idle")
   const [manifest, setManifest] = useState<WorkflowManifest | null>(null)
   const [validation, setValidation] = useState<ValidationResult | null>(null)
+  const [hostCompat, setHostCompat] = useState<ValidationResult | null>(null)
   const [descriptor, setDescriptor] = useState<EnvironmentDescriptor | null>(null)
   const [editorTab, setEditorTab] = useState<CodeEditorTab>("workflow")
   const [formatTab, setFormatTab] = useState<FormatTab>("fluent")
@@ -197,6 +230,10 @@ export function App() {
   const [configureError, setConfigureError] = useState<string | null>(null)
   const [chatBusy, setChatBusy] = useState(false)
   const [conversationSummary, setConversationSummary] = useState<string | undefined>()
+  const [pendingOfferRun, setPendingOfferRun] = useState(false)
+  const [autoTroubleshootRound, setAutoTroubleshootRound] = useState(0)
+  const [lastChatRunInput, setLastChatRunInput] = useState<Record<string, unknown> | undefined>()
+  const [runFormDrafts, setRunFormDrafts] = useState<Record<string, string> | undefined>()
   const compileTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const compileGeneration = useRef(0)
   const syncFromManifestRef = useRef<
@@ -213,23 +250,70 @@ export function App() {
     [descriptor]
   )
 
+  const footerValidation = useMemo(
+    () => mergeValidationResults(validation, hostCompat),
+    [validation, hostCompat]
+  )
+
+  const refreshHostCompat = useCallback(
+    async (desc: EnvironmentDescriptor | null, bridge: BridgeSettings) => {
+      if (!desc?.remoteInvoke?.url || !bridge.token.trim()) {
+        setHostCompat(null)
+        return
+      }
+      try {
+        const hostDesc = await describeViaBridge(bridge)
+        setHostCompat(checkHostMixedCompatibility(desc, hostDesc))
+      } catch (err) {
+        setHostCompat({
+          schema: "@executioncontrolprotocol.validation.result",
+          version: "1.0",
+          valid: false,
+          errors: [
+            {
+              code: "HOST_DESCRIBE_FAILED",
+              message:
+                err instanceof Error
+                  ? err.message
+                  : "Could not fetch host describe — check ecp up pairing.",
+              severity: "error",
+            },
+          ],
+          warnings: [],
+        })
+      }
+    },
+    []
+  )
+
   const widthClass = columnWidthClass(layout.paired)
 
-  const reloadEcp = useCallback(async (nextOllama?: OllamaSettings, nextBridge?: BridgeSettings) => {
-    if (ecpRef.current) {
-      await ecpRef.current.terminate()
-    }
-    const settings = nextOllama ?? readOllamaSettings()
-    const bridge = nextBridge ?? readBridgeSettings()
-    const { ecp: operational, descriptor: desc } = await createDemoAppEnvironment({
-      ollama: settings,
-      bridge,
-    })
-    ecpRef.current = operational
-    setEcp(operational)
-    setDescriptor(desc)
-    return operational
-  }, [])
+  const reloadEcp = useCallback(
+    async (
+      nextOllama?: OllamaSettings,
+      nextBridge?: BridgeSettings,
+      nextPreset?: DemoEnvPreset
+    ) => {
+      if (ecpRef.current) {
+        await ecpRef.current.terminate()
+      }
+      const settings = nextOllama ?? readOllamaSettings()
+      const bridge = nextBridge ?? readBridgeSettings()
+      const preset = nextPreset ?? readDemoEnvPreset()
+      const { ecp: operational, descriptor: desc } = await createDemoAppEnvironment({
+        ollama: settings,
+        bridge,
+        preset,
+      })
+      ecpRef.current = operational
+      setEcp(operational)
+      setDescriptor(desc)
+      setDemoEnvPreset(preset)
+      await refreshHostCompat(desc, bridge)
+      return operational
+    },
+    [refreshHostCompat]
+  )
 
   const refreshBridgeDetect = useCallback(async (baseURL?: string) => {
     const result = await detectEcpBridge(baseURL ?? readBridgeSettings().baseURL)
@@ -269,10 +353,12 @@ export function App() {
     const { ecp: operational, descriptor: desc } = await createDemoAppEnvironment({
       ollama: readOllamaSettings(),
       bridge: readBridgeSettings(),
+      preset: readDemoEnvPreset(),
     })
     ecpRef.current = operational
     setEcp(operational)
     setDescriptor(desc)
+    await refreshHostCompat(desc, readBridgeSettings())
 
     const bridgeDetect = await refreshBridgeDetect()
     const bridgeOk = isOllamaBridgeUsable(bridgeDetect)
@@ -323,7 +409,7 @@ export function App() {
 
     setProviderMode(modalMode)
     setShowProviderModal(true)
-  }, [setChatStatus, refreshBridgeDetect, startPolling])
+  }, [setChatStatus, refreshBridgeDetect, startPolling, refreshHostCompat])
 
   useEffect(() => {
     installEsbuildWasmUrl()
@@ -748,17 +834,20 @@ export function App() {
     setAssistantMode("authoring")
     setShowProviderModal(false)
     storeBridgeSettings(bridgeSettings)
+    storeDemoEnvPreset(demoEnvPreset)
     if (nextOllama) {
       storeOllamaSettings(nextOllama)
       setOllamaSettings(nextOllama)
-      void reloadEcp(nextOllama, bridgeSettings).then(() => {
+      void reloadEcp(nextOllama, bridgeSettings, demoEnvPreset).then(() => {
         const resolved = resolveDemoSession(mode)
-        setChatStatus(`Ready (${mode} / ${resolved.harness}).`)
+        setChatStatus(`Ready (${mode} / ${resolved.harness} / ${demoEnvPreset}).`)
       })
       return
     }
-    const resolved = resolveDemoSession(mode)
-    setChatStatus(`Ready (${mode} / ${resolved.harness}).`)
+    void reloadEcp(undefined, bridgeSettings, demoEnvPreset).then(() => {
+      const resolved = resolveDemoSession(mode)
+      setChatStatus(`Ready (${mode} / ${resolved.harness} / ${demoEnvPreset}).`)
+    })
   }
 
   const onExplore = () => {
@@ -781,6 +870,10 @@ export function App() {
   const runChat = async (userRequest: string) => {
     if (!ecp) return
     const { provider, harness } = resolveDemoSession(providerMode)
+    const runContext =
+      isHarnessRunResultDocument(lastRunResult) && manifest
+        ? toHarnessRunContext(lastRunResult as RunResult, manifest)
+        : undefined
     const invoked = await ecp
       .invoke(harnessCapabilityId(harness))
       .uses(providerCapabilityId(provider))
@@ -789,6 +882,7 @@ export function App() {
         message: userRequest,
         ...(manifest ? { manifest } : {}),
         ...(conversationSummary ? { conversationSummary } : {}),
+        ...(runContext ? { runContext } : {}),
         ...(provider === "ollama" ? { model: ollamaSettings.model } : {}),
       })
       .process()
@@ -814,28 +908,81 @@ export function App() {
       if (!hadWorkflow) layout.onFirstWorkflow()
       else layout.openWorkspace()
       const val = harnessValidation as { valid?: boolean } | undefined
-      const msg =
-        val?.valid === false
+      const answer =
+        chatResultAnswer(harnessResult) ??
+        (val?.valid === false
           ? "Workflow updated but has validation issues. See console for raw model output."
-          : "Updated workflow."
-      setChatStatus(msg)
-      appendAgent(msg)
-      setConversationSummary(`User: ${userRequest}\nAssistant: ${msg}`)
+          : "I updated the workflow. Want me to run it?")
+      const offerRun = chatResultSuggestedAction(harnessResult) === "offer-run"
+      setChatStatus(offerRun ? "Offer run" : "Ready")
+      clearOfferRunFlags()
+      appendAgent(answer, { offerRun })
+      setPendingOfferRun(offerRun)
+      setConversationSummary(`User: ${userRequest}\nAssistant: ${answer.slice(0, 200)}`)
       return
     }
 
     const answer = chatResultAnswer(harnessResult)
     if (answer) {
+      clearOfferRunFlags()
+      setPendingOfferRun(false)
       appendAgent(answer)
       setChatStatus(assistantMode === "guided" ? "Guided mode" : "Ready")
       setConversationSummary(`User: ${userRequest}\nAssistant: ${answer.slice(0, 200)}`)
     }
   }
 
+  const showChatRunForm = () => {
+    clearOfferRunFlags()
+    setPendingOfferRun(false)
+    const drafts: Record<string, string> = {}
+    if (lastChatRunInput) {
+      for (const [key, value] of Object.entries(lastChatRunInput)) {
+        drafts[key] =
+          typeof value === "string" ? value : JSON.stringify(value, null, 2)
+      }
+    }
+    setRunFormDrafts(Object.keys(drafts).length > 0 ? drafts : undefined)
+    appendAgent("Provide any run inputs, then click Run workflow.", { runForm: true })
+  }
+
+  const onOfferRunConfirm = () => {
+    appendUser("Yes, run it")
+    showChatRunForm()
+  }
+
+  const onOfferRunDecline = () => {
+    appendUser("Not now")
+    clearOfferRunFlags()
+    setPendingOfferRun(false)
+    appendAgent("Okay — say when you want to run it, or ask for another change.")
+  }
+
   const submitMessage = async (userRequest: string) => {
     const text = userRequest.trim()
     if (!ecp || !text) return
-    appendUser(text)
+
+    if (pendingOfferRun) {
+      const action = resolvePendingOfferAction(text)
+      appendUser(text)
+      if (action === "confirm") {
+        showChatRunForm()
+        setPrompt("")
+        return
+      }
+      if (action === "decline") {
+        clearOfferRunFlags()
+        setPendingOfferRun(false)
+        appendAgent("Okay — say when you want to run it, or ask for another change.")
+        setPrompt("")
+        return
+      }
+      clearOfferRunFlags()
+      setPendingOfferRun(false)
+    } else {
+      appendUser(text)
+    }
+
     void logUserPrompt(text, {
       assistantMode,
       providerMode,
@@ -860,6 +1007,102 @@ export function App() {
   const onSubmit = () => {
     void submitMessage(prompt)
     setPrompt("")
+  }
+
+  const autoTroubleshootAfterFailure = async (result: unknown) => {
+    if (!canAutoTroubleshoot(autoTroubleshootRound)) {
+      appendAgent(
+        `${formatChatRunFailureMessage(result)} I reached the automatic fix limit — describe the change you want, or inspect the canvas.`
+      )
+      return
+    }
+    appendAgent(`${formatChatRunFailureMessage(result)} I will try to fix the workflow.`)
+    setAutoTroubleshootRound((n) => n + 1)
+    setChatBusy(true)
+    try {
+      await runChat(CHAT_TROUBLESHOOT_PROMPT)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      appendAgentError(msg)
+    } finally {
+      setChatBusy(false)
+    }
+  }
+
+  const onRun = async (
+    input?: Record<string, unknown>,
+    blobs?: CapabilityBlobStore,
+    options?: { source?: "modal" | "chat" }
+  ) => {
+    if (!ecp || !manifest) return
+    const fromChat = options?.source === "chat"
+    setRunBusy(true)
+    setRunModalOpen(false)
+    setRunOutput("")
+    setRunPublicOutput("")
+    lastRunBlobs.current = blobs
+    if (fromChat && input) {
+      setLastChatRunInput(input)
+    }
+    layout.ensureWorkflowVisible()
+    let result: RunResult | undefined
+    try {
+      result = (await ecp.run(withNormalizedFileAccepts(manifest), {
+        ...(input ? { input } : {}),
+        ...(blobs ? { blobs } : {}),
+      })) as RunResult
+      setLastRunResult(result)
+      setRunOutput(JSON.stringify(result, null, 2))
+      const output = result.output
+      setRunPublicOutput(output ? JSON.stringify(output, null, 2) : "")
+      if (fromChat) {
+        if (isFailedRunResult(result)) {
+          void autoTroubleshootAfterFailure(result)
+        } else {
+          setAutoTroubleshootRound(0)
+          appendAgent(formatChatRunSuccessMessage(result), { runOutput: true })
+        }
+      } else {
+        setRunModalMode(isFailedRunResult(result) ? "inspect" : "output")
+        setRunModalOpen(true)
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      const errorResult = { error: message }
+      setLastRunResult(errorResult)
+      setRunOutput(message)
+      setRunPublicOutput("")
+      emitRunProgressFailed()
+      if (fromChat) {
+        void autoTroubleshootAfterFailure(errorResult)
+      } else {
+        setRunModalMode("inspect")
+        setRunModalOpen(true)
+      }
+    } finally {
+      if (result) syncRunProgressFromResult(result)
+      setRunBusy(false)
+    }
+  }
+
+  const onRunFromModal = (input?: Record<string, unknown>, blobs?: CapabilityBlobStore) => {
+    setRunModalOpen(false)
+    void onRun(input, blobs, { source: "modal" })
+  }
+
+  const onRunFromChat = (input?: Record<string, unknown>, blobs?: CapabilityBlobStore) => {
+    void onRun(input, blobs, { source: "chat" })
+  }
+
+  const onExecute = () => {
+    if (!manifest) return
+    const accepts = workflowContract(manifest).accepts
+    if (ioFieldsFromSchema(accepts).length > 0) {
+      setRunModalMode("input")
+      setRunModalOpen(true)
+      return
+    }
+    void onRun(undefined, undefined, { source: "modal" })
   }
 
   const onFluentChange = useCallback(
@@ -963,56 +1206,6 @@ export function App() {
     }
   }, [fluent])
 
-  const onRun = async (input?: Record<string, unknown>, blobs?: CapabilityBlobStore) => {
-    if (!ecp || !manifest) return
-    setRunBusy(true)
-    setRunModalOpen(false)
-    setRunOutput("")
-    setRunPublicOutput("")
-    lastRunBlobs.current = blobs
-    layout.ensureWorkflowVisible()
-    let result: RunResult | undefined
-    try {
-      result = (await ecp.run(withNormalizedFileAccepts(manifest), {
-        ...(input ? { input } : {}),
-        ...(blobs ? { blobs } : {}),
-      })) as RunResult
-      setLastRunResult(result)
-      setRunOutput(JSON.stringify(result, null, 2))
-      const output = result.output
-      setRunPublicOutput(output ? JSON.stringify(output, null, 2) : "")
-      setRunModalMode(isFailedRunResult(result) ? "inspect" : "output")
-      setRunModalOpen(true)
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      setLastRunResult({ error: message })
-      setRunOutput(message)
-      setRunPublicOutput("")
-      emitRunProgressFailed()
-      setRunModalMode("inspect")
-      setRunModalOpen(true)
-    } finally {
-      if (result) syncRunProgressFromResult(result)
-      setRunBusy(false)
-    }
-  }
-
-  const onRunFromModal = (input?: Record<string, unknown>, blobs?: CapabilityBlobStore) => {
-    setRunModalOpen(false)
-    void onRun(input, blobs)
-  }
-
-  const onExecute = () => {
-    if (!manifest) return
-    const accepts = workflowContract(manifest).accepts
-    if (ioFieldsFromSchema(accepts).length > 0) {
-      setRunModalMode("input")
-      setRunModalOpen(true)
-      return
-    }
-    void onRun()
-  }
-
   const chatBlocked = (showProviderModal && chromeInstallUi === "dialog") || vaultGate === "locked"
   const hasWorkflow = manifest !== null
   const runAcceptsSchema = useMemo(
@@ -1022,6 +1215,14 @@ export function App() {
         : undefined,
     [manifest, reactflow]
   )
+  const runReturnsSchema = useMemo(
+    () => (manifest ? workflowContract(manifest).returns : undefined),
+    [manifest]
+  )
+  const runMappedOutput = useMemo(() => {
+    if (!lastRunResult || typeof lastRunResult !== "object") return undefined
+    return (lastRunResult as { output?: unknown }).output
+  }, [lastRunResult])
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background">
@@ -1049,6 +1250,18 @@ export function App() {
             showQuickStarts={shouldShowWorkflowQuickStarts(chatMessages)}
             quickStarts={WORKFLOW_QUICK_STARTS}
             onQuickStartClick={(text) => void submitMessage(text)}
+            onOfferRunConfirm={onOfferRunConfirm}
+            onOfferRunDecline={onOfferRunDecline}
+            onChatRun={onRunFromChat}
+            runBusy={runBusy}
+            hasWorkflow={hasWorkflow}
+            acceptsSchema={runAcceptsSchema}
+            returnsSchema={runReturnsSchema}
+            runOutputValue={runMappedOutput}
+            bridge={bridgeSettings}
+            runBlobs={lastRunBlobs.current}
+            filePickerEnabled={Boolean(descriptor?.remoteInvoke?.url)}
+            runFormDrafts={runFormDrafts}
           />
         ) : null}
 
@@ -1093,7 +1306,7 @@ export function App() {
       </main>
 
       <StatusFooter
-        validation={validation}
+        validation={footerValidation}
         chromeInstallUi={chromeInstallUi}
         chromeInstallState={chromeInstallState}
       />
@@ -1105,6 +1318,7 @@ export function App() {
         runResult={lastRunResult}
         runOutputJson={runOutput}
         runPublicOutput={runPublicOutput || undefined}
+        returnsSchema={runReturnsSchema}
         bridge={bridgeSettings}
         blobs={lastRunBlobs.current}
         runBusy={runBusy}
@@ -1131,6 +1345,8 @@ export function App() {
             setBridgeSettings(next)
             void refreshBridgeDetect(next.baseURL)
           }}
+          demoEnvPreset={demoEnvPreset}
+          onDemoEnvPresetChange={setDemoEnvPreset}
           onRequestVaultSetup={() => {
             setShowProviderModal(false)
             setShowVaultSetup(true)
