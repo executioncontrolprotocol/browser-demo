@@ -99,7 +99,7 @@ export function isStructuredReturnDisplay(value: unknown, kind: ConfigEditorKind
 export function isMediaReturnValue(port: ReactFlowPort, value: unknown): boolean {
   if (value === undefined || value === null) return false
   if (editorKindForPort(port) === "file") return true
-  if (isFileValueSchema(port.valueSchema, port.typeLabel, port.name)) return true
+  if (isFileValueSchema(port.valueSchema, port.typeLabel)) return true
   return collectMediaRefs(value, port.name).length > 0
 }
 

@@ -21,10 +21,17 @@ import {
 } from "../src/lib/workflow-io.js"
 
 describe("file port detection", () => {
-  it("treats image/filePath/source string ports as files", () => {
-    expect(isRunFormFilePort({ id: "image", name: "image", typeLabel: "string" })).toBe(true)
-    expect(isRunFormFilePort({ id: "filePath", name: "filePath", typeLabel: "string" })).toBe(true)
-    expect(isRunFormFilePort({ id: "source", name: "source", typeLabel: "string" })).toBe(true)
+  it("does not treat plain string ports as files based on property name", () => {
+    expect(isRunFormFilePort({ id: "image", name: "image", typeLabel: "string" })).toBe(false)
+    expect(isRunFormFilePort({ id: "filePath", name: "filePath", typeLabel: "string" })).toBe(false)
+    expect(isRunFormFilePort({ id: "source", name: "source", typeLabel: "string" })).toBe(false)
+    expect(
+      isFilePort({
+        name: "image",
+        typeLabel: "string",
+        valueSchema: { type: "string" },
+      })
+    ).toBe(false)
   })
 
   it("ignores unrelated strings and non-file objects", () => {
@@ -39,7 +46,7 @@ describe("file port detection", () => {
     ).toBe(false)
   })
 
-  it("treats contentMediaType, x-ecp-file, and typeLabel file as files", () => {
+  it("treats contentMediaType, x-ecp-file, FileRef, and typeLabel file as files", () => {
     expect(
       isFilePort({
         name: "asset",
@@ -47,6 +54,14 @@ describe("file port detection", () => {
         valueSchema: { type: "string", contentMediaType: "image/png" },
       })
     ).toBe(true)
+    expect(
+      isFilePort({
+        name: "anything",
+        typeLabel: "object",
+        valueSchema: { ...WORKFLOW_FILE_VALUE_SCHEMA },
+      })
+    ).toBe(true)
+    expect(isFilePort({ name: "photo", typeLabel: "file!" })).toBe(true)
     expect(editorKindForTypeLabel("file!")).toBe("file")
   })
 
@@ -67,7 +82,13 @@ describe("file port detection", () => {
     expect(filePortEncoding({ name: "image", typeLabel: "object", valueSchema: fileRefSchemaHint })).toBe(
       "file-ref-file"
     )
-    expect(filePortEncoding({ name: "source", typeLabel: "string" })).toBe("locator")
+    expect(
+      filePortEncoding({
+        name: "source",
+        typeLabel: "string",
+        valueSchema: { type: "string", contentMediaType: "image/*" },
+      })
+    ).toBe("locator")
   })
 
   it("maps contentMediaType to file accept strings", () => {
@@ -112,12 +133,12 @@ describe("file encode + parse", () => {
     if (parsed.ok) expect(parsed.value).toEqual(value)
   })
 
-  it("encodes Azure source ports as plain locators", async () => {
+  it("encodes string+contentMediaType ports as plain locators", async () => {
     const file = new File([new Uint8Array([1, 2, 3])], "a.png", { type: "image/png" })
     const encoded = await encodeFileForPort(file, {
       name: "source",
       typeLabel: "string",
-      valueSchema: { type: "string" },
+      valueSchema: { type: "string", contentMediaType: "image/*" },
     })
     expect(encoded.draft).toBe(encoded.locator)
     expect(locatorFromFileDraft(encoded.draft)).toBe(encoded.locator)
