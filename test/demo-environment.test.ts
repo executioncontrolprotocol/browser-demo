@@ -13,6 +13,7 @@ const WORKFLOW_PROVIDER_EXTENSIONS = [
   "@executioncontrolprotocol/claude",
   "@executioncontrolprotocol/fal",
   "@executioncontrolprotocol/image-sharp",
+  "@executioncontrolprotocol/jsonata",
   "@executioncontrolprotocol/ollama",
   "@executioncontrolprotocol/openai",
 ] as const
@@ -79,6 +80,10 @@ describe("createDemoAppEnvironment", () => {
       (c) => c.id === "@executioncontrolprotocol/image-sharp.inspect"
     )
     expect(sharp?.execution).toBe("host")
+    const jsonata = descriptor.capabilities.find(
+      (c) => c.id === "@executioncontrolprotocol/jsonata.transform"
+    )
+    expect(jsonata?.execution).toBe("local")
 
     const authoring = toAuthoringEnvironmentDescriptor(descriptor)
     expect(authoring.extensions.map((e) => e.id).sort()).toEqual([...WORKFLOW_PROVIDER_EXTENSIONS])
@@ -93,6 +98,9 @@ describe("createDemoAppEnvironment", () => {
     )
     expect(authoring.capabilities.map((c) => c.id)).toContain(
       "@executioncontrolprotocol/fal.generate"
+    )
+    expect(authoring.capabilities.map((c) => c.id)).toContain(
+      "@executioncontrolprotocol/jsonata.transform"
     )
   })
 
