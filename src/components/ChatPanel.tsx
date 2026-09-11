@@ -45,6 +45,16 @@ export interface ChatPanelProps {
   filePickerEnabled?: boolean
   /** Prefill drafts for the in-chat run form. */
   runFormDrafts?: Record<string, string>
+  /** Show Anthropic multimodal attach control. */
+  anthropicAttachEnabled?: boolean
+  /** HTML accept list for Anthropic attachments. */
+  anthropicFileAccept?: string
+  /** Attached file names shown as chips. */
+  attachedFileNames?: string[]
+  /** User picked files to attach. */
+  onAttachFiles?: (files: FileList | null) => void
+  /** Remove an attached file by index. */
+  onRemoveAttachedFile?: (index: number) => void
 }
 
 /** Full-height chat column (Logic Assistant). */
@@ -75,8 +85,14 @@ export function ChatPanel({
   runBlobs,
   filePickerEnabled = false,
   runFormDrafts,
+  anthropicAttachEnabled = false,
+  anthropicFileAccept,
+  attachedFileNames = [],
+  onAttachFiles,
+  onRemoveAttachedFile,
 }: ChatPanelProps) {
   const messageEndRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!busy) return
@@ -247,13 +263,52 @@ export function ChatPanel({
       </div>
 
       <div className="composer-bar">
+        {anthropicAttachEnabled && attachedFileNames.length > 0 ? (
+          <div className="mb-2 flex flex-wrap gap-2 px-1">
+            {attachedFileNames.map((name, index) => (
+              <button
+                key={`${name}-${index}`}
+                type="button"
+                className="rounded border border-outline-variant bg-surface-container-high px-2 py-1 font-mono text-label text-on-surface"
+                onClick={() => onRemoveAttachedFile?.(index)}
+                title="Remove attachment"
+              >
+                {name} x
+              </button>
+            ))}
+          </div>
+        ) : null}
         <div className="composer-bar-row relative">
+          {anthropicAttachEnabled ? (
+            <>
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept={anthropicFileAccept}
+                className="hidden"
+                onChange={(e) => {
+                  onAttachFiles?.(e.target.files)
+                  e.target.value = ""
+                }}
+              />
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={() => fileInputRef.current?.click()}
+                className="absolute left-3 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded text-on-surface-variant transition-colors hover:text-primary disabled:opacity-50"
+                aria-label="Attach image or PDF"
+              >
+                <span className="material-symbols-outlined text-[18px]">attach_file</span>
+              </button>
+            </>
+          ) : null}
           <input
             value={prompt}
             disabled={disabled}
             onChange={(e) => onPromptChange(e.target.value)}
             placeholder="Ask assistant to modify logic..."
-            className="w-full rounded border border-outline-variant bg-surface-container-lowest py-3 pl-4 pr-14 text-body text-on-surface outline-none placeholder:text-outline focus:border-primary focus:ring-1 focus:ring-primary"
+            className={`w-full rounded border border-outline-variant bg-surface-container-lowest py-3 ${anthropicAttachEnabled ? "pl-12" : "pl-4"} pr-14 text-body text-on-surface outline-none placeholder:text-outline focus:border-primary focus:ring-1 focus:ring-primary`}
             onKeyDown={(e) => {
               if (e.key === "Enter") onSubmit()
             }}

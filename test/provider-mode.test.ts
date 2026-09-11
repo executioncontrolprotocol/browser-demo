@@ -1,5 +1,6 @@
 ﻿import { describe, expect, it, beforeEach } from "vitest"
 import {
+  canContinueFirstRun,
   harnessCapabilityId,
   isProviderModeSelectable,
   preferredModalProviderMode,
@@ -30,15 +31,15 @@ function installMemoryLocalStorage(): void {
 }
 
 describe("isProviderModeSelectable", () => {
-  it("allows chrome-ai and ollama", () => {
+  it("allows chrome-ai, ollama, and anthropic", () => {
     expect(isProviderModeSelectable("chrome-ai")).toBe(true)
     expect(isProviderModeSelectable("ollama")).toBe(true)
+    expect(isProviderModeSelectable("anthropic")).toBe(true)
     expect(isProviderModeSelectable("demo" as never)).toBe(false)
   })
 
-  it("keeps cloud providers unavailable in the modal", () => {
+  it("keeps openai unavailable in the modal", () => {
     expect(isProviderModeSelectable("openai")).toBe(false)
-    expect(isProviderModeSelectable("claude")).toBe(false)
   })
 })
 
@@ -51,11 +52,45 @@ describe("resolveDemoSession", () => {
     )
   })
 
+  it("maps anthropic to coding harness", () => {
+    expect(resolveDemoSession("anthropic")).toEqual({ provider: "anthropic", harness: "coding" })
+    expect(providerCapabilityId("anthropic")).toBe(
+      "@executioncontrolprotocol/anthropic.generate"
+    )
+  })
+
   it("maps chrome-ai to nano harness", () => {
     expect(resolveDemoSession("chrome-ai")).toEqual({ provider: "chrome-ai", harness: "nano" })
     expect(harnessCapabilityId("nano")).toBe(
       "@executioncontrolprotocol/harness-browser-nano.evaluate"
     )
+  })
+})
+
+describe("canContinueFirstRun", () => {
+  it("requires vault key and model for anthropic", () => {
+    expect(
+      canContinueFirstRun("anthropic", {
+        chromeSupported: true,
+        ollamaBridgeAvailable: false,
+        ollamaReady: false,
+        ollamaModel: "",
+        anthropicVaultReady: true,
+        anthropicKeyPresent: true,
+        anthropicModel: "claude-sonnet-4-5",
+      })
+    ).toBe(true)
+    expect(
+      canContinueFirstRun("anthropic", {
+        chromeSupported: true,
+        ollamaBridgeAvailable: false,
+        ollamaReady: false,
+        ollamaModel: "",
+        anthropicVaultReady: true,
+        anthropicKeyPresent: false,
+        anthropicModel: "claude-sonnet-4-5",
+      })
+    ).toBe(false)
   })
 })
 
@@ -99,6 +134,8 @@ describe("readStoredProviderMode", () => {
     expect(readStoredProviderMode()).toBe("chrome-ai")
     storeProviderMode("ollama")
     expect(readStoredProviderMode()).toBe("ollama")
+    storeProviderMode("anthropic")
+    expect(readStoredProviderMode()).toBe("anthropic")
   })
 
   it("ignores non-selectable stored cloud modes", () => {

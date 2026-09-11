@@ -12,7 +12,6 @@ catalogs:
     "@executioncontrolprotocol/azure-blob-storage": ^0.13.2
     "@executioncontrolprotocol/browser": ^0.13.2
     "@executioncontrolprotocol/chrome-ai": ^0.13.2
-    "@executioncontrolprotocol/claude": ^0.13.2
     "@executioncontrolprotocol/core": ^0.13.2
     "@executioncontrolprotocol/extension-ollama": ^0.13.2
     "@executioncontrolprotocol/extension-openai": ^0.13.2

@@ -23,7 +23,7 @@ import {
 } from "@executioncontrolprotocol/harnesses-browser-coding"
 import { registerChromeAiExtension } from "@executioncontrolprotocol/chrome-ai"
 import { registerOpenaiExtension } from "@executioncontrolprotocol/extension-openai"
-import { registerClaudeExtension } from "@executioncontrolprotocol/claude"
+import { registerAnthropicExtension } from "@executioncontrolprotocol/anthropic"
 import { registerOllamaExtension } from "@executioncontrolprotocol/extension-ollama"
 import { registerFalExtension } from "@executioncontrolprotocol/fal"
 import { registerImageSharpExtension } from "@executioncontrolprotocol/image-sharp"
@@ -33,7 +33,7 @@ import { registerFormatMermaidExtension } from "@executioncontrolprotocol/format
 import { registerFormatReactflowExtension } from "@executioncontrolprotocol/format-reactflow"
 import "@executioncontrolprotocol/chrome-ai"
 import "@executioncontrolprotocol/extension-openai"
-import "@executioncontrolprotocol/claude"
+import "@executioncontrolprotocol/anthropic"
 import "@executioncontrolprotocol/extension-ollama"
 import "@executioncontrolprotocol/fal"
 import "@executioncontrolprotocol/image-sharp"
@@ -42,6 +42,10 @@ import "@executioncontrolprotocol/format-toon"
 import "@executioncontrolprotocol/format-mermaid"
 import "@executioncontrolprotocol/format-reactflow"
 import { readOllamaSettings, type OllamaSettings } from "./ollama-settings.js"
+import {
+  readAnthropicSettings,
+  type AnthropicSettings,
+} from "./anthropic-settings.js"
 import { readBridgeSettings, type BridgeSettings } from "./ecp-bridge.js"
 import {
   applyExtendedDemoVendors,
@@ -52,6 +56,8 @@ import { readDemoEnvPreset, type DemoEnvPreset } from "./demo-env-preset.js"
 export interface CreateDemoAppEnvironmentOptions {
   /** Ollama model (and legacy baseURL for display). */
   ollama?: OllamaSettings
+  /** Anthropic / Claude model settings. */
+  anthropic?: AnthropicSettings
   /** Local `ecp up` pairing settings (required for Ollama / coding harness). */
   bridge?: BridgeSettings
   /** Mountable env preset (`default` | `extended`). */
@@ -86,6 +92,7 @@ export async function createDemoAppEnvironment(
   preset: DemoEnvPreset
 }> {
   const ollama = options?.ollama ?? readOllamaSettings()
+  const anthropic = options?.anthropic ?? readAnthropicSettings()
   const bridge = options?.bridge ?? readBridgeSettings()
   const preset = options?.preset ?? readDemoEnvPreset()
 
@@ -94,7 +101,7 @@ export async function createDemoAppEnvironment(
   registerBrowserCodingHarnesses()
   await registerChromeAiExtension(globalRegistry)
   await registerOpenaiExtension(globalRegistry)
-  await registerClaudeExtension(globalRegistry)
+  await registerAnthropicExtension(globalRegistry)
   await registerOllamaExtension(globalRegistry)
   await registerFalExtension(globalRegistry)
   await registerImageSharpExtension(globalRegistry)
@@ -119,8 +126,9 @@ export async function createDemoAppEnvironment(
   env.addExtensionBinding("@executioncontrolprotocol/openai", {
     apiKey: browser("OPENAI_API_KEY", { optional: true }),
   })
-  env.addExtensionBinding("@executioncontrolprotocol/claude", {
+  env.addExtensionBinding("@executioncontrolprotocol/anthropic", {
     apiKey: browser("ANTHROPIC_API_KEY", { optional: true }),
+    defaultModel: anthropic.model,
   })
   env.addExtensionBinding("@executioncontrolprotocol/fal", {
     apiKey: browser("FAL_KEY", { optional: true }),
@@ -131,7 +139,7 @@ export async function createDemoAppEnvironment(
   const allowlist = [
     "@executioncontrolprotocol/chrome-ai",
     "@executioncontrolprotocol/openai",
-    "@executioncontrolprotocol/claude",
+    "@executioncontrolprotocol/anthropic",
     "@executioncontrolprotocol/ollama",
     "@browser-demo/bridge-ollama",
     "@executioncontrolprotocol/fal",

@@ -12,7 +12,7 @@ This repo is separate from the [Execution Control Protocol (ECP)](https://github
 | Runtime host | `@executioncontrolprotocol/browser` | Executor, registry, session — **no harnesses** |
 | This app | `createDemoAppEnvironment` | Binds formats, Chrome AI / Ollama / …, **nano + coding harnesses** |
 
-Provider and harness are independent switches (`resolveDemoSession`). Today, choosing **Ollama** also selects the **Fluent/TS coding** harness; Chrome AI uses the nano (EQL) harness.
+Provider and harness are independent switches (`resolveDemoSession`). Choosing **Ollama** or **Claude (Anthropic)** selects the **Fluent/TS coding** harness; Chrome AI uses the nano (EQL) harness. Anthropic requires `pnpm run link:ecp` until `@executioncontrolprotocol/anthropic` is published to npm.
 
 Ollama settings use the local **`ecp up`** daemon (default `http://127.0.0.1:3090`). Prefer `ecp up`, which opens this demo with `?token=` (and `?bridge=`) so pairing is automatic. The Ollama provider enables when `/health` reports `ollamaReachable`. Hosted HTTPS pages need **Chromium** (Private Network Access); local Vite works in any browser.
 
@@ -25,7 +25,7 @@ Prefer the real SDK whenever it can run in the browser:
 | `@executioncontrolprotocol/fal` | **Yes** — official `@fal-ai/client` | Configure `apiKey` via `browser("FAL_KEY")` (vault / secrets). Vite prebundles the CJS client (`optimizeDeps.include`). |
 | `@executioncontrolprotocol/image-sharp` | **Catalog + host hop** | Bound in the demo env (browser catalog only; no native `sharp`). Steps hop to `ecp up --env …` that binds Sharp on the host. Bare `ecp up` (Ollama-only) is not enough. |
 
-Local unpublished dogfood: `pnpm run link:vendor` (junction-links `fal` and `image-sharp` from the extensions repo). Never commit `file:` deps. They stay optional peers so registry `pnpm install` stays clean. Default paired host lives in this repo at [`host/`](./host) (`image-sharp` + `fal` + `openai` + `claude`; Ollama added by `ecp up`) — started by `pnpm run dev:linked`. Sharp-only smoke: [extensions/examples/04-image-prep](https://github.com/executioncontrolprotocol/extensions/tree/main/examples/04-image-prep).
+Local unpublished dogfood: `pnpm run link:ecp` (junction-links core ECP packages including unpublished `@executioncontrolprotocol/anthropic`) and `pnpm run link:vendor` (fal / image-sharp). Never commit `file:` deps. They stay optional peers so registry `pnpm install` stays clean. Default paired host lives in this repo at [`host/`](./host) (`image-sharp` + `fal` + `openai` + `anthropic`; Ollama added by `ecp up`) — started by `pnpm run dev:linked`. Sharp-only smoke: [extensions/examples/04-image-prep](https://github.com/executioncontrolprotocol/extensions/tree/main/examples/04-image-prep).
 
 Do not stub browser-capable HTTP clients. Native addons belong on the package `browser` export, not a Vite alias.
 

@@ -9,7 +9,7 @@ Binds Node-only capabilities the demo also binds so pairing passes host-compat:
 | `@executioncontrolprotocol/image-sharp` | Sharp steps hop from the browser |
 | `@executioncontrolprotocol/fal` | FAL generate hops from the browser |
 | `@executioncontrolprotocol/openai` | OpenAI generate/evaluate hops from the browser |
-| `@executioncontrolprotocol/claude` | Claude generate hops from the browser |
+| `@executioncontrolprotocol/anthropic` | Anthropic generate (local; vault or host env key) |
 
 `ecp up` always adds Ollama on top of `--env` (model picker / coding harness).
 
