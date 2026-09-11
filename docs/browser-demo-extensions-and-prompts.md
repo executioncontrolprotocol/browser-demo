@@ -73,6 +73,7 @@ All of the following are registered on the global extension catalog when the bro
 | `@executioncontrolprotocol/claude` | `packages/extensions/claude` | Anthropic Messages API |
 | `@executioncontrolprotocol/fal` | `packages/extensions/fal` | FAL image/model inference (`generate`) |
 | `@executioncontrolprotocol/image-sharp` | `packages/extensions/image-sharp` (sibling repo) | Image inspect/transform — **bound in the demo** as browser catalog; native `sharp` runs via host hop |
+| `@executioncontrolprotocol/jsonata` | `packages/jsonata` (sibling extensions repo) | JSONata object transform (`transform`) — **bound**; runs **local** in-browser |
 | `@executioncontrolprotocol/policies` (standard) | `packages/policies` | Including `@executioncontrolprotocol/registry-control` |
 
 Source: [`packages/runtimes/browser/src/environment.ts`](https://github.com/executioncontrolprotocol/executioncontrolprotocol/blob/main/packages/runtimes/browser/src/environment.ts).
@@ -85,7 +86,7 @@ Source: [`src/lib/demo-environment.ts`](../src/lib/demo-environment.ts).
 
 ### 2.3 Policy
 
-`@executioncontrolprotocol/registry-control` allows namespaces: `@executioncontrolprotocol/chrome-ai`, `@executioncontrolprotocol/openai`, `@executioncontrolprotocol/claude`, `@executioncontrolprotocol/fal`, `@executioncontrolprotocol/image-sharp`, `@executioncontrolprotocol/browser`, `@customer/*`.
+`@executioncontrolprotocol/registry-control` allows namespaces: `@executioncontrolprotocol/chrome-ai`, `@executioncontrolprotocol/openai`, `@executioncontrolprotocol/claude`, `@executioncontrolprotocol/fal`, `@executioncontrolprotocol/image-sharp`, `@executioncontrolprotocol/jsonata`, `@executioncontrolprotocol/browser`, `@customer/*`.
 
 ---
 
@@ -161,7 +162,15 @@ Demo-generated workflows may reference `@executioncontrolprotocol/chrome-ai.gene
 
 Store `FAL_KEY` in the encrypted vault (Settings → encrypted API keys) alongside OpenAI and Claude keys. Harness authoring summaries include required vs optional fields from each capability schema so models can propose valid `WITH` blocks.
 
-Local unpublished `@executioncontrolprotocol/image-sharp` / `fal`: build the extensions monorepo, then `pnpm run link:vendor` in browser-demo (optional peers in `package.json`; never `file:`).
+Local unpublished `@executioncontrolprotocol/image-sharp` / `fal` / `jsonata`: build the extensions monorepo, then `pnpm run link:vendor` in browser-demo (optional peers in `package.json`; never `file:`).
+
+### 3.7 JSONata transform
+
+| Extension | Capability | Config | Browser run |
+| --------- | ---------- | ------ | ----------- |
+| `@executioncontrolprotocol/jsonata` | `@executioncontrolprotocol/jsonata.transform` | `{}` | **Local** — pure JS; no host hop. Input `{ expression, payload, bindings? }` → `{ result }`. |
+
+Agent-authorable `expression` strings; sequence with `ref(...)` on `payload` from prior steps. Bindings are referenced in expressions as `$name`.
 
 Reference workflow: [`examples/03-fal-chain/workflow.ts`](https://github.com/executioncontrolprotocol/executioncontrolprotocol/blob/main/examples/03-fal-chain/workflow.ts) in the protocol repo.
 

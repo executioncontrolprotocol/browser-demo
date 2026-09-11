@@ -129,6 +129,7 @@ export default defineConfig({
       "@executioncontrolprotocol/chrome-ai",
       "@executioncontrolprotocol/fal",
       "@executioncontrolprotocol/image-sharp",
+      "@executioncontrolprotocol/jsonata",
       "@executioncontrolprotocol/azure-blob-storage",
       "@executioncontrolprotocol/adobe-firefly-services",
       "@executioncontrolprotocol/format-mermaid",
