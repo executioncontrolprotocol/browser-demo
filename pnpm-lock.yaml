@@ -27,7 +27,7 @@ importers:
         specifier: catalog:ecp
         version: 0.13.1(@executioncontrolprotocol/core@0.13.1(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76)
       '@executioncontrolprotocol/claude':
-        specifier: 0.13.1
+        specifier: catalog:ecp
         version: 0.13.1(zod@3.25.76)
       '@executioncontrolprotocol/core':
         specifier: catalog:ecp
