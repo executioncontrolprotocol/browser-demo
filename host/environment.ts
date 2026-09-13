@@ -7,6 +7,7 @@ import {
   registerImageSharpExtension,
 } from "@executioncontrolprotocol/image-sharp"
 import { registerFalExtension } from "@executioncontrolprotocol/fal"
+import { registerJsonataExtension } from "@executioncontrolprotocol/jsonata"
 import { registerOpenaiExtension } from "@executioncontrolprotocol/extension-openai"
 import { registerAnthropicExtension } from "@executioncontrolprotocol/anthropic"
 import { environment, extension, policy, env } from "@executioncontrolprotocol/node"
@@ -14,6 +15,7 @@ import { registerImagePolicy } from "@executioncontrolprotocol/policies"
 
 await registerImageSharpExtension()
 await registerFalExtension()
+await registerJsonataExtension()
 await registerOpenaiExtension()
 await registerAnthropicExtension()
 await registerImagePolicy()
@@ -34,6 +36,7 @@ export default (await environment("browser-demo-host", "Browser demo host"))
       apiKey: env("FAL_KEY", { optional: true }),
       defaultMode: "subscribe",
     }),
+    extension("@executioncontrolprotocol/jsonata", "JSONata").with({}),
     extension("@executioncontrolprotocol/openai", "OpenAI").with({
       apiKey: env("OPENAI_API_KEY", { optional: true }),
     }),

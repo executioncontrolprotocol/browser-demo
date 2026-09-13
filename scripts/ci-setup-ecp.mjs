@@ -112,6 +112,7 @@ const VENDOR_EXTENSION_PACKAGES = [
   "@executioncontrolprotocol/azure-blob-storage",
   "@executioncontrolprotocol/fal",
   "@executioncontrolprotocol/image-sharp",
+  "@executioncontrolprotocol/jsonata",
 ]
 
 function isVendorExtensionPackage(name) {

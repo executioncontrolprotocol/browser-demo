@@ -84,7 +84,8 @@
     "@executioncontrolprotocol/adobe-firefly-services": "catalog:ecp",
     "@executioncontrolprotocol/azure-blob-storage": "catalog:ecp",
     "@executioncontrolprotocol/fal": "catalog:ecp",
-    "@executioncontrolprotocol/image-sharp": "catalog:ecp"
+    "@executioncontrolprotocol/image-sharp": "catalog:ecp",
+    "@executioncontrolprotocol/jsonata": "catalog:ecp"
   },
   "peerDependenciesMeta": {
     "@executioncontrolprotocol/adobe-firefly-services": {
@@ -98,7 +99,9 @@
     },
     "@executioncontrolprotocol/image-sharp": {
       "optional": true
+    },
+    "@executioncontrolprotocol/jsonata": {
+      "optional": true
     }
   }
 }
-

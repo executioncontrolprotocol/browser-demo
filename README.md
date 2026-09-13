@@ -1,8 +1,59 @@
 # ECP Browser Demo
 
-Standalone **ECP Graph Editor** demo app (Vite + React): chat-first UX, workflow/code panels, Mermaid graph viewer, first-run provider selection, and Supabase prompt logging.
+Standalone **ECP Graph Editor** demo app (Vite + React): chat-first UX, workflow/code panels, Mermaid graph viewer, and first-run provider selection.
 
 This repo is separate from the [Execution Control Protocol (ECP)](https://github.com/executioncontrolprotocol/executioncontrolprotocol) monorepo. ECP is consumed as npm packages (or linked locally during protocol development).
+
+## Try it now
+
+Open the hosted Graph Editor in **Chrome** (recommended):
+
+**https://demo.executioncontrolprotocol.io/**
+
+Complete the first-run provider modal, then chat or explore the panels. No clone required.
+
+## Prerequisites
+
+| Requirement | When you need it |
+| ----------- | ---------------- |
+| **Node.js >= 22** | Local app — enforced in `package.json` `engines` |
+| **pnpm** | Local app — enable with `corepack enable` (version pinned in `packageManager`) |
+| **Chrome** (recommended) | Default chat path uses Chrome built-in AI (`@executioncontrolprotocol/chrome-ai`) |
+| **Ollama** + **ECP CLI** (`ecp up`) | Optional — local models via loopback daemon on port 3090 |
+| **ECP / extensions monorepo clones** | Optional — only for linked protocol or vendor dogfood (see [Local ECP development](#local-ecp-development)) |
+| **`.env` (Supabase)** | Optional — prompt logging only; not required to run the app |
+
+## Local quick start (published npm)
+
+Get a working app in a few minutes. You do **not** need a core monorepo clone, `.env`, or `ecp up` for the default Chrome AI path.
+
+```sh
+git clone https://github.com/executioncontrolprotocol/browser-demo.git
+cd browser-demo
+corepack enable
+pnpm install
+pnpm run dev
+```
+
+Open the URL Vite prints (default `http://localhost:5173`). Complete the first-run modal (Chrome AI, or **Explore** without a model), then send a chat or use the panels.
+
+```sh
+pnpm run build
+pnpm test
+pnpm run lint
+```
+
+(`pnpm run lint` runs `typecheck`; Husky pre-commit runs secretlint, then lint.)
+
+### Optional: Ollama locally
+
+1. Install and start [Ollama](https://ollama.com/); pull a model (for example `qwen2.5-coder:1.5b`).
+2. Install the CLI: `npm install -g @executioncontrolprotocol/cli`
+3. From another terminal: `ecp up --open-url http://localhost:5173/` (or paste the pairing token in the demo)
+
+Ollama enables when the daemon `/health` reports `ollamaReachable`. Hosted HTTPS pages need **Chromium** (Private Network Access); local Vite works in any browser.
+
+Harness evals (Ollama `gemma3:1b` / `qwen2.5-coder:1.5b`) run from the [ECP monorepo](https://github.com/executioncontrolprotocol/executioncontrolprotocol): `pnpm run test:eval:matrix` / `pnpm run test:eval:matrix:coding`.
 
 ## Architecture (app owns composition)
 
@@ -13,8 +64,6 @@ This repo is separate from the [Execution Control Protocol (ECP)](https://github
 | This app | `createDemoAppEnvironment` | Binds formats, Chrome AI / Ollama / …, **nano + coding harnesses** |
 
 Provider and harness are independent switches (`resolveDemoSession`). Choosing **Ollama** or **Claude (Anthropic)** selects the **Fluent/TS coding** harness; Chrome AI uses the nano (EQL) harness. Anthropic requires `pnpm run link:ecp` until `@executioncontrolprotocol/anthropic` is published to npm.
-
-Ollama settings use the local **`ecp up`** daemon (default `http://127.0.0.1:3090`). Prefer `ecp up`, which opens this demo with `?token=` (and `?bridge=`) so pairing is automatic. The Ollama provider enables when `/health` reports `ollamaReachable`. Hosted HTTPS pages need **Chromium** (Private Network Access); local Vite works in any browser.
 
 ### Browser vendor extensions
 
@@ -31,19 +80,6 @@ Do not stub browser-capable HTTP clients. Native addons belong on the package `b
 
 See monorepo [AGENTS.md](https://github.com/executioncontrolprotocol/executioncontrolprotocol/blob/main/AGENTS.md) for compile vs runtime vs app boundaries.
 
-## Prerequisites
-
-| Requirement | Notes |
-| ----------- | ----- |
-| **Node.js >= 22** | Enforced in `package.json` `engines` |
-| **pnpm** | `packageManager` is pinned in `package.json` |
-| **Chrome** (recommended) | Default provider uses Chrome built-in AI (`@executioncontrolprotocol/chrome-ai`) |
-| **Ollama** (optional) | Local models via `ecp up` — option enabled when daemon `/health` reports `ollamaReachable` |
-| **ECP CLI `ecp up`** (for Ollama) | Loopback daemon on port 3090; paste pairing token in the demo |
-| **ECP monorepo clone** (local dev only) | Sibling checkout — see [Repository layout](#repository-layout) |
-
-Optional: [Ollama](https://ollama.com/) with `gemma3:1b` / `qwen2.5-coder:1.5b` for harness evals in the ECP repo (`pnpm run eval:matrix` / `eval:matrix:coding`).
-
 ## Repository layout
 
 For side-by-side development, clone repos under the same parent directory:
@@ -56,28 +92,6 @@ your-workspace/
 ```
 
 Paths below assume `browser-demo` is a sibling of `executioncontrolprotocol`. Adjust if your folder names differ.
-
-## Quick start (published npm)
-
-Use this when you are **not** changing ECP package source.
-
-```sh
-pnpm install
-cp .env.example .env   # optional — Supabase prompt logging
-pnpm run dev
-```
-
-Open the URL Vite prints (default `http://localhost:5173`).
-
-```sh
-pnpm run build
-pnpm test
-pnpm run lint
-```
-
-(`pnpm run lint` runs `typecheck`; Husky pre-commit runs secretlint, then lint.)
-
-Harness evals (Ollama `gemma3:1b`) run from the [ECP monorepo](https://github.com/executioncontrolprotocol/executioncontrolprotocol): `pnpm run eval:matrix`. The demo app uses the same **chat** multi-shot harness (`HARNESS_TASKS.CHAT`) as the matrix.
 
 ## Local ECP development
 
@@ -184,7 +198,10 @@ Requires `@executioncontrolprotocol/*@^0.13.2` from npm (or `pnpm run link:ecp` 
 - [`docs/browser-demo-extensions-and-prompts.md`](docs/browser-demo-extensions-and-prompts.md) — extensions and harness wiring
 - [`docs/todos.md`](docs/todos.md) — follow-ups / resolved workarounds
 
-## Related repos
+## Related
 
+- **Live demo:** https://demo.executioncontrolprotocol.io/
+- **Docs:** https://executioncontrolprotocol.io/
 - **ECP protocol:** https://github.com/executioncontrolprotocol/executioncontrolprotocol
+- **Vendor extensions:** https://github.com/executioncontrolprotocol/extensions
 - **This demo:** https://github.com/executioncontrolprotocol/browser-demo

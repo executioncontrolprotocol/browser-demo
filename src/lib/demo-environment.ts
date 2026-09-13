@@ -27,6 +27,7 @@ import { registerAnthropicExtension } from "@executioncontrolprotocol/anthropic"
 import { registerOllamaExtension } from "@executioncontrolprotocol/extension-ollama"
 import { registerFalExtension } from "@executioncontrolprotocol/fal"
 import { registerImageSharpExtension } from "@executioncontrolprotocol/image-sharp"
+import { registerJsonataExtension } from "@executioncontrolprotocol/jsonata"
 import { registerFormatEqlExtension } from "@executioncontrolprotocol/format-eql"
 import { registerFormatToonExtension } from "@executioncontrolprotocol/format-toon"
 import { registerFormatMermaidExtension } from "@executioncontrolprotocol/format-mermaid"
@@ -37,6 +38,7 @@ import "@executioncontrolprotocol/anthropic"
 import "@executioncontrolprotocol/extension-ollama"
 import "@executioncontrolprotocol/fal"
 import "@executioncontrolprotocol/image-sharp"
+import "@executioncontrolprotocol/jsonata"
 import "@executioncontrolprotocol/format-eql"
 import "@executioncontrolprotocol/format-toon"
 import "@executioncontrolprotocol/format-mermaid"
@@ -105,6 +107,7 @@ export async function createDemoAppEnvironment(
   await registerOllamaExtension(globalRegistry)
   await registerFalExtension(globalRegistry)
   await registerImageSharpExtension(globalRegistry)
+  await registerJsonataExtension(globalRegistry)
   await registerFormatEqlExtension(globalRegistry)
   await registerFormatToonExtension(globalRegistry)
   await registerFormatMermaidExtension(globalRegistry)
@@ -135,6 +138,7 @@ export async function createDemoAppEnvironment(
     defaultMode: "subscribe",
   })
   env.addExtensionBinding("@executioncontrolprotocol/image-sharp", {})
+  env.addExtensionBinding("@executioncontrolprotocol/jsonata", {})
 
   const allowlist = [
     "@executioncontrolprotocol/chrome-ai",
@@ -144,6 +148,7 @@ export async function createDemoAppEnvironment(
     "@browser-demo/bridge-ollama",
     "@executioncontrolprotocol/fal",
     "@executioncontrolprotocol/image-sharp",
+    "@executioncontrolprotocol/jsonata",
     "@executioncontrolprotocol/azure-blob-storage",
     "@executioncontrolprotocol/adobe-firefly-services",
     "@executioncontrolprotocol/browser",
