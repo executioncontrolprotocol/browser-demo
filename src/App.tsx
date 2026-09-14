@@ -317,7 +317,8 @@ export function App() {
       nextOllama?: OllamaSettings,
       nextBridge?: BridgeSettings,
       nextPreset?: DemoEnvPreset,
-      nextAnthropic?: AnthropicSettings
+      nextAnthropic?: AnthropicSettings,
+      nextProviderMode?: ProviderMode
     ) => {
       if (ecpRef.current) {
         await ecpRef.current.terminate()
@@ -326,11 +327,13 @@ export function App() {
       const anthropic = nextAnthropic ?? readAnthropicSettings()
       const bridge = nextBridge ?? readBridgeSettings()
       const preset = nextPreset ?? readDemoEnvPreset()
+      const mode = nextProviderMode ?? providerMode
       const { ecp: operational, descriptor: desc } = await createDemoAppEnvironment({
         ollama: settings,
         anthropic,
         bridge,
         preset,
+        providerMode: mode,
       })
       ecpRef.current = operational
       setEcp(operational)
@@ -339,7 +342,7 @@ export function App() {
       await refreshHostCompat(desc, bridge)
       return operational
     },
-    [refreshHostCompat]
+    [refreshHostCompat, providerMode]
   )
 
   const refreshBridgeDetect = useCallback(async (baseURL?: string) => {
@@ -379,8 +382,10 @@ export function App() {
 
     const { ecp: operational, descriptor: desc } = await createDemoAppEnvironment({
       ollama: readOllamaSettings(),
+      anthropic: readAnthropicSettings(),
       bridge: readBridgeSettings(),
       preset: readDemoEnvPreset(),
+      providerMode: readStoredProviderMode() ?? "chrome-ai",
     })
     ecpRef.current = operational
     setEcp(operational)
@@ -866,13 +871,13 @@ export function App() {
     if (nextOllama) {
       storeOllamaSettings(nextOllama)
       setOllamaSettings(nextOllama)
-      void reloadEcp(nextOllama, bridgeSettings, demoEnvPreset, anthropicSettings).then(() => {
+      void reloadEcp(nextOllama, bridgeSettings, demoEnvPreset, anthropicSettings, mode).then(() => {
         const resolved = resolveDemoSession(mode)
         setChatStatus(`Ready (${mode} / ${resolved.harness} / ${demoEnvPreset}).`)
       })
       return
     }
-    void reloadEcp(undefined, bridgeSettings, demoEnvPreset, anthropicSettings).then(() => {
+    void reloadEcp(undefined, bridgeSettings, demoEnvPreset, anthropicSettings, mode).then(() => {
       const resolved = resolveDemoSession(mode)
       setChatStatus(`Ready (${mode} / ${resolved.harness} / ${demoEnvPreset}).`)
     })

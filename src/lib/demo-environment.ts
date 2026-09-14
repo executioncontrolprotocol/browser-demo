@@ -18,7 +18,7 @@ import {
 } from "@executioncontrolprotocol/harnesses-browser-nano"
 import {
   BROWSER_CODING_HARNESS_ID,
-  HARNESS_CODING_BINDING,
+  codingHarnessBindingForProfile,
   registerBrowserCodingHarnesses,
 } from "@executioncontrolprotocol/harnesses-browser-coding"
 import { registerChromeAiExtension } from "@executioncontrolprotocol/chrome-ai"
@@ -53,6 +53,7 @@ import {
   applyExtendedDemoVendors,
 } from "./demo-environment-extended.js"
 import { readDemoEnvPreset, type DemoEnvPreset } from "./demo-env-preset.js"
+import { resolveCodingHarnessProfile } from "./provider-mode.js"
 
 /** Options for {@link createDemoAppEnvironment}. */
 export interface CreateDemoAppEnvironmentOptions {
@@ -64,6 +65,11 @@ export interface CreateDemoAppEnvironmentOptions {
   bridge?: BridgeSettings
   /** Mountable env preset (`default` | `extended`). */
   preset?: DemoEnvPreset
+  /**
+   * Provider mode used to pick the coding harness profile when Anthropic is active.
+   * Defaults to small scaffolding; Anthropic models upgrade via {@link resolveCodingHarnessProfile}.
+   */
+  providerMode?: "chrome-ai" | "openai" | "anthropic" | "ollama"
 }
 
 /**
@@ -97,6 +103,11 @@ export async function createDemoAppEnvironment(
   const anthropic = options?.anthropic ?? readAnthropicSettings()
   const bridge = options?.bridge ?? readBridgeSettings()
   const preset = options?.preset ?? readDemoEnvPreset()
+  const codingProfile = resolveCodingHarnessProfile(
+    options?.providerMode ?? "ollama",
+    anthropic.model
+  )
+  const codingBinding = codingHarnessBindingForProfile(codingProfile)
 
   await registerBrowserHost(globalRegistry)
   registerBrowserNanoHarnesses()
@@ -170,7 +181,7 @@ export async function createDemoAppEnvironment(
       .with({ ...HARNESS_NANO_BINDING }),
     harness(BROWSER_CODING_HARNESS_ID, "Coding Harness")
       .uses("@executioncontrolprotocol/ollama.generate")
-      .with({ ...HARNESS_CODING_BINDING }),
+      .with({ ...codingBinding }),
   ])
 
   env.withPolicies([

@@ -6,6 +6,7 @@ import {
   preferredModalProviderMode,
   providerCapabilityId,
   readStoredProviderMode,
+  resolveCodingHarnessProfile,
   resolveDemoSession,
   storeProviderMode,
   PROVIDER_MODE_STORAGE_KEY,
@@ -64,6 +65,19 @@ describe("resolveDemoSession", () => {
     expect(harnessCapabilityId("nano")).toBe(
       "@executioncontrolprotocol/harness-browser-nano.evaluate"
     )
+  })
+})
+
+describe("resolveCodingHarnessProfile", () => {
+  it("maps ollama to small", () => {
+    expect(resolveCodingHarnessProfile("ollama")).toBe("small")
+    expect(resolveCodingHarnessProfile("chrome-ai")).toBe("small")
+  })
+
+  it("maps anthropic sonnet and haiku to medium, opus to frontier", () => {
+    expect(resolveCodingHarnessProfile("anthropic", "claude-sonnet-4-5")).toBe("medium")
+    expect(resolveCodingHarnessProfile("anthropic", "claude-haiku-4-5")).toBe("medium")
+    expect(resolveCodingHarnessProfile("anthropic", "claude-opus-4-5")).toBe("frontier")
   })
 })
 

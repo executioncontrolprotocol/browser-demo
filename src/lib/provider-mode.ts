@@ -34,6 +34,26 @@ export interface DemoSession {
   harness: HarnessMode
 }
 
+/** Coding harness model-capability profile (scaffolding). */
+export type CodingHarnessProfile = "small" | "medium" | "frontier"
+
+/**
+ * Resolve coding harness profile from provider + model.
+ * Ollama → small; Anthropic Sonnet/Haiku → medium; Anthropic Opus → frontier.
+ */
+export function resolveCodingHarnessProfile(
+  provider: ProviderMode,
+  model?: string
+): CodingHarnessProfile {
+  if (provider !== "anthropic") return "small"
+  const trimmed = model?.trim().toLowerCase() ?? ""
+  if (trimmed.includes("opus")) return "frontier"
+  if (trimmed.includes("sonnet") || trimmed.includes("haiku") || trimmed.length > 0) {
+    return "medium"
+  }
+  return "medium"
+}
+
 /**
  * Map a single UI provider value to independent provider + harness switches.
  * Ollama and Anthropic use the coding harness; Chrome AI uses nano.
