@@ -71,6 +71,7 @@ import { readAvailability } from "@executioncontrolprotocol/chrome-ai"
 import { useViewLayout } from "./hooks/useViewLayout.js"
 import { installEsbuildWasmUrl } from "./lib/esbuild-wasm-bootstrap.js"
 import { createDemoAppEnvironment } from "./lib/demo-environment.js"
+import { buildDemoConversationMessages } from "./lib/demo-conversation-messages.js"
 import { capabilityExecutionMap } from "./lib/capability-execution-badge.js"
 import { shouldBlockForVault } from "./lib/vault-gate.js"
 import {
@@ -250,7 +251,6 @@ export function App() {
   const [configureBusy, setConfigureBusy] = useState(false)
   const [configureError, setConfigureError] = useState<string | null>(null)
   const [chatBusy, setChatBusy] = useState(false)
-  const [conversationSummary, setConversationSummary] = useState<string | undefined>()
   const [pendingOfferRun, setPendingOfferRun] = useState(false)
   const [pendingOfferProbe, setPendingOfferProbe] = useState(false)
   const [probeContext, setProbeContext] = useState<ProbeContext | undefined>()
@@ -915,6 +915,7 @@ export function App() {
             mediaType: f.mediaType,
           }))
         : undefined
+    const conversationMessages = buildDemoConversationMessages(chatMessages)
     const invoked = await ecp
       .invoke(harnessCapabilityId(harness))
       .uses(providerCapabilityId(provider))
@@ -922,7 +923,7 @@ export function App() {
         task: NANO_HARNESS_TASKS.CHAT,
         message: userRequest,
         ...(manifest ? { manifest } : {}),
-        ...(conversationSummary ? { conversationSummary } : {}),
+        ...(conversationMessages.length > 0 ? { conversationMessages } : {}),
         ...(runContext ? { runContext } : {}),
         ...(probeContext ? { probeContext } : {}),
         ...(provider === "ollama" ? { model: ollamaSettings.model } : {}),
@@ -976,7 +977,6 @@ export function App() {
         setProbeContext(undefined)
         setTestSessionSnapshot(undefined)
       }
-      setConversationSummary(`User: ${userRequest}\nAssistant: ${answer.slice(0, 200)}`)
       return
     }
 
@@ -988,7 +988,6 @@ export function App() {
       setPendingOfferProbe(false)
       appendAgent(answer)
       setChatStatus(assistantMode === "guided" ? "Guided mode" : "Ready")
-      setConversationSummary(`User: ${userRequest}\nAssistant: ${answer.slice(0, 200)}`)
     }
   }
 
