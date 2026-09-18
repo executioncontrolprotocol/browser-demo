@@ -1,10 +1,17 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import {
+  getBrowserSecret,
+  hasBrowserVault,
+  isBrowserVaultUnlocked,
+} from "@executioncontrolprotocol/browser"
 import type { ProviderMode } from "../lib/provider-mode.js"
 import { canContinueFirstRun, preferredModalProviderMode } from "../lib/provider-mode.js"
 import type { OllamaSettings } from "../lib/ollama-settings.js"
+import type { AnthropicSettings } from "../lib/anthropic-settings.js"
 import type { BridgeSettings } from "../lib/ecp-bridge.js"
 import { ProviderApiKeyFields } from "./ProviderApiKeyFields.js"
 import { OllamaSettingsFields } from "./OllamaSettingsFields.js"
+import { AnthropicSettingsFields } from "./AnthropicSettingsFields.js"
 import { DemoEnvPresetFields } from "./DemoEnvPresetFields.js"
 import type { DemoEnvPreset } from "../lib/demo-env-preset.js"
 
@@ -29,6 +36,9 @@ export interface FirstRunModalProps {
   /** Current Ollama settings (editable when Ollama selected). */
   ollamaSettings: OllamaSettings
   onOllamaSettingsChange: (settings: OllamaSettings) => void
+  /** Current Anthropic settings (editable when Anthropic selected). */
+  anthropicSettings: AnthropicSettings
+  onAnthropicSettingsChange: (settings: AnthropicSettings) => void
   bridgeSettings: BridgeSettings
   onBridgeSettingsChange: (settings: BridgeSettings) => void
   demoEnvPreset: DemoEnvPreset
@@ -48,6 +58,8 @@ export function FirstRunModal({
   onRequestVaultSetup,
   ollamaSettings,
   onOllamaSettingsChange,
+  anthropicSettings,
+  onAnthropicSettingsChange,
   bridgeSettings,
   onBridgeSettingsChange,
   demoEnvPreset,
@@ -57,12 +69,44 @@ export function FirstRunModal({
     preferredModalProviderMode(initialMode, { chromeSupported, ollamaBridgeAvailable })
   )
   const [ollamaReady, setOllamaReady] = useState(false)
+  const [anthropicVaultReady, setAnthropicVaultReady] = useState(false)
+  const [anthropicKeyPresent, setAnthropicKeyPresent] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    const refresh = async () => {
+      const vaultReady = hasBrowserVault() && isBrowserVaultUnlocked()
+      if (!vaultReady) {
+        if (!cancelled) {
+          setAnthropicVaultReady(false)
+          setAnthropicKeyPresent(false)
+        }
+        return
+      }
+      const key = await getBrowserSecret("ANTHROPIC_API_KEY")
+      if (!cancelled) {
+        setAnthropicVaultReady(true)
+        setAnthropicKeyPresent(Boolean(key?.trim()))
+      }
+    }
+    void refresh()
+    const id = window.setInterval(() => {
+      void refresh()
+    }, 1000)
+    return () => {
+      cancelled = true
+      window.clearInterval(id)
+    }
+  }, [mode])
 
   const canContinue = canContinueFirstRun(mode, {
     chromeSupported,
     ollamaBridgeAvailable,
     ollamaReady,
     ollamaModel: ollamaSettings.model,
+    anthropicVaultReady,
+    anthropicKeyPresent,
+    anthropicModel: anthropicSettings.model,
   })
 
   const submit = () => {
@@ -100,7 +144,7 @@ export function FirstRunModal({
           <p className="text-body text-on-surface-variant">
             {ollamaBridgeAvailable
               ? "Chrome requires a click to start the Gemini Nano download. Choose a provider and click Continue, or close this dialog to explore without a provider."
-              : "Local Ollama (`ecp up`) is not reachable. Chrome AI is selected so you can continue, or start `ecp up` and switch back to Ollama."}
+              : "Local Ollama (`ecp up`) is not reachable. Chrome AI or Claude (Anthropic) can still be used."}
           </p>
           <div className="space-y-2">
             <label className="flex cursor-pointer items-center gap-2 text-body">
@@ -134,13 +178,18 @@ export function FirstRunModal({
             {!ollamaBridgeAvailable && ollamaBridgeHint ? (
               <p className="pl-6 text-body text-on-surface-variant">{ollamaBridgeHint}</p>
             ) : null}
+            <label className="flex cursor-pointer items-center gap-2 text-body">
+              <input
+                type="radio"
+                name="provider"
+                checked={mode === "anthropic"}
+                onChange={() => setMode("anthropic")}
+              />
+              Claude (Anthropic / coding harness)
+            </label>
             <label className="flex items-center gap-2 text-body text-on-surface-variant">
               <input type="radio" name="provider" checked={mode === "openai"} disabled />
               OpenAI (coming soon)
-            </label>
-            <label className="flex items-center gap-2 text-body text-on-surface-variant">
-              <input type="radio" name="provider" checked={mode === "claude"} disabled />
-              Claude (coming soon)
             </label>
           </div>
           <DemoEnvPresetFields value={demoEnvPreset} onChange={onDemoEnvPresetChange} />
@@ -151,6 +200,12 @@ export function FirstRunModal({
               bridge={bridgeSettings}
               onBridgeChange={onBridgeSettingsChange}
               onReadyChange={setOllamaReady}
+            />
+          ) : null}
+          {mode === "anthropic" ? (
+            <AnthropicSettingsFields
+              value={anthropicSettings}
+              onChange={onAnthropicSettingsChange}
             />
           ) : null}
           <ProviderApiKeyFields onRequestVaultSetup={onRequestVaultSetup} />

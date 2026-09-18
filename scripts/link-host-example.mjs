@@ -23,7 +23,7 @@ const HOST_MONOREPO_PACKAGES = [
   "@executioncontrolprotocol/node",
   "@executioncontrolprotocol/cli",
   "@executioncontrolprotocol/extension-openai",
-  "@executioncontrolprotocol/claude",
+  "@executioncontrolprotocol/anthropic",
   "@executioncontrolprotocol/extension-ollama",
 ]
 

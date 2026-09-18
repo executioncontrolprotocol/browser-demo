@@ -10,7 +10,7 @@ import {
 
 const WORKFLOW_PROVIDER_EXTENSIONS = [
   "@executioncontrolprotocol/chrome-ai",
-  "@executioncontrolprotocol/claude",
+  "@executioncontrolprotocol/anthropic",
   "@executioncontrolprotocol/fal",
   "@executioncontrolprotocol/image-sharp",
   "@executioncontrolprotocol/jsonata",
@@ -86,7 +86,9 @@ describe("createDemoAppEnvironment", () => {
     expect(jsonata?.execution).toBe("local")
 
     const authoring = toAuthoringEnvironmentDescriptor(descriptor)
-    expect(authoring.extensions.map((e) => e.id).sort()).toEqual([...WORKFLOW_PROVIDER_EXTENSIONS])
+    expect(authoring.extensions.map((e) => e.id).sort()).toEqual(
+      [...WORKFLOW_PROVIDER_EXTENSIONS].sort()
+    )
     expect(authoring.extensions.some((e) => e.id.includes("/format-"))).toBe(false)
     expect(authoring.extensions.some((e) => e.id.startsWith("@executioncontrolprotocol/browser-"))).toBe(
       false

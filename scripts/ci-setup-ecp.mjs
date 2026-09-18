@@ -164,19 +164,24 @@ function parseLinkList() {
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean)
-  if (explicit.length > 0) return explicit
+  const names = new Set(explicit)
 
-  const pkgPath = path.join(consumerRoot, "package.json")
-  if (!existsSync(pkgPath)) return []
-  const pkg = JSON.parse(readFileSync(pkgPath, "utf8"))
-  const names = new Set()
-  for (const section of ["dependencies", "devDependencies", "peerDependencies"]) {
-    const block = pkg[section]
-    if (!block || typeof block !== "object") continue
-    for (const name of Object.keys(block)) {
-      if (name.startsWith("@executioncontrolprotocol/")) names.add(name)
+  if (names.size === 0) {
+    const pkgPath = path.join(consumerRoot, "package.json")
+    if (existsSync(pkgPath)) {
+      const pkg = JSON.parse(readFileSync(pkgPath, "utf8"))
+      for (const section of ["dependencies", "devDependencies", "peerDependencies"]) {
+        const block = pkg[section]
+        if (!block || typeof block !== "object") continue
+        for (const name of Object.keys(block)) {
+          if (name.startsWith("@executioncontrolprotocol/")) names.add(name)
+        }
+      }
     }
   }
+
+  // Unpublished until first npm release — keep in sync with link-ecp-packages.mjs.
+  names.add("@executioncontrolprotocol/anthropic")
   return [...names]
 }
 

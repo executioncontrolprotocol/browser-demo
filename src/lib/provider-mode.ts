@@ -1,5 +1,5 @@
 /** Provider mode for the browser demo app UI. */
-export type ProviderMode = "chrome-ai" | "openai" | "claude" | "ollama"
+export type ProviderMode = "chrome-ai" | "openai" | "anthropic" | "ollama"
 
 /** Harness mode — independent of provider; resolved from UI profile for now. */
 export type HarnessMode = "nano" | "coding"
@@ -8,12 +8,16 @@ export type HarnessMode = "nano" | "coding"
 export type AssistantMode = "guided" | "authoring"
 
 /** Provider modes selectable in the first-run modal. */
-export const SELECTABLE_PROVIDER_MODES: readonly ProviderMode[] = ["chrome-ai", "ollama"] as const
+export const SELECTABLE_PROVIDER_MODES: readonly ProviderMode[] = [
+  "chrome-ai",
+  "ollama",
+  "anthropic",
+] as const
 
 const PROVIDER_CAPABILITY: Record<ProviderMode, string> = {
   "chrome-ai": "@executioncontrolprotocol/chrome-ai.generate",
   openai: "@executioncontrolprotocol/openai.generate",
-  claude: "@executioncontrolprotocol/claude.generate",
+  anthropic: "@executioncontrolprotocol/anthropic.generate",
   ollama: "@executioncontrolprotocol/ollama.generate",
 }
 
@@ -30,13 +34,33 @@ export interface DemoSession {
   harness: HarnessMode
 }
 
+/** Coding harness model-capability profile (scaffolding). */
+export type CodingHarnessProfile = "small" | "medium" | "frontier"
+
+/**
+ * Resolve coding harness profile from provider + model.
+ * Ollama → small; Anthropic Sonnet/Haiku → medium; Anthropic Opus → frontier.
+ */
+export function resolveCodingHarnessProfile(
+  provider: ProviderMode,
+  model?: string
+): CodingHarnessProfile {
+  if (provider !== "anthropic") return "small"
+  const trimmed = model?.trim().toLowerCase() ?? ""
+  if (trimmed.includes("opus")) return "frontier"
+  if (trimmed.includes("sonnet") || trimmed.includes("haiku") || trimmed.length > 0) {
+    return "medium"
+  }
+  return "medium"
+}
+
 /**
  * Map a single UI provider value to independent provider + harness switches.
- * Today: ollama → coding harness; everything else → nano.
+ * Ollama and Anthropic use the coding harness; Chrome AI uses nano.
  */
 export function resolveDemoSession(uiMode: ProviderMode): DemoSession {
-  if (uiMode === "ollama") {
-    return { provider: "ollama", harness: "coding" }
+  if (uiMode === "ollama" || uiMode === "anthropic") {
+    return { provider: uiMode, harness: "coding" }
   }
   return { provider: uiMode, harness: "nano" }
 }
@@ -56,11 +80,18 @@ export interface FirstRunContinueOptions {
   ollamaReady: boolean
   /** Current draft Ollama model tag. */
   ollamaModel: string
+  /** Browser secrets vault is unlocked. */
+  anthropicVaultReady?: boolean
+  /** Vault has a non-empty ANTHROPIC_API_KEY. */
+  anthropicKeyPresent?: boolean
+  /** Selected Anthropic model tag. */
+  anthropicModel?: string
 }
 
 /**
  * Whether Continue is enabled for the first-run provider modal.
  * Ollama requires a usable local bridge (`ecp up`) plus a selected installed model.
+ * Anthropic requires an unlocked vault with ANTHROPIC_API_KEY and a model tag.
  */
 export function canContinueFirstRun(
   mode: ProviderMode,
@@ -76,6 +107,13 @@ export function canContinueFirstRun(
   }
   if (mode === "chrome-ai") {
     return options.chromeSupported
+  }
+  if (mode === "anthropic") {
+    return Boolean(
+      options.anthropicVaultReady &&
+        options.anthropicKeyPresent &&
+        options.anthropicModel?.trim()
+    )
   }
   return false
 }
@@ -112,7 +150,9 @@ export function harnessCapabilityId(mode: HarnessMode): string {
 export const PROVIDER_MODE_STORAGE_KEY = "ecp:browser-demo:provider-mode"
 
 function parseProviderMode(raw: string | null): ProviderMode | null {
-  if (raw === "chrome-ai" || raw === "openai" || raw === "claude" || raw === "ollama") return raw
+  if (raw === "chrome-ai" || raw === "openai" || raw === "anthropic" || raw === "ollama") {
+    return raw
+  }
   return null
 }
 

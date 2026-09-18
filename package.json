@@ -40,7 +40,6 @@
   "dependencies": {
     "@executioncontrolprotocol/browser": "catalog:ecp",
     "@executioncontrolprotocol/chrome-ai": "catalog:ecp",
-    "@executioncontrolprotocol/claude": "catalog:ecp",
     "@executioncontrolprotocol/core": "catalog:ecp",
     "@executioncontrolprotocol/extension-ollama": "catalog:ecp",
     "@executioncontrolprotocol/extension-openai": "catalog:ecp",

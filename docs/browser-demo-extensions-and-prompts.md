@@ -70,7 +70,7 @@ All of the following are registered on the global extension catalog when the bro
 | `@executioncontrolprotocol/format-mermaid` | `packages/extensions/format-mermaid` | Manifest → Mermaid source |
 | `@executioncontrolprotocol/chrome-ai` | `packages/extensions/chrome-ai` | Chrome **`LanguageModel`** provider (default) |
 | `@executioncontrolprotocol/openai` | `packages/extensions/openai` | OpenAI Chat Completions |
-| `@executioncontrolprotocol/claude` | `packages/extensions/claude` | Anthropic Messages API |
+| `@executioncontrolprotocol/anthropic` | `packages/extensions/anthropic` | Anthropic Messages API |
 | `@executioncontrolprotocol/fal` | `packages/extensions/fal` | FAL image/model inference (`generate`) |
 | `@executioncontrolprotocol/image-sharp` | `packages/extensions/image-sharp` (sibling repo) | Image inspect/transform — **bound in the demo** as browser catalog; native `sharp` runs via host hop |
 | `@executioncontrolprotocol/jsonata` | `packages/jsonata` (sibling extensions repo) | JSONata object transform (`transform`) — **bound**; runs **local** in-browser |
@@ -86,7 +86,7 @@ Source: [`src/lib/demo-environment.ts`](../src/lib/demo-environment.ts).
 
 ### 2.3 Policy
 
-`@executioncontrolprotocol/registry-control` allows namespaces: `@executioncontrolprotocol/chrome-ai`, `@executioncontrolprotocol/openai`, `@executioncontrolprotocol/claude`, `@executioncontrolprotocol/fal`, `@executioncontrolprotocol/image-sharp`, `@executioncontrolprotocol/jsonata`, `@executioncontrolprotocol/browser`, `@customer/*`.
+`@executioncontrolprotocol/registry-control` allows namespaces: `@executioncontrolprotocol/chrome-ai`, `@executioncontrolprotocol/openai`, `@executioncontrolprotocol/anthropic`, `@executioncontrolprotocol/fal`, `@executioncontrolprotocol/image-sharp`, `@executioncontrolprotocol/jsonata`, `@executioncontrolprotocol/browser`, `@customer/*`.
 
 ---
 
@@ -107,7 +107,7 @@ Used **only** through harness invoke for chat and authoring. Shared input shape 
 | ---------- | -------- | ------------ | ----------------- | ----- |
 | `@executioncontrolprotocol/chrome-ai.generate` | Chrome `LanguageModel` | Yes | **Yes** → `systemPrompt` on `create()` | Default provider; throws if model not `available` |
 | `@executioncontrolprotocol/openai.generate` | OpenAI API | Yes (needs key) | Varies | Bound when API key present |
-| `@executioncontrolprotocol/claude.generate` | Anthropic API | Yes (needs key) | **Yes** | Bound when API key present |
+| `@executioncontrolprotocol/anthropic.generate` | Anthropic API | Yes (needs key) | **Yes** | Bound when API key present; local execution + vault BYOK |
 
 **UI mapping** ([`provider-mode.ts`](../src/lib/provider-mode.ts)):
 
@@ -115,7 +115,7 @@ Used **only** through harness invoke for chat and authoring. Shared input shape 
 | -------------- | -------------------- |
 | `chrome-ai` | `@executioncontrolprotocol/chrome-ai.generate` |
 | `openai` | `@executioncontrolprotocol/openai.generate` |
-| `claude` | `@executioncontrolprotocol/claude.generate` |
+| `anthropic` | `@executioncontrolprotocol/anthropic.generate` |
 
 OpenAI extension also exposes `@executioncontrolprotocol/openai.generate`, `@executioncontrolprotocol/openai.evaluate`—not used by the browser demo chat/authoring path today.
 

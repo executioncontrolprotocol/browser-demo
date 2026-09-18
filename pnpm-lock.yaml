@@ -26,9 +26,6 @@ importers:
       '@executioncontrolprotocol/chrome-ai':
         specifier: catalog:ecp
         version: 0.13.1(@executioncontrolprotocol/core@0.13.1(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76)
-      '@executioncontrolprotocol/claude':
-        specifier: catalog:ecp
-        version: 0.13.1(zod@3.25.76)
       '@executioncontrolprotocol/core':
         specifier: catalog:ecp
         version: 0.13.1(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76)
@@ -424,13 +421,6 @@ packages:
 
   '@executioncontrolprotocol/chrome-ai@0.13.1':
     resolution: {integrity: sha512-R9v3MQTxgpPQah1hkcuVCJPcsdf8d4+2dmTN5bmAMH/tciONGStGKDPagte40u7JdWFWGTd6eqSpWfBSxfZupQ==}
-    peerDependencies:
-      '@executioncontrolprotocol/core': ^0.13.1
-      '@executioncontrolprotocol/types': ^0.13.1
-      zod: ^3.24.0
-
-  '@executioncontrolprotocol/claude@0.13.1':
-    resolution: {integrity: sha512-gkiWen3RfATLlEa2pr7IVrC7PpqereWyIlO1K0KRZI81i94VErsgqMoOrbRuDbPlMj8bX7RaV7IlZKRe1foRgw==}
     peerDependencies:
       '@executioncontrolprotocol/core': ^0.13.1
       '@executioncontrolprotocol/types': ^0.13.1
@@ -2351,10 +2341,6 @@ snapshots:
     dependencies:
       '@executioncontrolprotocol/core': 0.13.1(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76)
       '@executioncontrolprotocol/types': 0.13.1(zod@3.25.76)
-      zod: 3.25.76
-
-  '@executioncontrolprotocol/claude@0.13.1(zod@3.25.76)':
-    dependencies:
       zod: 3.25.76
 
   '@executioncontrolprotocol/core@0.13.1(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76)':

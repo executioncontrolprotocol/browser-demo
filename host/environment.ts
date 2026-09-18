@@ -9,7 +9,7 @@ import {
 import { registerFalExtension } from "@executioncontrolprotocol/fal"
 import { registerJsonataExtension } from "@executioncontrolprotocol/jsonata"
 import { registerOpenaiExtension } from "@executioncontrolprotocol/extension-openai"
-import { registerClaudeExtension } from "@executioncontrolprotocol/claude"
+import { registerAnthropicExtension } from "@executioncontrolprotocol/anthropic"
 import { environment, extension, policy, env } from "@executioncontrolprotocol/node"
 import { registerImagePolicy } from "@executioncontrolprotocol/policies"
 
@@ -17,7 +17,7 @@ await registerImageSharpExtension()
 await registerFalExtension()
 await registerJsonataExtension()
 await registerOpenaiExtension()
-await registerClaudeExtension()
+await registerAnthropicExtension()
 await registerImagePolicy()
 
 export default (await environment("browser-demo-host", "Browser demo host"))
@@ -40,7 +40,7 @@ export default (await environment("browser-demo-host", "Browser demo host"))
     extension("@executioncontrolprotocol/openai", "OpenAI").with({
       apiKey: env("OPENAI_API_KEY", { optional: true }),
     }),
-    extension("@executioncontrolprotocol/claude", "Claude").with({
+    extension("@executioncontrolprotocol/anthropic", "Anthropic").with({
       apiKey: env("ANTHROPIC_API_KEY", { optional: true }),
     }),
   ])

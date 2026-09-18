@@ -71,6 +71,7 @@ import { readAvailability } from "@executioncontrolprotocol/chrome-ai"
 import { useViewLayout } from "./hooks/useViewLayout.js"
 import { installEsbuildWasmUrl } from "./lib/esbuild-wasm-bootstrap.js"
 import { createDemoAppEnvironment } from "./lib/demo-environment.js"
+import { buildDemoConversationMessages } from "./lib/demo-conversation-messages.js"
 import { capabilityExecutionMap } from "./lib/capability-execution-badge.js"
 import { shouldBlockForVault } from "./lib/vault-gate.js"
 import {
@@ -113,6 +114,13 @@ import {
   storeOllamaSettings,
   type OllamaSettings,
 } from "./lib/ollama-settings.js"
+import {
+  ANTHROPIC_CHAT_FILE_ACCEPT,
+  isAnthropicChatFileMediaType,
+  readAnthropicSettings,
+  storeAnthropicSettings,
+  type AnthropicSettings,
+} from "./lib/anthropic-settings.js"
 import {
   detectEcpBridge,
   isOllamaBridgeUsable,
@@ -187,6 +195,12 @@ export function App() {
     () => readStoredProviderMode() ?? "chrome-ai"
   )
   const [ollamaSettings, setOllamaSettings] = useState<OllamaSettings>(() => readOllamaSettings())
+  const [anthropicSettings, setAnthropicSettings] = useState<AnthropicSettings>(() =>
+    readAnthropicSettings()
+  )
+  const [chatAttachFiles, setChatAttachFiles] = useState<
+    Array<{ name: string; mediaType: string; data: string }>
+  >([])
   const [bridgeSettings, setBridgeSettings] = useState<BridgeSettings>(() =>
     consumeBridgeQueryParams()
   )
@@ -237,7 +251,6 @@ export function App() {
   const [configureBusy, setConfigureBusy] = useState(false)
   const [configureError, setConfigureError] = useState<string | null>(null)
   const [chatBusy, setChatBusy] = useState(false)
-  const [conversationSummary, setConversationSummary] = useState<string | undefined>()
   const [pendingOfferRun, setPendingOfferRun] = useState(false)
   const [pendingOfferProbe, setPendingOfferProbe] = useState(false)
   const [probeContext, setProbeContext] = useState<ProbeContext | undefined>()
@@ -303,18 +316,24 @@ export function App() {
     async (
       nextOllama?: OllamaSettings,
       nextBridge?: BridgeSettings,
-      nextPreset?: DemoEnvPreset
+      nextPreset?: DemoEnvPreset,
+      nextAnthropic?: AnthropicSettings,
+      nextProviderMode?: ProviderMode
     ) => {
       if (ecpRef.current) {
         await ecpRef.current.terminate()
       }
       const settings = nextOllama ?? readOllamaSettings()
+      const anthropic = nextAnthropic ?? readAnthropicSettings()
       const bridge = nextBridge ?? readBridgeSettings()
       const preset = nextPreset ?? readDemoEnvPreset()
+      const mode = nextProviderMode ?? providerMode
       const { ecp: operational, descriptor: desc } = await createDemoAppEnvironment({
         ollama: settings,
+        anthropic,
         bridge,
         preset,
+        providerMode: mode,
       })
       ecpRef.current = operational
       setEcp(operational)
@@ -323,7 +342,7 @@ export function App() {
       await refreshHostCompat(desc, bridge)
       return operational
     },
-    [refreshHostCompat]
+    [refreshHostCompat, providerMode]
   )
 
   const refreshBridgeDetect = useCallback(async (baseURL?: string) => {
@@ -363,8 +382,10 @@ export function App() {
 
     const { ecp: operational, descriptor: desc } = await createDemoAppEnvironment({
       ollama: readOllamaSettings(),
+      anthropic: readAnthropicSettings(),
       bridge: readBridgeSettings(),
       preset: readDemoEnvPreset(),
+      providerMode: readStoredProviderMode() ?? "chrome-ai",
     })
     ecpRef.current = operational
     setEcp(operational)
@@ -846,16 +867,17 @@ export function App() {
     setShowProviderModal(false)
     storeBridgeSettings(bridgeSettings)
     storeDemoEnvPreset(demoEnvPreset)
+    storeAnthropicSettings(anthropicSettings)
     if (nextOllama) {
       storeOllamaSettings(nextOllama)
       setOllamaSettings(nextOllama)
-      void reloadEcp(nextOllama, bridgeSettings, demoEnvPreset).then(() => {
+      void reloadEcp(nextOllama, bridgeSettings, demoEnvPreset, anthropicSettings, mode).then(() => {
         const resolved = resolveDemoSession(mode)
         setChatStatus(`Ready (${mode} / ${resolved.harness} / ${demoEnvPreset}).`)
       })
       return
     }
-    void reloadEcp(undefined, bridgeSettings, demoEnvPreset).then(() => {
+    void reloadEcp(undefined, bridgeSettings, demoEnvPreset, anthropicSettings, mode).then(() => {
       const resolved = resolveDemoSession(mode)
       setChatStatus(`Ready (${mode} / ${resolved.harness} / ${demoEnvPreset}).`)
     })
@@ -885,6 +907,15 @@ export function App() {
       isHarnessRunResultDocument(lastRunResult) && manifest
         ? toHarnessRunContext(lastRunResult as RunResult, manifest)
         : undefined
+    const files =
+      provider === "anthropic" && chatAttachFiles.length > 0
+        ? chatAttachFiles.map((f) => ({
+            kind: "buffer" as const,
+            data: f.data,
+            mediaType: f.mediaType,
+          }))
+        : undefined
+    const conversationMessages = buildDemoConversationMessages(chatMessages)
     const invoked = await ecp
       .invoke(harnessCapabilityId(harness))
       .uses(providerCapabilityId(provider))
@@ -892,12 +923,18 @@ export function App() {
         task: NANO_HARNESS_TASKS.CHAT,
         message: userRequest,
         ...(manifest ? { manifest } : {}),
-        ...(conversationSummary ? { conversationSummary } : {}),
+        ...(conversationMessages.length > 0 ? { conversationMessages } : {}),
         ...(runContext ? { runContext } : {}),
         ...(probeContext ? { probeContext } : {}),
         ...(provider === "ollama" ? { model: ollamaSettings.model } : {}),
+        ...(provider === "anthropic" ? { model: anthropicSettings.model } : {}),
+        ...(files ? { files } : {}),
       })
       .process()
+
+    if (files) {
+      setChatAttachFiles([])
+    }
 
     logHarnessInvoke("chat", invoked)
 
@@ -940,7 +977,6 @@ export function App() {
         setProbeContext(undefined)
         setTestSessionSnapshot(undefined)
       }
-      setConversationSummary(`User: ${userRequest}\nAssistant: ${answer.slice(0, 200)}`)
       return
     }
 
@@ -952,7 +988,6 @@ export function App() {
       setPendingOfferProbe(false)
       appendAgent(answer)
       setChatStatus(assistantMode === "guided" ? "Guided mode" : "Ready")
-      setConversationSummary(`User: ${userRequest}\nAssistant: ${answer.slice(0, 200)}`)
     }
   }
 
@@ -1349,6 +1384,39 @@ export function App() {
             runBlobs={lastRunBlobs.current}
             filePickerEnabled={Boolean(descriptor?.remoteInvoke?.url)}
             runFormDrafts={runFormDrafts}
+            anthropicAttachEnabled={providerMode === "anthropic"}
+            anthropicFileAccept={ANTHROPIC_CHAT_FILE_ACCEPT}
+            attachedFileNames={chatAttachFiles.map((f) => f.name)}
+            onAttachFiles={(list) => {
+              if (!list || list.length === 0) return
+              void (async () => {
+                const next: Array<{ name: string; mediaType: string; data: string }> = []
+                for (const file of Array.from(list)) {
+                  const mediaType = file.type || "application/octet-stream"
+                  if (!isAnthropicChatFileMediaType(mediaType)) {
+                    appendAgentError(
+                      `Unsupported attachment type: ${mediaType || file.name}. Use JPEG, PNG, GIF, WEBP, or PDF.`
+                    )
+                    continue
+                  }
+                  const buffer = await file.arrayBuffer()
+                  const bytes = new Uint8Array(buffer)
+                  let binary = ""
+                  for (const byte of bytes) binary += String.fromCharCode(byte)
+                  next.push({
+                    name: file.name,
+                    mediaType: mediaType === "image/jpg" ? "image/jpeg" : mediaType,
+                    data: btoa(binary),
+                  })
+                }
+                if (next.length > 0) {
+                  setChatAttachFiles((prev) => [...prev, ...next])
+                }
+              })()
+            }}
+            onRemoveAttachedFile={(index) => {
+              setChatAttachFiles((prev) => prev.filter((_, i) => i !== index))
+            }}
           />
         ) : null}
 
@@ -1427,6 +1495,8 @@ export function App() {
           onChromeInstall={onChromeInstallFromModal}
           ollamaSettings={ollamaSettings}
           onOllamaSettingsChange={setOllamaSettings}
+          anthropicSettings={anthropicSettings}
+          onAnthropicSettingsChange={setAnthropicSettings}
           bridgeSettings={bridgeSettings}
           onBridgeSettingsChange={(next) => {
             setBridgeSettings(next)
