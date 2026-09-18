@@ -66,6 +66,7 @@ import { StatusFooter } from "./components/StatusFooter.js"
 import { TopAppBar } from "./components/TopAppBar.js"
 import { OpenWorkflowDialog } from "./components/OpenWorkflowDialog.js"
 import { DownloadWorkflowDialog } from "./components/DownloadWorkflowDialog.js"
+import { SaveWorkflowDialog } from "./components/SaveWorkflowDialog.js"
 import { WorkspaceColumn } from "./components/WorkspaceColumn.js"
 import { useChatHistory } from "./hooks/useChatHistory.js"
 import { useChromeModelInstall } from "./hooks/useChromeModelInstall.js"
@@ -107,7 +108,12 @@ import {
   type WorkflowDownloadFormat,
   type WorkflowListEntry,
 } from "./lib/workflow-bundle.js"
-import { hostListWorkflows, hostLoadWorkflow, hostSaveWorkflow } from "./lib/host-workflows.js"
+import {
+  hostDeleteWorkflow,
+  hostListWorkflows,
+  hostLoadWorkflow,
+  hostSaveWorkflow,
+} from "./lib/host-workflows.js"
 import { columnWidthClass } from "./lib/view-layout.js"
 import {
   harnessCapabilityId,
@@ -241,7 +247,10 @@ export function App() {
   const [openWorkflowOpen, setOpenWorkflowOpen] = useState(false)
   const [openWorkflowBusy, setOpenWorkflowBusy] = useState(false)
   const [openWorkflowError, setOpenWorkflowError] = useState<string | null>(null)
+  const [deletingWorkflowId, setDeletingWorkflowId] = useState<string | null>(null)
   const [downloadWorkflowOpen, setDownloadWorkflowOpen] = useState(false)
+  const [saveWorkflowOpen, setSaveWorkflowOpen] = useState(false)
+  const [saveWorkflowError, setSaveWorkflowError] = useState<string | null>(null)
   const [saveBusy, setSaveBusy] = useState(false)
   const [validation, setValidation] = useState<ValidationResult | null>(null)
   const [hostCompat, setHostCompat] = useState<ValidationResult | null>(null)
@@ -621,44 +630,44 @@ export function App() {
     void refreshSavedWorkflows()
   }, [refreshSavedWorkflows])
 
-  const onSaveWorkflow = useCallback(async () => {
-    const operational = ecpRef.current
-    if (!operational || !manifest) return
-    let id = savedWorkflowId
-    let label = manifest.workflow.label ?? manifest.workflow.id
-    if (!id) {
-      const suggested = sanitizeWorkflowFilename(label || "workflow")
-      const entered = window.prompt("Save workflow as (id)", suggested)
-      if (!entered || !entered.trim()) return
-      id = sanitizeWorkflowFilename(entered)
-      const labelEntered = window.prompt("Workflow label", label || id)
-      if (labelEntered && labelEntered.trim()) label = labelEntered.trim()
+  const performHostSave = useCallback(
+    async (id: string, label: string) => {
+      const operational = ecpRef.current
+      if (!operational || !manifest) return
+      setSaveBusy(true)
+      setSaveWorkflowError(null)
+      try {
+        const saved = await hostSaveWorkflow(operational, {
+          id,
+          label,
+          fluent,
+        })
+        setSavedWorkflowId(saved.id)
+        await refreshSavedWorkflows()
+        setSaveWorkflowOpen(false)
+        setChatStatus(`Saved ${label} to host`)
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        setSaveWorkflowError(msg)
+        appendAgentError(`Save failed: ${msg}`)
+        setChatStatus("Save failed")
+      } finally {
+        setSaveBusy(false)
+      }
+    },
+    [appendAgentError, fluent, manifest, refreshSavedWorkflows, setChatStatus]
+  )
+
+  const onSaveWorkflow = useCallback(() => {
+    if (!manifest) return
+    if (savedWorkflowId) {
+      const label = manifest.workflow.label ?? manifest.workflow.id
+      void performHostSave(savedWorkflowId, label)
+      return
     }
-    setSaveBusy(true)
-    try {
-      const saved = await hostSaveWorkflow(operational, {
-        id,
-        label,
-        fluent,
-      })
-      setSavedWorkflowId(saved.id)
-      await refreshSavedWorkflows()
-      setChatStatus(`Saved ${label} to host`)
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err)
-      appendAgentError(`Save failed: ${msg}`)
-      setChatStatus("Save failed")
-    } finally {
-      setSaveBusy(false)
-    }
-  }, [
-    appendAgentError,
-    fluent,
-    manifest,
-    refreshSavedWorkflows,
-    savedWorkflowId,
-    setChatStatus,
-  ])
+    setSaveWorkflowError(null)
+    setSaveWorkflowOpen(true)
+  }, [manifest, performHostSave, savedWorkflowId])
 
   const onDownloadWorkflow = useCallback(
     (format: WorkflowDownloadFormat) => {
@@ -697,6 +706,27 @@ export function App() {
       }
     },
     [applyFluentWorkflow]
+  )
+
+  const onOpenWorkflowDelete = useCallback(
+    async (id: string) => {
+      const operational = ecpRef.current
+      if (!operational) return
+      setDeletingWorkflowId(id)
+      setOpenWorkflowError(null)
+      try {
+        await hostDeleteWorkflow(operational, id)
+        if (savedWorkflowId === id) setSavedWorkflowId(null)
+        await refreshSavedWorkflows()
+        setChatStatus(`Deleted ${id} from host`)
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        setOpenWorkflowError(msg)
+      } finally {
+        setDeletingWorkflowId(null)
+      }
+    },
+    [refreshSavedWorkflows, savedWorkflowId, setChatStatus]
   )
 
   const onWorkflowFileDrop = useCallback(
@@ -1767,8 +1797,24 @@ export function App() {
         workflows={savedWorkflows}
         busy={openWorkflowBusy}
         error={openWorkflowError}
+        deletingId={deletingWorkflowId}
         onClose={() => setOpenWorkflowOpen(false)}
         onSelect={(id) => void onOpenWorkflowSelect(id)}
+        onDelete={(id) => void onOpenWorkflowDelete(id)}
+      />
+
+      <SaveWorkflowDialog
+        open={saveWorkflowOpen}
+        defaultId={sanitizeWorkflowFilename(
+          manifest?.workflow.label ?? manifest?.workflow.id ?? "workflow"
+        )}
+        defaultLabel={manifest?.workflow.label ?? manifest?.workflow.id ?? "workflow"}
+        busy={saveBusy}
+        error={saveWorkflowError}
+        onClose={() => {
+          if (!saveBusy) setSaveWorkflowOpen(false)
+        }}
+        onSave={({ id, label }) => void performHostSave(id, label)}
       />
 
       <DownloadWorkflowDialog
