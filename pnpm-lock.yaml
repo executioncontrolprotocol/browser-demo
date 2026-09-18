@@ -17,43 +17,43 @@ catalogs:
       version: 3.25.76
   ecp:
     '@executioncontrolprotocol/anthropic':
-      specifier: ^0.13.2
+      specifier: ^0.14.0
       version: 0.13.2
     '@executioncontrolprotocol/browser':
-      specifier: ^0.13.2
+      specifier: ^0.14.0
       version: 0.13.2
     '@executioncontrolprotocol/chrome-ai':
-      specifier: ^0.13.2
+      specifier: ^0.14.0
       version: 0.13.2
     '@executioncontrolprotocol/core':
-      specifier: ^0.13.2
+      specifier: ^0.14.0
       version: 0.13.2
     '@executioncontrolprotocol/extension-ollama':
-      specifier: ^0.13.2
+      specifier: ^0.14.0
       version: 0.13.2
     '@executioncontrolprotocol/extension-openai':
-      specifier: ^0.13.2
+      specifier: ^0.14.0
       version: 0.13.2
     '@executioncontrolprotocol/format-eql':
-      specifier: ^0.13.2
+      specifier: ^0.14.0
       version: 0.13.2
     '@executioncontrolprotocol/format-mermaid':
-      specifier: ^0.13.2
+      specifier: ^0.14.0
       version: 0.13.2
     '@executioncontrolprotocol/format-reactflow':
-      specifier: ^0.13.2
+      specifier: ^0.14.0
       version: 0.13.2
     '@executioncontrolprotocol/format-toon':
-      specifier: ^0.13.2
+      specifier: ^0.14.0
       version: 0.13.2
     '@executioncontrolprotocol/harnesses-browser-coding':
-      specifier: ^0.13.2
+      specifier: ^0.14.0
       version: 0.13.2
     '@executioncontrolprotocol/harnesses-browser-nano':
-      specifier: ^0.13.2
+      specifier: ^0.14.0
       version: 0.13.2
     '@executioncontrolprotocol/types':
-      specifier: ^0.13.2
+      specifier: ^0.14.0
       version: 0.13.2
 
 importers:
