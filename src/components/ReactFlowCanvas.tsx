@@ -145,6 +145,8 @@ export interface ReactFlowCanvasProps {
     targetStepId: string
     targetHandle: string
   }) => void | Promise<void>
+  /** Drop a Fluent `.workflow.ts` or workflow JSON onto the canvas. */
+  onWorkflowFileDrop?: (file: File) => void | Promise<void>
 }
 
 function ReactFlowCanvasInner({
@@ -157,6 +159,7 @@ function ReactFlowCanvasInner({
   onConfigureStep,
   onConnectPorts,
   onDisconnectPorts,
+  onWorkflowFileDrop,
 }: ReactFlowCanvasProps) {
   const doc = useMemo(() => parseDocument(reactflowJson), [reactflowJson])
   const stepIds = useMemo(
@@ -445,6 +448,17 @@ function ReactFlowCanvasInner({
     <section
       className="node-canvas relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background"
       id="graph-drawer"
+      onDragOver={(e) => {
+        if (!onWorkflowFileDrop) return
+        e.preventDefault()
+        e.dataTransfer.dropEffect = "copy"
+      }}
+      onDrop={(e) => {
+        if (!onWorkflowFileDrop) return
+        e.preventDefault()
+        const file = e.dataTransfer.files?.[0]
+        if (file) void onWorkflowFileDrop(file)
+      }}
     >
       <PanelHeader icon="account_tree" label="Workflow Canvas" />
 

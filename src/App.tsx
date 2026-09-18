@@ -64,6 +64,8 @@ import { StepConfigureDialog } from "./components/StepConfigureDialog.js"
 import { IoConfigureDialog, type IoConfigureSavePayload } from "./components/IoConfigureDialog.js"
 import { StatusFooter } from "./components/StatusFooter.js"
 import { TopAppBar } from "./components/TopAppBar.js"
+import { OpenWorkflowDialog } from "./components/OpenWorkflowDialog.js"
+import { DownloadWorkflowDialog } from "./components/DownloadWorkflowDialog.js"
 import { WorkspaceColumn } from "./components/WorkspaceColumn.js"
 import { useChatHistory } from "./hooks/useChatHistory.js"
 import { useChromeModelInstall } from "./hooks/useChromeModelInstall.js"
@@ -97,6 +99,15 @@ import {
   beautifyFluentWorkflowSource,
   shouldBeautifyFluentSource,
 } from "./lib/fluent-beautify.js"
+import {
+  downloadWorkflowFluent,
+  downloadWorkflowManifest,
+  parseDroppedWorkflowFile,
+  sanitizeWorkflowFilename,
+  type WorkflowDownloadFormat,
+  type WorkflowListEntry,
+} from "./lib/workflow-bundle.js"
+import { hostListWorkflows, hostLoadWorkflow, hostSaveWorkflow } from "./lib/host-workflows.js"
 import { columnWidthClass } from "./lib/view-layout.js"
 import {
   harnessCapabilityId,
@@ -225,6 +236,13 @@ export function App() {
   const [chromeReady, setChromeReady] = useState(false)
   const [chromeInstallUi, setChromeInstallUi] = useState<ChromeInstallUi>("idle")
   const [manifest, setManifest] = useState<WorkflowManifest | null>(null)
+  const [savedWorkflowId, setSavedWorkflowId] = useState<string | null>(null)
+  const [savedWorkflows, setSavedWorkflows] = useState<WorkflowListEntry[]>([])
+  const [openWorkflowOpen, setOpenWorkflowOpen] = useState(false)
+  const [openWorkflowBusy, setOpenWorkflowBusy] = useState(false)
+  const [openWorkflowError, setOpenWorkflowError] = useState<string | null>(null)
+  const [downloadWorkflowOpen, setDownloadWorkflowOpen] = useState(false)
+  const [saveBusy, setSaveBusy] = useState(false)
   const [validation, setValidation] = useState<ValidationResult | null>(null)
   const [hostCompat, setHostCompat] = useState<ValidationResult | null>(null)
   const [descriptor, setDescriptor] = useState<EnvironmentDescriptor | null>(null)
@@ -263,7 +281,12 @@ export function App() {
   const syncFromManifestRef = useRef<
     (
       nextManifest: WorkflowManifest,
-      options: { refreshFluent: boolean; patchToon?: string; validation?: ValidationResult | null }
+      options: {
+        refreshFluent: boolean
+        patchToon?: string
+        validation?: ValidationResult | null
+        fluentOverride?: string
+      }
     ) => Promise<void>
   >(async () => {})
   const ecpRef = useRef<Ecp | null>(null)
@@ -456,7 +479,13 @@ export function App() {
   const syncFromManifest = useCallback(
     async (
       nextManifest: WorkflowManifest,
-      options: { refreshFluent: boolean; patchToon?: string; validation?: ValidationResult | null }
+      options: {
+        refreshFluent: boolean
+        patchToon?: string
+        validation?: ValidationResult | null
+        /** Prefer bundle Fluent over re-encode when loading a saved file. */
+        fluentOverride?: string
+      }
     ) => {
       const operational = ecpRef.current
       if (!operational) {
@@ -479,7 +508,11 @@ export function App() {
         // Monaco instance from flushing stale source back into React state.
         if (compileTimer.current) clearTimeout(compileTimer.current)
         compileGeneration.current += 1
-        setFluent(panels.fluent)
+        setFluent(
+          typeof options.fluentOverride === "string" && options.fluentOverride.length > 0
+            ? options.fluentOverride
+            : panels.fluent
+        )
         setFluentEditorKey((key) => key + 1)
       }
       setJson(panels.json)
@@ -517,6 +550,182 @@ export function App() {
   )
 
   syncFromManifestRef.current = syncFromManifest
+
+  const applyFluentWorkflow = useCallback(
+    async (input: { fluent: string; id?: string; label?: string }) => {
+      setProbeContext(undefined)
+      setTestSessionSnapshot(undefined)
+      setPendingOfferRun(false)
+      setPendingOfferProbe(false)
+      if (input.id) setSavedWorkflowId(input.id)
+      layout.openWorkspace()
+      const compiled = await compileWorkflowSource({
+        source: input.fluent,
+        filename: "workflow.ts",
+        resolveImports: "browser-global",
+      })
+      if (!compiled.ok || !compiled.manifest) {
+        const msg =
+          compiled.compileErrors?.[0]?.message ||
+          compiled.validation?.errors?.[0]?.message ||
+          "Fluent compile failed"
+        throw new Error(msg)
+      }
+      await syncFromManifestRef.current(compiled.manifest, {
+        refreshFluent: true,
+        fluentOverride: input.fluent,
+      })
+      const label =
+        input.label ||
+        compiled.manifest.workflow.label ||
+        compiled.manifest.workflow.id ||
+        input.id ||
+        "workflow"
+      setChatStatus(`Loaded ${label}`)
+    },
+    [layout, setChatStatus]
+  )
+
+  const applyManifestWorkflow = useCallback(
+    async (nextManifest: WorkflowManifest, options?: { id?: string }) => {
+      setProbeContext(undefined)
+      setTestSessionSnapshot(undefined)
+      setPendingOfferRun(false)
+      setPendingOfferProbe(false)
+      if (options?.id) setSavedWorkflowId(options.id)
+      layout.openWorkspace()
+      await syncFromManifestRef.current(nextManifest, { refreshFluent: true })
+      const label = nextManifest.workflow.label ?? nextManifest.workflow.id
+      setChatStatus(`Loaded ${label}`)
+    },
+    [layout, setChatStatus]
+  )
+
+  const refreshSavedWorkflows = useCallback(async (): Promise<string | null> => {
+    const operational = ecpRef.current
+    if (!operational || !descriptor?.remoteInvoke?.url) {
+      setSavedWorkflows([])
+      return "Pair with ecp up to list host-saved workflows."
+    }
+    try {
+      const list = await hostListWorkflows(operational)
+      setSavedWorkflows(list)
+      return null
+    } catch (err) {
+      setSavedWorkflows([])
+      return err instanceof Error ? err.message : String(err)
+    }
+  }, [descriptor?.remoteInvoke?.url])
+
+  useEffect(() => {
+    void refreshSavedWorkflows()
+  }, [refreshSavedWorkflows])
+
+  const onSaveWorkflow = useCallback(async () => {
+    const operational = ecpRef.current
+    if (!operational || !manifest) return
+    let id = savedWorkflowId
+    let label = manifest.workflow.label ?? manifest.workflow.id
+    if (!id) {
+      const suggested = sanitizeWorkflowFilename(label || "workflow")
+      const entered = window.prompt("Save workflow as (id)", suggested)
+      if (!entered || !entered.trim()) return
+      id = sanitizeWorkflowFilename(entered)
+      const labelEntered = window.prompt("Workflow label", label || id)
+      if (labelEntered && labelEntered.trim()) label = labelEntered.trim()
+    }
+    setSaveBusy(true)
+    try {
+      const saved = await hostSaveWorkflow(operational, {
+        id,
+        label,
+        fluent,
+      })
+      setSavedWorkflowId(saved.id)
+      await refreshSavedWorkflows()
+      setChatStatus(`Saved ${label} to host`)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      appendAgentError(`Save failed: ${msg}`)
+      setChatStatus("Save failed")
+    } finally {
+      setSaveBusy(false)
+    }
+  }, [
+    appendAgentError,
+    fluent,
+    manifest,
+    refreshSavedWorkflows,
+    savedWorkflowId,
+    setChatStatus,
+  ])
+
+  const onDownloadWorkflow = useCallback(
+    (format: WorkflowDownloadFormat) => {
+      if (!manifest) return
+      const id = savedWorkflowId ?? sanitizeWorkflowFilename(manifest.workflow.id || "workflow")
+      const label = manifest.workflow.label ?? id
+      if (format === "fluent") {
+        downloadWorkflowFluent(fluent, label || id)
+      } else {
+        downloadWorkflowManifest(manifest, label || id)
+      }
+      setChatStatus(`Downloaded ${label}`)
+    },
+    [fluent, manifest, savedWorkflowId, setChatStatus]
+  )
+
+  const onOpenWorkflowSelect = useCallback(
+    async (id: string) => {
+      const operational = ecpRef.current
+      if (!operational) return
+      setOpenWorkflowBusy(true)
+      setOpenWorkflowError(null)
+      try {
+        const record = await hostLoadWorkflow(operational, id)
+        await applyFluentWorkflow({
+          fluent: record.fluent,
+          id: record.id,
+          label: record.label,
+        })
+        setOpenWorkflowOpen(false)
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        setOpenWorkflowError(msg)
+      } finally {
+        setOpenWorkflowBusy(false)
+      }
+    },
+    [applyFluentWorkflow]
+  )
+
+  const onWorkflowFileDrop = useCallback(
+    async (file: File) => {
+      try {
+        const text = await file.text()
+        const parsed = parseDroppedWorkflowFile(text, file.name)
+        if (parsed.kind === "fluent") {
+          await applyFluentWorkflow({ fluent: parsed.fluent })
+          return
+        }
+        if (parsed.kind === "manifest") {
+          await applyManifestWorkflow(parsed.manifest)
+          return
+        }
+        setSavedWorkflowId(parsed.id)
+        await applyFluentWorkflow({
+          fluent: parsed.fluent,
+          id: parsed.id,
+          label: parsed.label,
+        })
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        appendAgentError(`Could not open dropped file: ${msg}`)
+        setChatStatus("Drop failed")
+      }
+    },
+    [appendAgentError, applyFluentWorkflow, applyManifestWorkflow, setChatStatus]
+  )
 
   const configureStepData = useMemo((): ReactFlowStepData | null => {
     if (!configureStepId || !reactflow.trim()) return null
@@ -1353,6 +1562,21 @@ export function App() {
         executeDisabled={!ecp || !hasWorkflow}
         executeBusy={runBusy}
         onSettings={() => setShowProviderModal(true)}
+        hostPaired={Boolean(descriptor?.remoteInvoke?.url)}
+        hasWorkflow={hasWorkflow}
+        onSave={() => void onSaveWorkflow()}
+        onDownload={() => setDownloadWorkflowOpen(true)}
+        onOpen={() => {
+          setOpenWorkflowError(null)
+          setOpenWorkflowOpen(true)
+          setOpenWorkflowBusy(true)
+          void (async () => {
+            const err = await refreshSavedWorkflows()
+            setOpenWorkflowError(err)
+            setOpenWorkflowBusy(false)
+          })()
+        }}
+        saveBusy={saveBusy}
       />
 
       <main className="flex min-h-0 w-full flex-1 overflow-hidden">
@@ -1436,6 +1660,7 @@ export function App() {
                 onConfigureStep={onConfigureStep}
                 onConnectPorts={onConnectPorts}
                 onDisconnectPorts={onDisconnectPorts}
+                onWorkflowFileDrop={onWorkflowFileDrop}
               />
             ) : null}
             {layout.views.code ? (
@@ -1536,6 +1761,21 @@ export function App() {
           }}
         />
       ) : null}
+
+      <OpenWorkflowDialog
+        open={openWorkflowOpen}
+        workflows={savedWorkflows}
+        busy={openWorkflowBusy}
+        error={openWorkflowError}
+        onClose={() => setOpenWorkflowOpen(false)}
+        onSelect={(id) => void onOpenWorkflowSelect(id)}
+      />
+
+      <DownloadWorkflowDialog
+        open={downloadWorkflowOpen}
+        onClose={() => setDownloadWorkflowOpen(false)}
+        onDownload={onDownloadWorkflow}
+      />
 
       {chromeInstallUi === "dialog" ? (
         <ChromeInstallDialog

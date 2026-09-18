@@ -8,6 +8,14 @@ export interface TopAppBarProps {
   executeDisabled?: boolean
   executeBusy?: boolean
   onSettings: () => void
+  /** Host paired for remote invoke (enables Save / Open). */
+  hostPaired?: boolean
+  /** Whether a workflow is loaded in the editor. */
+  hasWorkflow?: boolean
+  onSave?: () => void
+  onDownload?: () => void
+  onOpen?: () => void
+  saveBusy?: boolean
 }
 
 /** Top application bar with centered view navigation and action buttons. */
@@ -18,7 +26,17 @@ export function TopAppBar({
   executeDisabled,
   executeBusy,
   onSettings,
+  hostPaired = false,
+  hasWorkflow = false,
+  onSave,
+  onDownload,
+  onOpen,
+  saveBusy,
 }: TopAppBarProps) {
+  const canSave = Boolean(hostPaired && hasWorkflow && onSave && !saveBusy)
+  const canDownload = Boolean(hasWorkflow && onDownload)
+  const canOpen = Boolean(hostPaired && onOpen)
+
   return (
     <header
       className="relative z-50 flex h-16 w-full shrink-0 items-center border-b border-outline-variant bg-surface px-gutter"
@@ -63,13 +81,46 @@ export function TopAppBar({
       </nav>
 
       <div className="ml-auto flex shrink-0 items-center gap-2">
+        {canOpen ? (
+          <button
+            type="button"
+            className="header-action-btn"
+            title="Open saved workflow"
+            aria-label="Open saved workflow"
+            onClick={onOpen}
+          >
+            <span className="material-symbols-outlined">folder_open</span>
+          </button>
+        ) : null}
         <button
           type="button"
-          disabled
+          disabled={!canSave}
           className="header-action-btn"
-          title="Save is not yet implemented"
+          title={
+            !hasWorkflow
+              ? "Load or author a workflow to save"
+              : !hostPaired
+                ? "Pair with ecp up to save to the host"
+                : saveBusy
+                  ? "Saving…"
+                  : "Save workflow to host"
+          }
+          aria-label="Save workflow"
+          onClick={onSave}
         >
           <span className="material-symbols-outlined">save</span>
+        </button>
+        <button
+          type="button"
+          disabled={!canDownload}
+          className="header-action-btn"
+          title={
+            hasWorkflow ? "Download workflow file" : "Load or author a workflow to download"
+          }
+          aria-label="Download workflow"
+          onClick={onDownload}
+        >
+          <span className="material-symbols-outlined">download</span>
         </button>
         <button
           type="button"
@@ -94,7 +145,9 @@ export function TopAppBar({
           className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border border-outline-variant"
           aria-hidden
         >
-          <span className="material-symbols-outlined text-[18px] text-on-surface-variant">account_circle</span>
+          <span className="material-symbols-outlined text-[18px] text-on-surface-variant">
+            account_circle
+          </span>
         </div>
       </div>
     </header>

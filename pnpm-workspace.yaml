@@ -16,6 +16,7 @@ catalogs:
     '@executioncontrolprotocol/core': ^0.14.0
     '@executioncontrolprotocol/extension-ollama': ^0.14.0
     '@executioncontrolprotocol/extension-openai': ^0.14.0
+    '@executioncontrolprotocol/extension-storage': ^0.14.0
     '@executioncontrolprotocol/fal': ^0.14.0
     '@executioncontrolprotocol/format-eql': ^0.14.0
     '@executioncontrolprotocol/format-mermaid': ^0.14.0
