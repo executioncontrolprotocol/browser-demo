@@ -32,6 +32,7 @@ import { registerFormatEqlExtension } from "@executioncontrolprotocol/format-eql
 import { registerFormatToonExtension } from "@executioncontrolprotocol/format-toon"
 import { registerFormatMermaidExtension } from "@executioncontrolprotocol/format-mermaid"
 import { registerFormatReactflowExtension } from "@executioncontrolprotocol/format-reactflow"
+import { registerStorageExtension } from "@executioncontrolprotocol/extension-storage"
 import "@executioncontrolprotocol/chrome-ai"
 import "@executioncontrolprotocol/extension-openai"
 import "@executioncontrolprotocol/anthropic"
@@ -43,6 +44,7 @@ import "@executioncontrolprotocol/format-eql"
 import "@executioncontrolprotocol/format-toon"
 import "@executioncontrolprotocol/format-mermaid"
 import "@executioncontrolprotocol/format-reactflow"
+import "@executioncontrolprotocol/extension-storage"
 import { readOllamaSettings, type OllamaSettings } from "./ollama-settings.js"
 import {
   readAnthropicSettings,
@@ -123,6 +125,7 @@ export async function createDemoAppEnvironment(
   await registerFormatToonExtension(globalRegistry)
   await registerFormatMermaidExtension(globalRegistry)
   await registerFormatReactflowExtension(globalRegistry)
+  await registerStorageExtension(globalRegistry)
 
   // Formats stay registered for panel encode/decode (.uses(...)) but are not bound
   // into the authoring environment — except format-reactflow, which must be bound
@@ -150,6 +153,7 @@ export async function createDemoAppEnvironment(
   })
   env.addExtensionBinding("@executioncontrolprotocol/image-sharp", {})
   env.addExtensionBinding("@executioncontrolprotocol/jsonata", {})
+  env.addExtensionBinding("@executioncontrolprotocol/storage", {})
 
   const allowlist = [
     "@executioncontrolprotocol/chrome-ai",
