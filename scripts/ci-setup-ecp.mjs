@@ -3,7 +3,8 @@
  * Two-track CI setup for ECP consumer repos (extensions, browser-demo).
  *
  * development track: checkout siblings at development, build, junction-link into consumer.
- * main track: caller only installs consumer from registry (no sibling checkout).
+ * main track: install from registry (frozen lockfile), then install optional vendor peers
+ *   skipped by auto-install-peers=false so typecheck/build can resolve them.
  *
  * Usage (from consumer repo root):
  *   node scripts/ci-setup-ecp.mjs
@@ -17,7 +18,16 @@
  *   CI_LINK_PACKAGES   — comma-separated @scope/pkg names to link (required for demo)
  */
 import { spawnSync } from "node:child_process"
-import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync } from "node:fs"
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs"
+import { tmpdir } from "node:os"
 import path from "node:path"
 
 const consumerRoot = path.resolve(process.env.CI_CONSUMER_ROOT ?? process.cwd())
@@ -180,17 +190,72 @@ function parseLinkList() {
     }
   }
 
-  // Unpublished until first npm release — keep in sync with link-ecp-packages.mjs.
-  names.add("@executioncontrolprotocol/anthropic")
   return [...names]
+}
+
+/** Read `catalogs.ecp` range for a package from pnpm-workspace.yaml. */
+function readEcpCatalogSpec(pkgName) {
+  const yamlPath = path.join(consumerRoot, "pnpm-workspace.yaml")
+  if (!existsSync(yamlPath)) {
+    throw new Error(`Missing pnpm-workspace.yaml at ${yamlPath}`)
+  }
+  const text = readFileSync(yamlPath, "utf8")
+  const escaped = pkgName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  const match = text.match(new RegExp(`['"]${escaped}['"]\\s*:\\s*([^\\s#]+)`))
+  if (!match) {
+    throw new Error(`No catalogs.ecp entry for ${pkgName} in pnpm-workspace.yaml`)
+  }
+  return match[1].replace(/['"]/g, "")
+}
+
+/**
+ * Optional vendor peers are not in the lockfile (auto-install-peers=false).
+ * Install them from the catalog into a temp tree and link into node_modules.
+ */
+function installPublishedOptionalPeers() {
+  const pkgPath = path.join(consumerRoot, "package.json")
+  if (!existsSync(pkgPath)) return
+  const pkg = JSON.parse(readFileSync(pkgPath, "utf8"))
+  const peers = Object.keys(pkg.peerDependencies ?? {}).filter((name) =>
+    name.startsWith("@executioncontrolprotocol/")
+  )
+  if (peers.length === 0) return
+
+  const deps = Object.fromEntries(peers.map((name) => [name, readEcpCatalogSpec(name)]))
+  const peerRoot = mkdtempSync(path.join(tmpdir(), "ecp-demo-peers-"))
+  writeFileSync(
+    path.join(peerRoot, "package.json"),
+    `${JSON.stringify({ name: "ci-demo-peers", private: true, dependencies: deps }, null, 2)}\n`
+  )
+  console.log("\nMain track: installing optional vendor peers from registry…")
+  run("pnpm", ["install", "--ignore-workspace"], peerRoot)
+
+  for (const name of peers) {
+    const src = path.join(peerRoot, "node_modules", ...name.split("/"))
+    if (!existsSync(path.join(src, "package.json"))) {
+      console.error(`Failed to install ${name} from registry at ${src}`)
+      process.exit(1)
+    }
+    const dest = path.join(consumerRoot, "node_modules", ...name.split("/"))
+    ensureSymlink(dest, src)
+    // Avoid dual core/types catalogs: force vendor packages onto the consumer copies.
+    for (const peer of ["@executioncontrolprotocol/core", "@executioncontrolprotocol/types"]) {
+      const consumerPeer = path.join(consumerRoot, "node_modules", ...peer.split("/"))
+      if (!existsSync(consumerPeer)) continue
+      ensureSymlink(path.join(src, "node_modules", ...peer.split("/")), consumerPeer)
+    }
+    console.log(`Linked peer ${name} -> ${src}`)
+  }
 }
 
 const track = detectTrack()
 console.log(`CI track: ${track}`)
 
 if (track === "main") {
-  console.log("Main track: install consumer from registry only (no sibling link).")
+  console.log("Main track: install consumer from registry (no sibling link).")
   run("pnpm", ["install", "--frozen-lockfile"])
+  installPublishedOptionalPeers()
+  console.log("\nCI main setup complete.")
   process.exit(0)
 }
 

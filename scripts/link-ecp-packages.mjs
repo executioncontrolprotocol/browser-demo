@@ -98,10 +98,6 @@ function main() {
   const wanted = new Set(
     filter ?? ecpPackageNamesFromPkgJson(path.join(linkTarget, "package.json"))
   )
-  // Unpublished until first npm release of the renamed Anthropic provider.
-  if (existsSync(path.join(linkTarget, "package.json"))) {
-    wanted.add("@executioncontrolprotocol/anthropic")
-  }
   const missing = []
 
   console.log(`Linking ECP packages from ${ecpRoot}`)

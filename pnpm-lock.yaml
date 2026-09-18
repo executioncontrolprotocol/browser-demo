@@ -15,47 +15,90 @@ catalogs:
     zod:
       specifier: ^3.24.0
       version: 3.25.76
+  ecp:
+    '@executioncontrolprotocol/anthropic':
+      specifier: ^0.13.2
+      version: 0.13.2
+    '@executioncontrolprotocol/browser':
+      specifier: ^0.13.2
+      version: 0.13.2
+    '@executioncontrolprotocol/chrome-ai':
+      specifier: ^0.13.2
+      version: 0.13.2
+    '@executioncontrolprotocol/core':
+      specifier: ^0.13.2
+      version: 0.13.2
+    '@executioncontrolprotocol/extension-ollama':
+      specifier: ^0.13.2
+      version: 0.13.2
+    '@executioncontrolprotocol/extension-openai':
+      specifier: ^0.13.2
+      version: 0.13.2
+    '@executioncontrolprotocol/format-eql':
+      specifier: ^0.13.2
+      version: 0.13.2
+    '@executioncontrolprotocol/format-mermaid':
+      specifier: ^0.13.2
+      version: 0.13.2
+    '@executioncontrolprotocol/format-reactflow':
+      specifier: ^0.13.2
+      version: 0.13.2
+    '@executioncontrolprotocol/format-toon':
+      specifier: ^0.13.2
+      version: 0.13.2
+    '@executioncontrolprotocol/harnesses-browser-coding':
+      specifier: ^0.13.2
+      version: 0.13.2
+    '@executioncontrolprotocol/harnesses-browser-nano':
+      specifier: ^0.13.2
+      version: 0.13.2
+    '@executioncontrolprotocol/types':
+      specifier: ^0.13.2
+      version: 0.13.2
 
 importers:
 
   .:
     dependencies:
+      '@executioncontrolprotocol/anthropic':
+        specifier: catalog:ecp
+        version: 0.13.2(@executioncontrolprotocol/core@0.13.2(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76)
       '@executioncontrolprotocol/browser':
         specifier: catalog:ecp
-        version: 0.13.1(zod@3.25.76)
+        version: 0.13.2(zod@3.25.76)
       '@executioncontrolprotocol/chrome-ai':
         specifier: catalog:ecp
-        version: 0.13.1(@executioncontrolprotocol/core@0.13.1(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76)
+        version: 0.13.2(@executioncontrolprotocol/core@0.13.2(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76)
       '@executioncontrolprotocol/core':
         specifier: catalog:ecp
-        version: 0.13.1(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76)
+        version: 0.13.2(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76)
       '@executioncontrolprotocol/extension-ollama':
         specifier: catalog:ecp
-        version: 0.13.1(@executioncontrolprotocol/core@0.13.1(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76)
+        version: 0.13.2(@executioncontrolprotocol/core@0.13.2(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76)
       '@executioncontrolprotocol/extension-openai':
         specifier: catalog:ecp
-        version: 0.13.1(@executioncontrolprotocol/core@0.13.1(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76)
+        version: 0.13.2(@executioncontrolprotocol/core@0.13.2(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76)
       '@executioncontrolprotocol/format-eql':
         specifier: catalog:ecp
-        version: 0.13.1(@executioncontrolprotocol/core@0.13.1(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76)
+        version: 0.13.2(@executioncontrolprotocol/core@0.13.2(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76)
       '@executioncontrolprotocol/format-mermaid':
         specifier: catalog:ecp
-        version: 0.13.1(@executioncontrolprotocol/core@0.13.1(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76)
+        version: 0.13.2(@executioncontrolprotocol/core@0.13.2(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76)
       '@executioncontrolprotocol/format-reactflow':
         specifier: catalog:ecp
-        version: 0.13.1(@executioncontrolprotocol/core@0.13.1(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76)
+        version: 0.13.2(@executioncontrolprotocol/core@0.13.2(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76)
       '@executioncontrolprotocol/format-toon':
         specifier: catalog:ecp
-        version: 0.13.1(@executioncontrolprotocol/core@0.13.1(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76)
+        version: 0.13.2(@executioncontrolprotocol/core@0.13.2(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76)
       '@executioncontrolprotocol/harnesses-browser-coding':
         specifier: catalog:ecp
-        version: 0.13.1(@executioncontrolprotocol/core@0.13.1(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76)
+        version: 0.13.2(@executioncontrolprotocol/core@0.13.2(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76)
       '@executioncontrolprotocol/harnesses-browser-nano':
         specifier: catalog:ecp
-        version: 0.13.1(@executioncontrolprotocol/core@0.13.1(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76)
+        version: 0.13.2(@executioncontrolprotocol/core@0.13.2(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76)
       '@executioncontrolprotocol/types':
         specifier: catalog:ecp
-        version: 0.13.1(zod@3.25.76)
+        version: 0.13.2(zod@3.25.76)
       '@monaco-editor/react':
         specifier: ^4.7.0
         version: 4.7.0(monaco-editor@0.56.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -407,96 +450,103 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@executioncontrolprotocol/browser-secrets@0.13.1':
-    resolution: {integrity: sha512-lxnFqepImijfJu2VdrmygPDJE+vpFqPGeHiV6zQWrpSlCXu5avDkm7hOasuo+ulDkq2EhptbOyHegYROcdpX2g==}
+  '@executioncontrolprotocol/anthropic@0.13.2':
+    resolution: {integrity: sha512-qYA6ImudieJ7bP5dU2cnkFpH0Vt5ZhwyLIY3vuEJyGvwLTiK21tJe7DWL0qTE6Cvo+rWDSIf+c89WTyit3DUVA==}
     peerDependencies:
-      '@executioncontrolprotocol/core': ^0.13.1
-      '@executioncontrolprotocol/types': ^0.13.1
+      '@executioncontrolprotocol/core': ^0.13.2
+      '@executioncontrolprotocol/types': ^0.13.2
       zod: ^3.24.0
 
-  '@executioncontrolprotocol/browser@0.13.1':
-    resolution: {integrity: sha512-oyyWUxaRBzep3WMuKBR2mAksmgyLO8T6pw8pGdVkw8pHSZ5Q6cWpHzsEs/ucgHP3fp558CTol52pTXhnK7CK+g==}
+  '@executioncontrolprotocol/browser-secrets@0.13.2':
+    resolution: {integrity: sha512-rRe5smyUnci/0vznell0tDNdlbnzuiGj16Knid0Fn7SsxENqMtfUpORfyfRLftNxg8DX7bkekpjkLSxKWSsCVw==}
+    peerDependencies:
+      '@executioncontrolprotocol/core': ^0.13.2
+      '@executioncontrolprotocol/types': ^0.13.2
+      zod: ^3.24.0
+
+  '@executioncontrolprotocol/browser@0.13.2':
+    resolution: {integrity: sha512-s+lNf04NU6qsYQx9xl6ptcpoVYUnq76xyZ9EjUQMRwTZTqpDGFp5v8STAfHuXWYxQL4CWnP0i56kbZ/pOHCDcA==}
     peerDependencies:
       zod: ^3.24.0
 
-  '@executioncontrolprotocol/chrome-ai@0.13.1':
-    resolution: {integrity: sha512-R9v3MQTxgpPQah1hkcuVCJPcsdf8d4+2dmTN5bmAMH/tciONGStGKDPagte40u7JdWFWGTd6eqSpWfBSxfZupQ==}
+  '@executioncontrolprotocol/chrome-ai@0.13.2':
+    resolution: {integrity: sha512-c0vnRWlk3l57O3LMKwE1ZsuIh/ArCN8MbDAesG3Fxlyi/iojhpERAWeIUg2fieEoLBTrAFo/mXW8PKcpygK9OA==}
     peerDependencies:
-      '@executioncontrolprotocol/core': ^0.13.1
-      '@executioncontrolprotocol/types': ^0.13.1
+      '@executioncontrolprotocol/core': ^0.13.2
+      '@executioncontrolprotocol/types': ^0.13.2
       zod: ^3.24.0
 
-  '@executioncontrolprotocol/core@0.13.1':
-    resolution: {integrity: sha512-3fhrr7rmVKncrIZgT7RPz3LKiLeiYxC796MV5JEEUL+tw+DJCIXfpDYARiP9nI7utHrY1dV3unjW7TW71H0GwQ==}
+  '@executioncontrolprotocol/core@0.13.2':
+    resolution: {integrity: sha512-pZI1QxJrKbl79w2TDmWfnLVq11+29/uK4o2CqUBDE3iNLZO/GpYrGv2+WA0H6Rc8Y2Pxpso0cg9sX9SlgIgdlA==}
     peerDependencies:
-      '@executioncontrolprotocol/types': ^0.13.1
+      '@executioncontrolprotocol/types': ^0.13.2
       zod: ^3.24.0
 
-  '@executioncontrolprotocol/extension-ollama@0.13.1':
-    resolution: {integrity: sha512-wPfm3+VSVO53+4OdPj5Y6Y21FAP2qUc5sPnA5HbGovZdvWXWHEq5x2J1l5Ip7o5Isvw1Vc73aUgwXwZUBgcnkw==}
+  '@executioncontrolprotocol/extension-ollama@0.13.2':
+    resolution: {integrity: sha512-bTnnGTyhmggA09Ofy37IxtUbAbgzN5j4zSQhKMftYldPvUTLvreXuEz1BOhOLoLAhoyMrskWHFKjRilLE1r5ZA==}
     peerDependencies:
-      '@executioncontrolprotocol/core': ^0.13.1
-      '@executioncontrolprotocol/types': ^0.13.1
+      '@executioncontrolprotocol/core': ^0.13.2
+      '@executioncontrolprotocol/types': ^0.13.2
       zod: ^3.24.0
 
-  '@executioncontrolprotocol/extension-openai@0.13.1':
-    resolution: {integrity: sha512-dQkc8BgKc9zsdKeiv5m8fWa0W7rBWGjLUH2CrueK8V4nuB9chyk3wq95NfAW0htRWlttfBpItK0MjgIgDUNyYA==}
+  '@executioncontrolprotocol/extension-openai@0.13.2':
+    resolution: {integrity: sha512-VUANLkGsrfj+GXiTFeQmFmGOkxZEipLs/5XiI9lAT3c5fdp0eiDnvUMc1XKVABNid2ej71Vdr+1r6XpFXG/IzA==}
     peerDependencies:
-      '@executioncontrolprotocol/core': ^0.13.1
-      '@executioncontrolprotocol/types': ^0.13.1
+      '@executioncontrolprotocol/core': ^0.13.2
+      '@executioncontrolprotocol/types': ^0.13.2
       zod: ^3.24.0
 
-  '@executioncontrolprotocol/format-eql@0.13.1':
-    resolution: {integrity: sha512-yO4uL9Z0jnm4vc0nmu1UtJw6pIIyVd6CKnlG8/TDA8P6Zt8HMulr00/s4rVstV136xCBFNytPbUH5Olx0E/mAA==}
+  '@executioncontrolprotocol/format-eql@0.13.2':
+    resolution: {integrity: sha512-0m9p7D6F9QOXVlM9SKtiZeJuGfTEKgqF3unZ8yTQRKlYQ4XH7sxF4A5p0S8fbYBUq6O8fbbkzJM3AwXFBi99DQ==}
     peerDependencies:
-      '@executioncontrolprotocol/core': ^0.13.1
-      '@executioncontrolprotocol/types': ^0.13.1
+      '@executioncontrolprotocol/core': ^0.13.2
+      '@executioncontrolprotocol/types': ^0.13.2
       zod: ^3.24.0
 
-  '@executioncontrolprotocol/format-mermaid@0.13.1':
-    resolution: {integrity: sha512-TkdqUSGB2Q73qxdM1MzWdlIKHrtj5zYPCprUgF8KxGQOgtYpbYIFLpWFyScdojZbv/k6GOw4fA4FeZLul7R7dg==}
+  '@executioncontrolprotocol/format-mermaid@0.13.2':
+    resolution: {integrity: sha512-7k6f02TasU0u//u88wWDOtGVL8Gyq6tJw/0TpRu8wfDVrzqBfhMOeQMLjxt4vzf1bQFwzQ2kArTUfIrJUoVZ7A==}
     peerDependencies:
-      '@executioncontrolprotocol/core': ^0.13.1
-      '@executioncontrolprotocol/types': ^0.13.1
+      '@executioncontrolprotocol/core': ^0.13.2
+      '@executioncontrolprotocol/types': ^0.13.2
       zod: ^3.24.0
 
-  '@executioncontrolprotocol/format-reactflow@0.13.1':
-    resolution: {integrity: sha512-ZLfP4hUlswZJ2oYKTP/LOozkYe7HLrI4ejibu3myjYPxG6fZoDDFPqh+06IR6E/7EmjVY9QyAnZAoNsabu27Aw==}
+  '@executioncontrolprotocol/format-reactflow@0.13.2':
+    resolution: {integrity: sha512-yk+YpJh7hKC4p23duGl6C1GpYOiuFPw5ZzepbV4Lu8+YLHddcuOOAoQ+Ci8c8w+tDqe9QEAB+4esJo1qUmezHw==}
     peerDependencies:
-      '@executioncontrolprotocol/core': ^0.13.1
-      '@executioncontrolprotocol/types': ^0.13.1
+      '@executioncontrolprotocol/core': ^0.13.2
+      '@executioncontrolprotocol/types': ^0.13.2
       zod: ^3.24.0
 
-  '@executioncontrolprotocol/format-toon@0.13.1':
-    resolution: {integrity: sha512-rFYwtfliCWOXIo5epZhayWIeAeg4KmN/6CPaSpX3hx/rd4iIV5B/qz415djcAm8PwO3YgJbHqKsCHYhO0C75zw==}
+  '@executioncontrolprotocol/format-toon@0.13.2':
+    resolution: {integrity: sha512-dU2p9RY5GGVuYz6CTwLr0icchjuNkT+mvgB6rL23yepYrDNFOqtD4aS3zO/6D8F+0RTP7RNYDquoide2qknmJw==}
     peerDependencies:
-      '@executioncontrolprotocol/core': ^0.13.1
-      '@executioncontrolprotocol/types': ^0.13.1
+      '@executioncontrolprotocol/core': ^0.13.2
+      '@executioncontrolprotocol/types': ^0.13.2
       zod: ^3.24.0
 
-  '@executioncontrolprotocol/harnesses-browser-coding@0.13.1':
-    resolution: {integrity: sha512-lEpB4g1skHcPEcXzbEH1KLVA8cg9UbsXGHyOEG8Tvegnw2MwdNybv9wZkf+iEXP2Icpc+JMMpT6l4Pb0fhvjcg==}
+  '@executioncontrolprotocol/harnesses-browser-coding@0.13.2':
+    resolution: {integrity: sha512-HpFmow92FNuMzKeV2u7KloHHJOVWKIc2ZKTXjNukTRB7a59cWdqBgtAmxZEdOSumVjpwI/zWWh1QVkLFPwqomQ==}
     peerDependencies:
-      '@executioncontrolprotocol/core': ^0.13.1
-      '@executioncontrolprotocol/types': ^0.13.1
+      '@executioncontrolprotocol/core': ^0.13.2
+      '@executioncontrolprotocol/types': ^0.13.2
       zod: ^3.24.0
 
-  '@executioncontrolprotocol/harnesses-browser-nano@0.13.1':
-    resolution: {integrity: sha512-5DazIomU3F7lStJrqD8h1C8Emcbj2E1NHHaqekiKMsOTYndbD7krzU6RzGTs6WfT58HlWq8d1J3W9PKEK/jRlQ==}
+  '@executioncontrolprotocol/harnesses-browser-nano@0.13.2':
+    resolution: {integrity: sha512-Bq7wXfopBVdxO/wwSkPBOwmVhqj7fV9JFI0aKNT2cZZemJb3hK6W+Sl7k/uvKctyULiTvB7MJABSRhg7BOOwag==}
     peerDependencies:
-      '@executioncontrolprotocol/core': ^0.13.1
-      '@executioncontrolprotocol/types': ^0.13.1
+      '@executioncontrolprotocol/core': ^0.13.2
+      '@executioncontrolprotocol/types': ^0.13.2
       zod: ^3.24.0
 
-  '@executioncontrolprotocol/policies@0.13.1':
-    resolution: {integrity: sha512-mJd+FqbM0ZTNmmt6ZhJRtdloSnO5NhO4eBtgZE0HZOyBqp2Z4emKpaUVjmUkgiZPHyNe7DrNm0ZWlDBy3hYARg==}
+  '@executioncontrolprotocol/policies@0.13.2':
+    resolution: {integrity: sha512-+vihi8HToJYDZSJ3sFoo3mJrtJF/S7LbrSLk5U0skjPhElQJAOjG423pffdrl0xGn2O9BkqU4SYVAtWL5oCH6A==}
     peerDependencies:
-      '@executioncontrolprotocol/core': ^0.13.1
-      '@executioncontrolprotocol/types': ^0.13.1
+      '@executioncontrolprotocol/core': ^0.13.2
+      '@executioncontrolprotocol/types': ^0.13.2
       zod: ^3.24.0
 
-  '@executioncontrolprotocol/types@0.13.1':
-    resolution: {integrity: sha512-u18JuPTOEIg5dV9DWhLpzJnosYbytdaECMdOOIVF2VSH9cefY+9VHeyrUgJXTp02INipZIMp/AO7/aAnBpRJ1A==}
+  '@executioncontrolprotocol/types@0.13.2':
+    resolution: {integrity: sha512-2l5vL6iwzrLoQvoAejKb0fBEpl6a+n0duTNMXsdM4FLVN5OuNW8s8fSE61gMeUnxUtTrXBcRkKNvNbgsIemvJg==}
     peerDependencies:
       zod: ^3.24.0
 
@@ -2323,92 +2373,98 @@ snapshots:
   '@esbuild/win32-x64@0.25.12':
     optional: true
 
-  '@executioncontrolprotocol/browser-secrets@0.13.1(@executioncontrolprotocol/core@0.13.1(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76)':
+  '@executioncontrolprotocol/anthropic@0.13.2(@executioncontrolprotocol/core@0.13.2(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76)':
     dependencies:
-      '@executioncontrolprotocol/core': 0.13.1(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76)
-      '@executioncontrolprotocol/types': 0.13.1(zod@3.25.76)
+      '@executioncontrolprotocol/core': 0.13.2(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76)
+      '@executioncontrolprotocol/types': 0.13.2(zod@3.25.76)
       zod: 3.25.76
 
-  '@executioncontrolprotocol/browser@0.13.1(zod@3.25.76)':
+  '@executioncontrolprotocol/browser-secrets@0.13.2(@executioncontrolprotocol/core@0.13.2(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76)':
     dependencies:
-      '@executioncontrolprotocol/browser-secrets': 0.13.1(@executioncontrolprotocol/core@0.13.1(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76)
-      '@executioncontrolprotocol/core': 0.13.1(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76)
-      '@executioncontrolprotocol/policies': 0.13.1(@executioncontrolprotocol/core@0.13.1(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76)
-      '@executioncontrolprotocol/types': 0.13.1(zod@3.25.76)
+      '@executioncontrolprotocol/core': 0.13.2(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76)
+      '@executioncontrolprotocol/types': 0.13.2(zod@3.25.76)
       zod: 3.25.76
 
-  '@executioncontrolprotocol/chrome-ai@0.13.1(@executioncontrolprotocol/core@0.13.1(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76)':
+  '@executioncontrolprotocol/browser@0.13.2(zod@3.25.76)':
     dependencies:
-      '@executioncontrolprotocol/core': 0.13.1(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76)
-      '@executioncontrolprotocol/types': 0.13.1(zod@3.25.76)
+      '@executioncontrolprotocol/browser-secrets': 0.13.2(@executioncontrolprotocol/core@0.13.2(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76)
+      '@executioncontrolprotocol/core': 0.13.2(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76)
+      '@executioncontrolprotocol/policies': 0.13.2(@executioncontrolprotocol/core@0.13.2(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76)
+      '@executioncontrolprotocol/types': 0.13.2(zod@3.25.76)
       zod: 3.25.76
 
-  '@executioncontrolprotocol/core@0.13.1(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76)':
+  '@executioncontrolprotocol/chrome-ai@0.13.2(@executioncontrolprotocol/core@0.13.2(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76)':
     dependencies:
-      '@executioncontrolprotocol/types': 0.13.1(zod@3.25.76)
+      '@executioncontrolprotocol/core': 0.13.2(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76)
+      '@executioncontrolprotocol/types': 0.13.2(zod@3.25.76)
+      zod: 3.25.76
+
+  '@executioncontrolprotocol/core@0.13.2(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76)':
+    dependencies:
+      '@executioncontrolprotocol/types': 0.13.2(zod@3.25.76)
       zod: 3.25.76
     optionalDependencies:
       esbuild: 0.25.12
       esbuild-wasm: 0.25.12
 
-  '@executioncontrolprotocol/extension-ollama@0.13.1(@executioncontrolprotocol/core@0.13.1(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76)':
+  '@executioncontrolprotocol/extension-ollama@0.13.2(@executioncontrolprotocol/core@0.13.2(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76)':
     dependencies:
-      '@executioncontrolprotocol/core': 0.13.1(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76)
-      '@executioncontrolprotocol/types': 0.13.1(zod@3.25.76)
+      '@executioncontrolprotocol/core': 0.13.2(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76)
+      '@executioncontrolprotocol/types': 0.13.2(zod@3.25.76)
       zod: 3.25.76
 
-  '@executioncontrolprotocol/extension-openai@0.13.1(@executioncontrolprotocol/core@0.13.1(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76)':
+  '@executioncontrolprotocol/extension-openai@0.13.2(@executioncontrolprotocol/core@0.13.2(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76)':
     dependencies:
-      '@executioncontrolprotocol/core': 0.13.1(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76)
-      '@executioncontrolprotocol/types': 0.13.1(zod@3.25.76)
+      '@executioncontrolprotocol/core': 0.13.2(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76)
+      '@executioncontrolprotocol/types': 0.13.2(zod@3.25.76)
       zod: 3.25.76
 
-  '@executioncontrolprotocol/format-eql@0.13.1(@executioncontrolprotocol/core@0.13.1(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76)':
+  '@executioncontrolprotocol/format-eql@0.13.2(@executioncontrolprotocol/core@0.13.2(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76)':
     dependencies:
-      '@executioncontrolprotocol/core': 0.13.1(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76)
-      '@executioncontrolprotocol/types': 0.13.1(zod@3.25.76)
+      '@executioncontrolprotocol/core': 0.13.2(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76)
+      '@executioncontrolprotocol/types': 0.13.2(zod@3.25.76)
       zod: 3.25.76
 
-  '@executioncontrolprotocol/format-mermaid@0.13.1(@executioncontrolprotocol/core@0.13.1(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76)':
+  '@executioncontrolprotocol/format-mermaid@0.13.2(@executioncontrolprotocol/core@0.13.2(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76)':
     dependencies:
-      '@executioncontrolprotocol/core': 0.13.1(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76)
-      '@executioncontrolprotocol/types': 0.13.1(zod@3.25.76)
+      '@executioncontrolprotocol/core': 0.13.2(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76)
+      '@executioncontrolprotocol/types': 0.13.2(zod@3.25.76)
       zod: 3.25.76
 
-  '@executioncontrolprotocol/format-reactflow@0.13.1(@executioncontrolprotocol/core@0.13.1(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76)':
+  '@executioncontrolprotocol/format-reactflow@0.13.2(@executioncontrolprotocol/core@0.13.2(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76)':
     dependencies:
       '@dagrejs/dagre': 1.1.8
-      '@executioncontrolprotocol/core': 0.13.1(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76)
-      '@executioncontrolprotocol/types': 0.13.1(zod@3.25.76)
+      '@executioncontrolprotocol/core': 0.13.2(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76)
+      '@executioncontrolprotocol/types': 0.13.2(zod@3.25.76)
       zod: 3.25.76
 
-  '@executioncontrolprotocol/format-toon@0.13.1(@executioncontrolprotocol/core@0.13.1(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76)':
+  '@executioncontrolprotocol/format-toon@0.13.2(@executioncontrolprotocol/core@0.13.2(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76)':
     dependencies:
-      '@executioncontrolprotocol/core': 0.13.1(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76)
-      '@executioncontrolprotocol/types': 0.13.1(zod@3.25.76)
+      '@executioncontrolprotocol/core': 0.13.2(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76)
+      '@executioncontrolprotocol/types': 0.13.2(zod@3.25.76)
       '@toon-format/toon': 2.3.1
       zod: 3.25.76
 
-  '@executioncontrolprotocol/harnesses-browser-coding@0.13.1(@executioncontrolprotocol/core@0.13.1(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76)':
+  '@executioncontrolprotocol/harnesses-browser-coding@0.13.2(@executioncontrolprotocol/core@0.13.2(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76)':
     dependencies:
-      '@executioncontrolprotocol/core': 0.13.1(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76)
-      '@executioncontrolprotocol/harnesses-browser-nano': 0.13.1(@executioncontrolprotocol/core@0.13.1(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76)
-      '@executioncontrolprotocol/types': 0.13.1(zod@3.25.76)
+      '@executioncontrolprotocol/core': 0.13.2(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76)
+      '@executioncontrolprotocol/harnesses-browser-nano': 0.13.2(@executioncontrolprotocol/core@0.13.2(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76)
+      '@executioncontrolprotocol/types': 0.13.2(zod@3.25.76)
       zod: 3.25.76
 
-  '@executioncontrolprotocol/harnesses-browser-nano@0.13.1(@executioncontrolprotocol/core@0.13.1(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76)':
+  '@executioncontrolprotocol/harnesses-browser-nano@0.13.2(@executioncontrolprotocol/core@0.13.2(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76)':
     dependencies:
-      '@executioncontrolprotocol/core': 0.13.1(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76)
-      '@executioncontrolprotocol/types': 0.13.1(zod@3.25.76)
+      '@executioncontrolprotocol/core': 0.13.2(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76)
+      '@executioncontrolprotocol/types': 0.13.2(zod@3.25.76)
       zod: 3.25.76
 
-  '@executioncontrolprotocol/policies@0.13.1(@executioncontrolprotocol/core@0.13.1(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76)':
+  '@executioncontrolprotocol/policies@0.13.2(@executioncontrolprotocol/core@0.13.2(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76))(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76)':
     dependencies:
-      '@executioncontrolprotocol/core': 0.13.1(@executioncontrolprotocol/types@0.13.1(zod@3.25.76))(zod@3.25.76)
-      '@executioncontrolprotocol/types': 0.13.1(zod@3.25.76)
+      '@executioncontrolprotocol/core': 0.13.2(@executioncontrolprotocol/types@0.13.2(zod@3.25.76))(zod@3.25.76)
+      '@executioncontrolprotocol/types': 0.13.2(zod@3.25.76)
       zod: 3.25.76
 
-  '@executioncontrolprotocol/types@0.13.1(zod@3.25.76)':
+  '@executioncontrolprotocol/types@0.13.2(zod@3.25.76)':
     dependencies:
       zod: 3.25.76
 

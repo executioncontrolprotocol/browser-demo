@@ -38,6 +38,7 @@
     ]
   },
   "dependencies": {
+    "@executioncontrolprotocol/anthropic": "catalog:ecp",
     "@executioncontrolprotocol/browser": "catalog:ecp",
     "@executioncontrolprotocol/chrome-ai": "catalog:ecp",
     "@executioncontrolprotocol/core": "catalog:ecp",

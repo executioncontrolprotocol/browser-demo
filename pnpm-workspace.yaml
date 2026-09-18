@@ -8,20 +8,21 @@ catalog:
 
 catalogs:
   ecp:
-    "@executioncontrolprotocol/adobe-firefly-services": ^0.13.2
-    "@executioncontrolprotocol/azure-blob-storage": ^0.13.2
-    "@executioncontrolprotocol/browser": ^0.13.2
-    "@executioncontrolprotocol/chrome-ai": ^0.13.2
-    "@executioncontrolprotocol/core": ^0.13.2
-    "@executioncontrolprotocol/extension-ollama": ^0.13.2
-    "@executioncontrolprotocol/extension-openai": ^0.13.2
-    "@executioncontrolprotocol/fal": ^0.13.2
-    "@executioncontrolprotocol/format-eql": ^0.13.2
-    "@executioncontrolprotocol/format-mermaid": ^0.13.2
-    "@executioncontrolprotocol/format-reactflow": ^0.13.2
-    "@executioncontrolprotocol/format-toon": ^0.13.2
-    "@executioncontrolprotocol/harnesses-browser-coding": ^0.13.2
-    "@executioncontrolprotocol/harnesses-browser-nano": ^0.13.2
-    "@executioncontrolprotocol/image-sharp": ^0.13.2
-    "@executioncontrolprotocol/jsonata": ^0.13.2
-    "@executioncontrolprotocol/types": ^0.13.2
+    '@executioncontrolprotocol/adobe-firefly-services': ^0.13.2
+    '@executioncontrolprotocol/anthropic': ^0.13.2
+    '@executioncontrolprotocol/azure-blob-storage': ^0.13.2
+    '@executioncontrolprotocol/browser': ^0.13.2
+    '@executioncontrolprotocol/chrome-ai': ^0.13.2
+    '@executioncontrolprotocol/core': ^0.13.2
+    '@executioncontrolprotocol/extension-ollama': ^0.13.2
+    '@executioncontrolprotocol/extension-openai': ^0.13.2
+    '@executioncontrolprotocol/fal': ^0.13.2
+    '@executioncontrolprotocol/format-eql': ^0.13.2
+    '@executioncontrolprotocol/format-mermaid': ^0.13.2
+    '@executioncontrolprotocol/format-reactflow': ^0.13.2
+    '@executioncontrolprotocol/format-toon': ^0.13.2
+    '@executioncontrolprotocol/harnesses-browser-coding': ^0.13.2
+    '@executioncontrolprotocol/harnesses-browser-nano': ^0.13.2
+    '@executioncontrolprotocol/image-sharp': ^0.13.2
+    '@executioncontrolprotocol/jsonata': ^0.13.2
+    '@executioncontrolprotocol/types': ^0.13.2

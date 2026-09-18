@@ -63,7 +63,7 @@ Harness evals (Ollama `gemma3:1b` / `qwen2.5-coder:1.5b`) run from the [ECP mono
 | Runtime host | `@executioncontrolprotocol/browser` | Executor, registry, session — **no harnesses** |
 | This app | `createDemoAppEnvironment` | Binds formats, Chrome AI / Ollama / …, **nano + coding harnesses** |
 
-Provider and harness are independent switches (`resolveDemoSession`). Choosing **Ollama** or **Claude (Anthropic)** selects the **Fluent/TS coding** harness; Chrome AI uses the nano (EQL) harness. Anthropic requires `pnpm run link:ecp` until `@executioncontrolprotocol/anthropic` is published to npm.
+Provider and harness are independent switches (`resolveDemoSession`). Choosing **Ollama** or **Claude (Anthropic)** selects the **Fluent/TS coding** harness; Chrome AI uses the nano (EQL) harness.
 
 ### Browser vendor extensions
 
@@ -74,7 +74,7 @@ Prefer the real SDK whenever it can run in the browser:
 | `@executioncontrolprotocol/fal` | **Yes** — official `@fal-ai/client` | Configure `apiKey` via `browser("FAL_KEY")` (vault / secrets). Vite prebundles the CJS client (`optimizeDeps.include`). |
 | `@executioncontrolprotocol/image-sharp` | **Catalog + host hop** | Bound in the demo env (browser catalog only; no native `sharp`). Steps hop to `ecp up --env …` that binds Sharp on the host. Bare `ecp up` (Ollama-only) is not enough. |
 
-Local unpublished dogfood: `pnpm run link:ecp` (junction-links core ECP packages including unpublished `@executioncontrolprotocol/anthropic`) and `pnpm run link:vendor` (fal / image-sharp). Never commit `file:` deps. They stay optional peers so registry `pnpm install` stays clean. Default paired host lives in this repo at [`host/`](./host) (`image-sharp` + `fal` + `openai` + `anthropic`; Ollama added by `ecp up`) — started by `pnpm run dev:linked`. Sharp-only smoke: [extensions/examples/04-image-prep](https://github.com/executioncontrolprotocol/extensions/tree/main/examples/04-image-prep).
+Local unpublished dogfood: `pnpm run link:ecp` (junction-links core ECP packages) and `pnpm run link:vendor` (fal / image-sharp / …). Never commit `file:` deps. Vendor packages stay optional peers so registry `pnpm install` stays clean; main-track CI installs those peers from the catalog for typecheck/test. Default paired host lives in this repo at [`host/`](./host) (`image-sharp` + `fal` + `openai` + `anthropic`; Ollama added by `ecp up`) — started by `pnpm run dev:linked`. Sharp-only smoke: [extensions/examples/04-image-prep](https://github.com/executioncontrolprotocol/extensions/tree/main/examples/04-image-prep).
 
 Do not stub browser-capable HTTP clients. Native addons belong on the package `browser` export, not a Vite alias.
 
