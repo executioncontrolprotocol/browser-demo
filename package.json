@@ -20,11 +20,6 @@
     "secrets:scan": "secretlint \"**/*\"",
     "check:no-file-deps": "node scripts/check-no-file-deps.mjs",
     "lint:yaml": "node scripts/lint-yaml.mjs",
-    "link:ecp": "node scripts/link-ecp-packages.mjs",
-    "link:host": "node scripts/link-host-example.mjs",
-    "link:vendor": "node scripts/link-vendor-extensions.mjs",
-    "dev:linked": "node scripts/dev-linked.mjs",
-    "ci:setup": "node scripts/ci-setup-ecp.mjs",
     "supabase:push": "supabase db push",
     "supabase:status": "supabase migration list",
     "prepare": "husky"
